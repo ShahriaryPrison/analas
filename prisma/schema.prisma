@@ -1,0 +1,72 @@
+// prisma/schema.prisma
+generator client {
+  provider = "prisma-client"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+  // Notice: The 'url' line is GONE. This is intentional in v7.
+}
+
+enum Plan {
+  FREE
+  PRO
+  ENTERPRISE
+}
+
+model User {
+  id            String    @id @default(cuid())
+  email         String    @unique
+  passwordHash  String
+  name          String?
+  workspaces    WorkspaceMember[] 
+}
+
+model Workspace {
+  id         String   @id @default(cuid())
+  name       String
+  tenantId   String   @unique
+  plan       Plan     @default(FREE)
+  members    WorkspaceMember[]
+  apiKeys    ApiKey[]
+  dashboards Dashboard[]
+}
+
+model WorkspaceMember {
+  id          String    @id @default(cuid())
+  role        String    
+  userId      String
+  workspaceId String
+  user        User      @relation(fields: [userId], references: [id])
+  workspace   Workspace @relation(fields: [workspaceId], references: [id])
+
+  @@unique([userId, workspaceId]) 
+}
+
+model ApiKey {
+  id          String   @id @default(cuid())
+  keyHash     String   @unique
+  name        String
+  workspaceId String
+  workspace   Workspace @relation(fields: [workspaceId], references: [id])
+  createdAt   DateTime @default(now())
+}
+
+model Dashboard {
+  id          String   @id @default(cuid())
+  name        String
+  isPublic    Boolean  @default(false)
+  workspaceId String
+  workspace   Workspace @relation(fields: [workspaceId], references: [id])
+  insights    Insight[]
+}
+
+model Insight {
+  id          String   @id @default(cuid())
+  name        String
+  type        String
+  queryConfig Json
+  dashboardId String
+  dashboard   Dashboard @relation(fields: [dashboardId], references: [id])
+}

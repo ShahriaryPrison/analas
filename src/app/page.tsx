@@ -1,65 +1,594 @@
-import Image from "next/image";
+import Link from "next/link";
+import PineappleIcon from "@/components/PineappleIcon";
 
-export default function Home() {
+// ─── inline SVG icons ──────────────────────────────────────────────────────
+function IconZap() {
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
+    <svg className="h-5 w-5 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
+    </svg>
+  );
+}
+function IconKey() {
+  return (
+    <svg className="h-5 w-5 text-teal-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
+    </svg>
+  );
+}
+function IconChart() {
+  return (
+    <svg className="h-5 w-5 text-cyan-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+    </svg>
+  );
+}
+function IconShield() {
+  return (
+    <svg className="h-5 w-5 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+    </svg>
+  );
+}
+function IconGlobe() {
+  return (
+    <svg className="h-5 w-5 text-amber-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+    </svg>
+  );
+}
+function IconDatabase() {
+  return (
+    <svg className="h-5 w-5 text-violet-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4m0 5c0 2.21-3.582 4-8 4s-8-1.79-8-4" />
+    </svg>
+  );
+}
+
+// ─── data ─────────────────────────────────────────────────────────────────
+const FEATURES = [
+  {
+    icon: <IconZap />,
+    title: "Real-time Captures",
+    body: "Every event is written to ClickHouse in milliseconds and visible on your Captures page immediately — no polling lag.",
+  },
+  {
+    icon: <IconKey />,
+    title: "API Key Management",
+    body: "Create multiple API keys per workspace. Revoke any key instantly from Settings without touching your infrastructure.",
+  },
+  {
+    icon: <IconChart />,
+    title: "Insights & Trends",
+    body: "See top events, daily series, and breakdowns powered by ClickHouse columnar queries — fast even over millions of rows.",
+  },
+  {
+    icon: <IconShield />,
+    title: "Multi-tenant Isolation",
+    body: "Each workspace gets a unique tenant UUID. ClickHouse partitions events per tenant — your data never bleeds across accounts.",
+  },
+  {
+    icon: <IconGlobe />,
+    title: "Zero SDK Required",
+    body: "Any language, any runtime. If it can send an HTTP POST it can send to ANALAS. No npm install, no vendor lock-in.",
+  },
+  {
+    icon: <IconDatabase />,
+    title: "ClickHouse-powered",
+    body: "Built on ClickHouse, the fastest OLAP database on the planet. Handles billions of events without breaking a sweat.",
+  },
+];
+
+const PLANS = [
+  {
+    name: "Free",
+    price: "$0",
+    period: "/ forever",
+    description: "For indie devs and side projects.",
+    features: [
+      "1 workspace",
+      "100 k events / month",
+      "3 API keys",
+      "7-day data retention",
+      "Captures & Insights",
+    ],
+    cta: "Start for free",
+    highlight: false,
+  },
+  {
+    name: "Pro",
+    price: "$29",
+    period: "/ month",
+    description: "For production apps that need more.",
+    features: [
+      "5 workspaces",
+      "10 M events / month",
+      "Unlimited API keys",
+      "90-day data retention",
+      "Priority support",
+    ],
+    cta: "Get started",
+    highlight: true,
+  },
+  {
+    name: "Enterprise",
+    price: "Custom",
+    period: "",
+    description: "For teams with serious scale.",
+    features: [
+      "Unlimited workspaces",
+      "Unlimited events",
+      "SSO / SAML",
+      "Custom retention",
+      "Dedicated support",
+    ],
+    cta: "Talk to us",
+    highlight: false,
+  },
+];
+
+const EVENTS = [
+  { event: "user_signed_up", props: '{"plan":"free","source":"google"}', ts: "just now", dot: "emerald" },
+  { event: "purchase_completed", props: '{"amount":99,"currency":"USD"}', ts: "2s ago", dot: "teal" },
+  { event: "page_viewed", props: '{"path":"/pricing","referrer":"twitter"}', ts: "5s ago", dot: "sky" },
+  { event: "feature_used", props: '{"feature":"insights","workspace":"acme"}', ts: "12s ago", dot: "violet" },
+];
+
+// ─── page ─────────────────────────────────────────────────────────────────
+export default function LandingPage() {
+  return (
+    <div className="min-h-screen bg-[#020817] text-white overflow-x-hidden">
+
+      {/* ── ambient glow blobs ── */}
+      <div className="pointer-events-none fixed inset-0 overflow-hidden" aria-hidden>
+        <div className="absolute -top-48 left-1/2 h-[700px] w-[700px] -translate-x-1/2 rounded-full bg-emerald-500/10 blur-[160px]" />
+        <div className="absolute top-1/3 -right-48 h-[500px] w-[500px] rounded-full bg-teal-500/8 blur-[120px]" />
+        <div className="absolute bottom-0 -left-48 h-[500px] w-[500px] rounded-full bg-amber-500/6 blur-[120px]" />
+      </div>
+
+      {/* ════════════════════════════════════════════════
+          NAV
+      ════════════════════════════════════════════════ */}
+      <nav className="sticky top-0 z-50 border-b border-white/5 bg-[#020817]/80 backdrop-blur-xl">
+        <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
+          <Link href="/" className="flex items-center gap-2.5 group">
+            <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-linear-to-br from-emerald-400 to-teal-500 shadow-lg shadow-emerald-500/30 transition group-hover:shadow-emerald-400/50">
+              <PineappleIcon className="h-5 w-5 text-slate-900" title="Analas" />
+            </div>
+            <span className="text-lg font-bold tracking-tight">ANALAS</span>
+          </Link>
+
+          <div className="hidden items-center gap-8 text-sm text-white/55 md:flex">
+            <a href="#how-it-works" className="hover:text-white transition-colors">How it works</a>
+            <a href="#features" className="hover:text-white transition-colors">Features</a>
+            <a href="#pricing" className="hover:text-white transition-colors">Pricing</a>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <Link href="/login" className="rounded-lg px-4 py-2 text-sm text-white/60 transition hover:text-white">
+              Sign in
+            </Link>
+            <Link
+              href="/register"
+              className="rounded-lg bg-emerald-400 px-4 py-2 text-sm font-semibold text-slate-900 shadow-md shadow-emerald-500/20 transition hover:bg-emerald-300"
             >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
+              Get started free
+            </Link>
+          </div>
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
+      </nav>
+
+      {/* ════════════════════════════════════════════════
+          HERO
+      ════════════════════════════════════════════════ */}
+      <section className="relative px-6 pb-20 pt-20 text-center md:pt-28">
+
+        {/* badge */}
+        <div className="mb-8 inline-flex items-center gap-2 rounded-full border border-emerald-500/25 bg-emerald-500/10 px-4 py-1.5 text-sm text-emerald-300">
+          <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-400" />
+          Open analytics platform for developers
+        </div>
+
+        <h1 className="mx-auto max-w-4xl text-5xl font-extrabold leading-[1.1] tracking-tight md:text-[72px]">
+          Know exactly what
+          <br />
+          <span className="bg-linear-to-r from-emerald-300 via-teal-300 to-cyan-300 bg-clip-text text-transparent">
+            your users are doing
+          </span>
+        </h1>
+
+        <p className="mx-auto mt-6 max-w-xl text-lg leading-relaxed text-white/55">
+          Capture every user action with a single HTTP call. Stream events into
+          ClickHouse. Explore real-time captures and trends in seconds.
+        </p>
+
+        <div className="mt-10 flex flex-col items-center justify-center gap-3 sm:flex-row">
+          <Link
+            href="/register"
+            className="rounded-xl bg-emerald-400 px-8 py-3.5 text-base font-semibold text-slate-900 shadow-lg shadow-emerald-500/25 transition hover:bg-emerald-300 hover:shadow-emerald-400/35"
           >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
+            Start for free — no card needed
+          </Link>
+          <a
+            href="#how-it-works"
+            className="rounded-xl border border-white/10 bg-white/5 px-8 py-3.5 text-base font-medium transition hover:bg-white/10"
+          >
+            See how it works ↓
+          </a>
+        </div>
+
+        {/* ── live events demo panel ── */}
+        <div className="mx-auto mt-16 grid max-w-5xl gap-6 text-left lg:grid-cols-2">
+
+          {/* terminal */}
+          <div className="rounded-2xl border border-white/10 bg-slate-900/80 shadow-2xl shadow-black/60 overflow-hidden">
+            <div className="flex items-center gap-2 border-b border-white/8 bg-slate-950/50 px-4 py-3">
+              <span className="h-3 w-3 rounded-full bg-red-500/60" />
+              <span className="h-3 w-3 rounded-full bg-yellow-500/60" />
+              <span className="h-3 w-3 rounded-full bg-emerald-500/60" />
+              <span className="ml-3 font-mono text-xs text-white/25">POST /api/capture</span>
+            </div>
+            <pre className="overflow-x-auto px-5 py-4 text-xs font-mono leading-loose">
+<span className="text-white/30">$</span> <span className="text-sky-300">curl</span> <span className="text-white/60">-X POST</span> <span className="text-emerald-300">&apos;https://analas.app/api/capture&apos;</span>{"\n"}
+{"  "}<span className="text-white/60">-H</span> <span className="text-amber-300">&apos;Authorization: Bearer ana_live_xK9mNp&apos;</span>{"\n"}
+{"  "}<span className="text-white/60">-H</span> <span className="text-amber-300">&apos;Content-Type: application/json&apos;</span>{"\n"}
+{"  "}<span className="text-white/60">-d</span> <span className="text-white/70">&apos;&#123;</span>{"\n"}
+{"       "}<span className="text-sky-300">&quot;event&quot;</span><span className="text-white/50">:</span> <span className="text-emerald-300">&quot;purchase_completed&quot;</span><span className="text-white/50">,</span>{"\n"}
+{"       "}<span className="text-sky-300">&quot;properties&quot;</span><span className="text-white/50">: &#123;</span>{"\n"}
+{"         "}<span className="text-sky-300">&quot;amount&quot;</span><span className="text-white/50">:</span> <span className="text-violet-300">99</span><span className="text-white/50">,</span>{"\n"}
+{"         "}<span className="text-sky-300">&quot;plan&quot;</span><span className="text-white/50">:</span> <span className="text-emerald-300">&quot;pro&quot;</span>{"\n"}
+{"       "}<span className="text-white/50">&#125;</span>{"\n"}
+{"     "}<span className="text-white/70">&apos;&#125;</span>
+            </pre>
+            <div className="border-t border-white/5 bg-emerald-500/5 px-5 py-2.5 flex items-center gap-3 text-xs font-mono">
+              <span className="font-semibold text-emerald-400">200 OK</span>
+              <span className="text-white/40">→</span>
+              <span className="text-white/55">{`{"status":"accepted"}`}</span>
+              <span className="ml-auto text-white/25">14ms</span>
+            </div>
+          </div>
+
+          {/* live stream */}
+          <div className="rounded-2xl border border-white/10 bg-slate-900/80 shadow-2xl shadow-black/60 overflow-hidden">
+            <div className="flex items-center justify-between border-b border-white/8 bg-slate-950/50 px-4 py-3">
+              <div className="flex items-center gap-2">
+                <span className="h-2 w-2 animate-pulse rounded-full bg-emerald-400" />
+                <span className="font-mono text-xs text-white/40">Live Captures</span>
+              </div>
+              <span className="text-xs text-white/25">acme-inc workspace</span>
+            </div>
+            <div className="divide-y divide-white/5">
+              {EVENTS.map((ev) => (
+                <div key={ev.event + ev.ts} className="px-4 py-3 hover:bg-white/3 transition-colors">
+                  <div className="flex items-center justify-between gap-2 mb-1">
+                    <div className="flex items-center gap-2">
+                      <span className={`h-1.5 w-1.5 rounded-full bg-${ev.dot}-400`} />
+                      <span className="text-sm font-medium">{ev.event}</span>
+                    </div>
+                    <span className="shrink-0 text-xs text-white/30">{ev.ts}</span>
+                  </div>
+                  <code className="text-xs text-white/40 font-mono">{ev.props}</code>
+                </div>
+              ))}
+            </div>
+            <div className="border-t border-white/5 bg-slate-950/30 px-4 py-2.5 flex items-center justify-between text-xs text-white/30">
+              <span>4 events shown</span>
+              <Link href="/register" className="text-emerald-400 hover:text-emerald-300 transition font-medium">
+                Open dashboard →
+              </Link>
+            </div>
+          </div>
+        </div>
+
+        {/* stats strip */}
+        <div className="mx-auto mt-12 flex max-w-3xl flex-wrap items-center justify-center gap-x-10 gap-y-4 text-sm">
+          {[
+            ["< 20ms", "avg response time"],
+            ["ClickHouse", "columnar storage"],
+            ["REST API", "zero SDK needed"],
+            ["Multi-tenant", "workspace isolation"],
+          ].map(([value, label]) => (
+            <div key={value} className="flex items-center gap-2 text-white/35">
+              <span className="h-1 w-1 rounded-full bg-emerald-500" />
+              <span className="font-semibold text-white/60">{value}</span>
+              <span>{label}</span>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* ════════════════════════════════════════════════
+          HOW IT WORKS
+      ════════════════════════════════════════════════ */}
+      <section id="how-it-works" className="px-6 py-24">
+        <div className="mx-auto max-w-5xl">
+          <div className="mb-16 text-center">
+            <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-emerald-400">How it works</p>
+            <h2 className="text-3xl font-bold md:text-4xl">Live in under 5 minutes</h2>
+            <p className="mx-auto mt-4 max-w-md text-white/55">
+              No infrastructure to manage. No SDK to install. Just sign up and start capturing.
+            </p>
+          </div>
+
+          <div className="grid gap-px md:grid-cols-3 rounded-2xl overflow-hidden border border-white/10">
+            {[
+              {
+                step: "01",
+                title: "Create a workspace",
+                body: "Sign up in seconds. Your first workspace is created automatically with a unique tenant ID and isolated ClickHouse partition.",
+                gradient: "from-emerald-500/15",
+              },
+              {
+                step: "02",
+                title: "Generate an API key",
+                body: "Head to Settings and create your first API key. It's shown once in full — copy it to start sending events right away.",
+                gradient: "from-teal-500/15",
+              },
+              {
+                step: "03",
+                title: "Capture & explore",
+                body: "POST events from anywhere — your frontend, server, or cron jobs. Watch them appear in Captures and analyze in Insights.",
+                gradient: "from-cyan-500/15",
+              },
+            ].map(({ step, title, body, gradient }) => (
+              <div key={step} className={`relative bg-slate-900/60 p-8 bg-linear-to-b ${gradient} to-transparent`}>
+                <div className="mb-5 text-5xl font-black text-white/8 leading-none select-none">{step}</div>
+                <h3 className="text-lg font-semibold mb-3">{title}</h3>
+                <p className="text-sm text-white/55 leading-relaxed">{body}</p>
+              </div>
+            ))}
+          </div>
+
+          {/* Architecture note */}
+          <div className="mt-8 rounded-2xl border border-white/8 bg-white/3 px-6 py-5 flex flex-col gap-4 md:flex-row md:items-center md:gap-8 text-sm text-white/50">
+            <div className="shrink-0 font-semibold text-white/70">Under the hood:</div>
+            <div className="flex flex-wrap gap-3">
+              {[
+                ["Next.js 16", "App & API"],
+                ["PostgreSQL", "Users & workspaces"],
+                ["ClickHouse", "Event storage"],
+                ["Prisma 7", "ORM"],
+                ["NextAuth", "Auth"],
+              ].map(([tech, role]) => (
+                <span key={tech} className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs">
+                  <span className="text-white/80 font-medium">{tech}</span>
+                  <span className="ml-1.5 text-white/35">{role}</span>
+                </span>
+              ))}
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ════════════════════════════════════════════════
+          CODE SECTION
+      ════════════════════════════════════════════════ */}
+      <section className="px-6 py-8">
+        <div className="mx-auto max-w-5xl">
+          <div className="overflow-hidden rounded-2xl border border-white/10 bg-slate-900/70 backdrop-blur-xl shadow-xl shadow-black/40">
+            {/* header */}
+            <div className="flex flex-col gap-3 border-b border-white/8 px-6 py-5 md:flex-row md:items-center md:justify-between">
+              <div>
+                <h2 className="text-xl font-bold">One endpoint. Any language.</h2>
+                <p className="mt-1 text-sm text-white/50">No SDK, no install — a plain HTTP POST is all it takes.</p>
+              </div>
+              <Link
+                href="/register"
+                className="shrink-0 rounded-lg bg-emerald-400 px-4 py-2 text-sm font-semibold text-slate-900 hover:bg-emerald-300 transition"
+              >
+                Get your API key →
+              </Link>
+            </div>
+
+            {/* code panels */}
+            <div className="grid divide-y divide-white/8 md:grid-cols-2 md:divide-x md:divide-y-0">
+              <div>
+                <div className="flex items-center gap-2 border-b border-white/8 px-4 py-2.5">
+                  <span className="h-2 w-2 rounded-full bg-amber-400" />
+                  <span className="font-mono text-xs text-white/40">cURL</span>
+                </div>
+                <pre className="overflow-x-auto p-5 text-xs font-mono leading-relaxed text-white/75">{`curl -X POST 'https://your-app.com/api/capture' \\
+  -H 'Authorization: Bearer <your-api-key>' \\
+  -H 'Content-Type: application/json' \\
+  -d '{
+    "event": "user_signed_up",
+    "properties": {
+      "plan": "free",
+      "source": "google_ads",
+      "country": "US"
+    }
+  }'`}</pre>
+              </div>
+
+              <div>
+                <div className="flex items-center gap-2 border-b border-white/8 px-4 py-2.5">
+                  <span className="h-2 w-2 rounded-full bg-sky-400" />
+                  <span className="font-mono text-xs text-white/40">JavaScript / TypeScript</span>
+                </div>
+                <pre className="overflow-x-auto p-5 text-xs font-mono leading-relaxed text-white/75">{`await fetch('/api/capture', {
+  method: 'POST',
+  headers: {
+    'Authorization': 'Bearer <your-api-key>',
+    'Content-Type': 'application/json',
+  },
+  body: JSON.stringify({
+    event: 'user_signed_up',
+    properties: {
+      plan: 'free',
+      source: 'google_ads',
+    },
+  }),
+});`}</pre>
+              </div>
+            </div>
+
+            {/* response bar */}
+            <div className="flex flex-wrap items-center gap-4 border-t border-white/8 bg-emerald-500/5 px-5 py-3 text-xs font-mono">
+              <span className="font-semibold text-emerald-400">200 OK</span>
+              <span className="text-white/40">→</span>
+              <span className="text-white/60">{`{"status":"accepted"}`}</span>
+              <span className="ml-auto text-white/30 hidden sm:block">Written to ClickHouse in &lt; 20ms</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ════════════════════════════════════════════════
+          FEATURES
+      ════════════════════════════════════════════════ */}
+      <section id="features" className="px-6 py-24">
+        <div className="mx-auto max-w-5xl">
+          <div className="mb-16 text-center">
+            <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-emerald-400">Features</p>
+            <h2 className="text-3xl font-bold md:text-4xl">Everything you need. Nothing you don&apos;t.</h2>
+            <p className="mx-auto mt-4 max-w-md text-white/55">
+              Built for developers who need real answers about their users, fast.
+            </p>
+          </div>
+
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {FEATURES.map((f) => (
+              <div
+                key={f.title}
+                className="group rounded-2xl border border-white/8 bg-white/3 p-6 transition-colors hover:border-white/15 hover:bg-white/5"
+              >
+                <div className="mb-4 flex h-10 w-10 items-center justify-center rounded-xl border border-white/10 bg-slate-800/60">
+                  {f.icon}
+                </div>
+                <h3 className="mb-2 font-semibold">{f.title}</h3>
+                <p className="text-sm leading-relaxed text-white/50">{f.body}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ════════════════════════════════════════════════
+          PRICING
+      ════════════════════════════════════════════════ */}
+      <section id="pricing" className="px-6 py-24">
+        <div className="mx-auto max-w-5xl">
+          <div className="mb-16 text-center">
+            <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-emerald-400">Pricing</p>
+            <h2 className="text-3xl font-bold md:text-4xl">Simple, per-workspace pricing</h2>
+            <p className="mx-auto mt-4 max-w-md text-white/55">
+              Start free. Scale when you need it. No per-seat fees, ever.
+            </p>
+          </div>
+
+          <div className="grid gap-6 md:grid-cols-3">
+            {PLANS.map((plan) => (
+              <div
+                key={plan.name}
+                className={`relative flex flex-col rounded-2xl border p-7 ${
+                  plan.highlight
+                    ? "border-emerald-500/40 bg-linear-to-b from-emerald-500/10 to-emerald-500/3 shadow-2xl shadow-emerald-500/15"
+                    : "border-white/10 bg-white/3"
+                }`}
+              >
+                {plan.highlight && (
+                  <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 rounded-full bg-emerald-400 px-3 py-0.5 text-xs font-bold text-slate-900">
+                    Most popular
+                  </div>
+                )}
+
+                <div className="mb-5">
+                  <div className="text-xs font-bold uppercase tracking-widest text-white/40">{plan.name}</div>
+                  <div className="mt-3 flex items-baseline gap-1">
+                    <span className="text-4xl font-black tracking-tight">{plan.price}</span>
+                    {plan.period && <span className="text-sm text-white/40">{plan.period}</span>}
+                  </div>
+                  <p className="mt-2 text-sm text-white/45">{plan.description}</p>
+                </div>
+
+                <ul className="mb-7 flex-1 space-y-3 text-sm text-white/65">
+                  {plan.features.map((f) => (
+                    <li key={f} className="flex items-center gap-2.5">
+                      <span className="flex-shrink-0 text-emerald-400 font-bold">✓</span>
+                      {f}
+                    </li>
+                  ))}
+                </ul>
+
+                <Link
+                  href="/register"
+                  className={`block w-full rounded-xl py-3 text-center text-sm font-semibold transition ${
+                    plan.highlight
+                      ? "bg-emerald-400 text-slate-900 hover:bg-emerald-300 shadow-lg shadow-emerald-500/20"
+                      : "border border-white/10 bg-white/5 hover:bg-white/10"
+                  }`}
+                >
+                  {plan.cta}
+                </Link>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ════════════════════════════════════════════════
+          FINAL CTA
+      ════════════════════════════════════════════════ */}
+      <section className="px-6 py-24">
+        <div className="mx-auto max-w-3xl">
+          <div className="relative overflow-hidden rounded-3xl border border-emerald-500/20 bg-linear-to-b from-emerald-500/10 to-transparent p-12 text-center">
+            {/* subtle grid pattern */}
+            <div
+              className="pointer-events-none absolute inset-0 opacity-10"
+              style={{
+                backgroundImage:
+                  "linear-gradient(rgba(255,255,255,.05) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.05) 1px, transparent 1px)",
+                backgroundSize: "40px 40px",
+              }}
             />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
+
+            <div className="relative">
+              <div className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-2xl bg-linear-to-br from-emerald-400 to-teal-500 shadow-xl shadow-emerald-500/30">
+                <PineappleIcon className="h-9 w-9 text-slate-900" title="Analas" />
+              </div>
+
+              <h2 className="text-3xl font-bold md:text-4xl">
+                Ready to understand your users?
+              </h2>
+              <p className="mx-auto mt-4 max-w-sm text-white/55">
+                Your first workspace and API key are ready the moment you sign up. No credit card required.
+              </p>
+
+              <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
+                <Link
+                  href="/register"
+                  className="rounded-xl bg-emerald-400 px-8 py-3.5 text-base font-semibold text-slate-900 shadow-lg shadow-emerald-500/25 transition hover:bg-emerald-300"
+                >
+                  Create free account
+                </Link>
+                <Link href="/login" className="text-sm text-white/45 transition hover:text-white/70">
+                  Already have an account? Sign in →
+                </Link>
+              </div>
+            </div>
+          </div>
         </div>
-      </main>
+      </section>
+
+      {/* ════════════════════════════════════════════════
+          FOOTER
+      ════════════════════════════════════════════════ */}
+      <footer className="border-t border-white/5 px-6 py-10">
+        <div className="mx-auto flex max-w-5xl flex-col items-center justify-between gap-4 md:flex-row">
+          <div className="flex items-center gap-2.5 text-white/35">
+            <PineappleIcon className="h-4 w-4" />
+            <span className="text-sm font-bold tracking-tight">ANALAS</span>
+            <span className="text-xs ml-1">© 2026 — Open analytics for developers</span>
+          </div>
+          <div className="flex items-center gap-6 text-xs text-white/30">
+            <a href="#how-it-works" className="hover:text-white/60 transition">How it works</a>
+            <a href="#features" className="hover:text-white/60 transition">Features</a>
+            <a href="#pricing" className="hover:text-white/60 transition">Pricing</a>
+            <Link href="/login" className="hover:text-white/60 transition">Sign in</Link>
+            <Link href="/register" className="hover:text-white/60 transition">Register</Link>
+          </div>
+        </div>
+      </footer>
     </div>
   );
 }
