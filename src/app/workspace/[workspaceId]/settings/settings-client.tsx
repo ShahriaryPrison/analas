@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { PlusIcon, KeyIcon, CopyIcon, CheckIcon, TrashIcon } from "@/components/icons";
 
 type ApiKey = { id: string; name: string; createdAt: string };
 
@@ -55,23 +56,26 @@ export default function SettingsClient({
   }
 
   return (
-    <div className="rounded-2xl border border-white/10 bg-slate-900/70 p-6 backdrop-blur-xl space-y-5">
+    <div className="rounded-2xl border border-white/10 bg-white/5 p-6 space-y-5">
+      {/* Section header */}
       <div className="flex items-center justify-between gap-4">
         <div>
-          <h2 className="text-lg font-semibold">API Keys</h2>
-          <p className="mt-0.5 text-sm text-white/60">
+          <h2 className="text-lg font-semibold text-white">API Keys</h2>
+          <p className="mt-0.5 text-sm text-white/50">
             Keys authenticate event capture requests from your app.
           </p>
         </div>
         <button
           onClick={createKey}
           disabled={creating}
-          className="shrink-0 rounded-lg bg-emerald-400 px-4 py-2 text-sm font-semibold text-slate-900 transition hover:bg-emerald-300 disabled:opacity-60"
+          className="shrink-0 flex items-center gap-1.5 rounded-lg bg-emerald-400 px-4 py-2 text-sm font-semibold text-slate-900 transition hover:bg-emerald-300 disabled:opacity-60"
         >
+          <PlusIcon className="w-3.5 h-3.5" />
           {creating ? "Creating…" : "New key"}
         </button>
       </div>
 
+      {/* New key reveal banner */}
       {newKey && (
         <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-4 space-y-3">
           <p className="text-sm font-medium text-emerald-300">
@@ -83,8 +87,13 @@ export default function SettingsClient({
             </code>
             <button
               onClick={() => copy(newKey)}
-              className="shrink-0 rounded-lg bg-emerald-400 px-3 py-2 text-xs font-semibold text-slate-900 hover:bg-emerald-300 transition"
+              className="shrink-0 flex items-center gap-1.5 rounded-lg bg-emerald-400 px-3 py-2 text-xs font-semibold text-slate-900 hover:bg-emerald-300 transition"
             >
+              {copied ? (
+                <CheckIcon className="w-3.5 h-3.5" />
+              ) : (
+                <CopyIcon className="w-3.5 h-3.5" />
+              )}
               {copied ? "Copied!" : "Copy"}
             </button>
           </div>
@@ -95,7 +104,6 @@ export default function SettingsClient({
   -H 'Content-Type: application/json' \\
   -d '{"event":"test_event","properties":{"source":"curl"}}'`}</pre>
           </div>
-
           <button
             onClick={() => setNewKey(null)}
             className="text-xs text-white/40 hover:text-white/70 transition"
@@ -105,24 +113,31 @@ export default function SettingsClient({
         </div>
       )}
 
+      {/* Key list */}
       <div className="space-y-2">
         {keys.length ? (
           keys.map((k) => (
             <div
               key={k.id}
-              className="flex items-center justify-between gap-3 rounded-xl border border-white/10 bg-white/5 px-4 py-3"
+              className="flex items-center justify-between gap-3 rounded-xl border border-white/8 bg-white/3 px-4 py-3"
             >
-              <div>
-                <div className="text-sm font-medium">{k.name}</div>
-                <div className="text-xs text-white/50">
-                  Created {new Date(k.createdAt).toLocaleDateString()}
+              <div className="flex items-center gap-3">
+                <div className="inline-flex items-center justify-center w-7 h-7 rounded-lg bg-white/5 shrink-0">
+                  <KeyIcon className="w-3.5 h-3.5 text-white/40" />
+                </div>
+                <div>
+                  <div className="text-sm font-medium text-white">{k.name}</div>
+                  <div className="text-xs text-white/40">
+                    Created {new Date(k.createdAt).toLocaleDateString()}
+                  </div>
                 </div>
               </div>
               <button
                 onClick={() => revokeKey(k.id)}
                 disabled={revoking === k.id}
-                className="rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-1.5 text-xs font-medium text-red-300 transition hover:bg-red-500/20 disabled:opacity-50"
+                className="flex items-center gap-1.5 rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-1.5 text-xs font-medium text-red-300 transition hover:bg-red-500/20 disabled:opacity-50"
               >
+                <TrashIcon className="w-3.5 h-3.5" />
                 {revoking === k.id ? "Revoking…" : "Revoke"}
               </button>
             </div>

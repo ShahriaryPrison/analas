@@ -1,5 +1,4 @@
 services:
-  # 1. Your Analytics Engine
   clickhouse:
     image: clickhouse/clickhouse-server:latest
     container_name: clickhouse_analytics
@@ -7,14 +6,13 @@ services:
       - "8123:8123"
       - "9000:9000"
     volumes:
-      - ./clickhouse_data:/var/lib/clickhouse
+      - clickhouse_data:/var/lib/clickhouse
       - ./clickhouse/users.d:/etc/clickhouse-server/users.d
     ulimits:
       nofile:
         soft: 262144
         hard: 262144
 
-  # 2. Your User Management Database
   postgres:
     image: postgres:15-alpine
     container_name: saas_db
@@ -25,4 +23,8 @@ services:
     ports:
       - "5432:5432"
     volumes:
-      - ./postgres_data:/var/lib/postgresql/data
+      - postgres_data:/var/lib/postgresql/data
+
+volumes:
+  clickhouse_data:
+  postgres_data:

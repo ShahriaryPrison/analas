@@ -27,6 +27,7 @@ export async function POST(
   const body = await req.json().catch(() => null);
   const name = String(body?.name ?? "").trim();
   const eventName = String(body?.eventName ?? "").trim();
+  const type = String(body?.type ?? "count").trim();
 
   if (!name || !eventName) {
     return NextResponse.json({ error: "Name and event name are required" }, { status: 400 });
@@ -45,7 +46,7 @@ export async function POST(
   const insight = await prisma.insight.create({
     data: {
       name,
-      type: "count",
+      type,
       queryConfig: { eventName },
       dashboardId: dashboard.id,
     },
