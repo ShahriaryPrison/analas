@@ -4,12 +4,9 @@ WORKDIR /app
 
 # Define the registry variables with defaults
 ARG NPM_REGISTRY=https://registry.npmjs.org/
-ARG PRISMA_ENGINES_MIRROR=https://registry.npmmirror.com/-/binary/prisma
 
 # Apply whichever registries are passed in
 RUN npm config set registry ${NPM_REGISTRY}
-ENV PRISMA_ENGINES_MIRROR=${PRISMA_ENGINES_MIRROR}
-ENV PRISMA_BINARIES_MIRROR=${PRISMA_ENGINES_MIRROR}
 
 # Copy package files and install dependencies
 COPY package*.json ./
@@ -18,7 +15,13 @@ RUN npm ci
 # Copy the rest of your application code
 COPY . .
 
-# Generate the Prisma Client
+# 1. Make the Linux engine executable
+RUN chmod +x ./prisma/engines/schema-engine
+
+# 2. Tell Prisma exactly where the schema engine is so it completely skips downloading
+ENV PRISMA_SCHEMA_ENGINE_BINARY=/app/prisma/engines/schema-engine
+
+# 3. Generate the client (It will now be instant and require no internet)
 RUN npx prisma generate
 
 # Build the Next.js app

@@ -3,9 +3,8 @@ services:
     build: 
       context: .
       args:
-        # If NPM_REGISTRY or PRISMA_ENGINES_MIRROR exist in .env, use them. Otherwise, use standard defaults.
+        # If NPM_REGISTRY exists in .env, use it. Otherwise, use standard defaults.
         - NPM_REGISTRY=${NPM_REGISTRY:-https://registry.npmjs.org/}
-        - PRISMA_ENGINES_MIRROR=${PRISMA_ENGINES_MIRROR:-https://registry.npmmirror.com/-/binary/prisma}
     container_name: analas_app
     ports:
       - "3000:3000"
