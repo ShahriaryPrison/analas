@@ -2,11 +2,14 @@
 FROM node:20-alpine AS builder
 WORKDIR /app
 
-# Define the registry variable with the standard NPM default
+# Define the registry variables with defaults
 ARG NPM_REGISTRY=https://registry.npmjs.org/
+ARG PRISMA_ENGINES_MIRROR=https://registry.npmmirror.com/-/binary/prisma
 
-# Apply whichever registry is passed in
+# Apply whichever registries are passed in
 RUN npm config set registry ${NPM_REGISTRY}
+ENV PRISMA_ENGINES_MIRROR=${PRISMA_ENGINES_MIRROR}
+ENV PRISMA_BINARIES_MIRROR=${PRISMA_ENGINES_MIRROR}
 
 # Copy package files and install dependencies
 COPY package*.json ./
