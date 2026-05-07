@@ -1,10 +1,22 @@
 services:
+  app:
+    build: 
+      context: .
+      args:
+        # If NPM_REGISTRY exists in .env, use it. Otherwise, use the standard one.
+        - NPM_REGISTRY=${NPM_REGISTRY:-https://registry.npmjs.org/}
+    container_name: analas_app
+    ports:
+      - "3000:3000"
+    env_file:
+      - .env
+    depends_on:
+      - postgres
+      - clickhouse
+
   clickhouse:
     image: clickhouse/clickhouse-server:latest
     container_name: clickhouse_analytics
-    ports:
-      - "8123:8123"
-      - "9000:9000"
     volumes:
       - clickhouse_data:/var/lib/clickhouse
       - ./clickhouse/users.d:/etc/clickhouse-server/users.d
@@ -17,11 +29,9 @@ services:
     image: postgres:15-alpine
     container_name: saas_db
     environment:
-      POSTGRES_USER: admin
-      POSTGRES_PASSWORD: mysecretpassword
-      POSTGRES_DB: saas_users
-    ports:
-      - "5432:5432"
+      POSTGRES_USER: ${POSTGRES_USER:-admin}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB:-saas_users}
     volumes:
       - postgres_data:/var/lib/postgresql/data
 
