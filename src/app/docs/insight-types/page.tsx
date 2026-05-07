@@ -66,6 +66,9 @@ export default function InsightTypesDocsPage() {
     { key: "toEvent",   label: "To event",   placeholder: "user_signup" },
   ],
 }`}</pre>
+          <div className="rounded-lg border border-emerald-500/20 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-200">
+            <strong>Pro Tip:</strong> The insight creation modal is completely dynamic! Any fields you define in <code className="font-mono text-xs text-emerald-300 bg-emerald-400/10 px-1 rounded">configFields</code> will automatically generate input boxes in the UI, and their values will be saved to the database without any extra code.
+          </div>
         </section>
 
         {/* Step 2 */}

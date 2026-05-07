@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { INSIGHT_TYPES } from "@/lib/insight-types";
+import { INSIGHT_TYPES, getInsightType } from "@/lib/insight-types";
 import { XIcon, CheckIcon, ChevronRightIcon } from "@/components/icons";
 import Link from "next/link";
 
@@ -16,9 +16,11 @@ export default function CreateInsightModal({ workspaceId, topEvents, onClose }: 
   const router = useRouter();
   const [type, setType] = useState("trend");
   const [name, setName] = useState("");
-  const [eventName, setEventName] = useState("");
+  const [queryConfig, setQueryConfig] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+
+  const selectedType = getInsightType(type);
   const backdropRef = useRef<HTMLDivElement>(null);
 
   // Close on ESC
@@ -38,7 +40,7 @@ export default function CreateInsightModal({ workspaceId, topEvents, onClose }: 
     const res = await fetch(`/api/workspace/${workspaceId}/insights`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name, eventName, type }),
+      body: JSON.stringify({ name, type, queryConfig }),
     });
 
     if (!res.ok) {
@@ -111,35 +113,37 @@ export default function CreateInsightModal({ workspaceId, topEvents, onClose }: 
             />
           </label>
 
-          {/* Event name + chips */}
-          <div className="space-y-1.5 text-sm">
-            <span className="text-white/70">Event name</span>
-            <input
-              value={eventName}
-              onChange={(e) => setEventName(e.target.value)}
-              required
-              className="w-full rounded-lg border border-white/10 bg-white/5 px-4 py-2.5 text-white outline-none focus:ring-2 focus:ring-emerald-400/60 placeholder:text-white/30"
-              placeholder="user_signup"
-            />
-            {topEvents.length > 0 && (
-              <div className="flex flex-wrap gap-1.5 pt-1">
-                {topEvents.map((ev) => (
-                  <button
-                    key={ev}
-                    type="button"
-                    onClick={() => setEventName(ev)}
-                    className={`rounded-full border px-2.5 py-0.5 text-[11px] font-medium transition ${
-                      eventName === ev
-                        ? "border-emerald-400/50 bg-emerald-400/15 text-emerald-300"
-                        : "border-white/10 bg-white/5 text-white/50 hover:text-white/80 hover:bg-white/10"
-                    }`}
-                  >
-                    {ev}
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
+          {/* Dynamic Config Fields */}
+          {selectedType.configFields.map((field) => (
+            <div key={field.key} className="space-y-1.5 text-sm">
+              <span className="text-white/70">{field.label}</span>
+              <input
+                value={queryConfig[field.key] || ""}
+                onChange={(e) => setQueryConfig({ ...queryConfig, [field.key]: e.target.value })}
+                required
+                className="w-full rounded-lg border border-white/10 bg-white/5 px-4 py-2.5 text-white outline-none focus:ring-2 focus:ring-emerald-400/60 placeholder:text-white/30"
+                placeholder={field.placeholder}
+              />
+              {field.key === "eventName" && topEvents.length > 0 && (
+                <div className="flex flex-wrap gap-1.5 pt-1">
+                  {topEvents.map((ev) => (
+                    <button
+                      key={ev}
+                      type="button"
+                      onClick={() => setQueryConfig({ ...queryConfig, [field.key]: ev })}
+                      className={`rounded-full border px-2.5 py-0.5 text-[11px] font-medium transition ${
+                        queryConfig[field.key] === ev
+                          ? "border-emerald-400/50 bg-emerald-400/15 text-emerald-300"
+                          : "border-white/10 bg-white/5 text-white/50 hover:text-white/80 hover:bg-white/10"
+                      }`}
+                    >
+                      {ev}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          ))}
 
           {error && (
             <div className="rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-200">

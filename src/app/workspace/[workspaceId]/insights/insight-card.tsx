@@ -14,7 +14,7 @@ type Props = {
     id: string;
     name: string;
     type: string;
-    eventName: string;
+    queryConfig: Record<string, unknown>;
   };
 };
 
@@ -46,7 +46,13 @@ export default function InsightCard({ workspaceId, insight }: Props) {
             </span>
           </div>
           <h3 className="text-lg font-semibold text-white">{insight.name}</h3>
-          <p className="text-sm text-white/50">Event: {insight.eventName || "—"}</p>
+          <div className="flex flex-wrap gap-x-3 gap-y-1 mt-1">
+            {typeDef.configFields.map((f) => (
+              <span key={f.key} className="text-sm text-white/50">
+                {f.label}: {String(insight.queryConfig[f.key] || "—")}
+              </span>
+            ))}
+          </div>
         </div>
         <div className="flex items-center gap-3">
           {data ? (

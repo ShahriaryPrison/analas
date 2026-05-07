@@ -29,7 +29,7 @@ export default async function InsightsPage({
     id: ins.id,
     name: ins.name,
     type: ins.type,
-    eventName: String((ins.queryConfig as Record<string, unknown>)?.eventName ?? ""),
+    queryConfig: (ins.queryConfig as Record<string, unknown>) ?? {},
   }));
 
   return (
