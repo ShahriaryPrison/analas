@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import PineappleIcon from "@/components/PineappleIcon";
 
-export default function LoginPage() {
+function LoginContent() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -118,5 +118,15 @@ export default function LoginPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+import { Suspense } from "react";
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-slate-900 flex items-center justify-center text-emerald-400">Loading...</div>}>
+      <LoginContent />
+    </Suspense>
   );
 }
