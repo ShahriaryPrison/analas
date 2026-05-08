@@ -1,6 +1,6 @@
 import Link from "next/link";
 import PineappleIcon from "@/components/PineappleIcon";
-import WorkspaceNav from "./workspace-nav";
+import WorkspaceNav, { WorkspaceMobileNav } from "./workspace-nav";
 import WorkspaceSidebarFooter from "./workspace-sidebar-footer";
 import { getAuthorizedWorkspace } from "@/lib/workspace-access";
 
@@ -52,32 +52,23 @@ export default async function WorkspaceLayout({
         </div>
       </aside>
 
-      {/* MOBILE NAV — top */}
+      {/* MOBILE HEADER — top */}
       <div className="md:hidden sticky top-0 z-10 bg-slate-950/95 backdrop-blur border-b border-white/6">
         <div className="flex items-center justify-between px-4 py-3">
-          <Link href="/dashboard" className="flex items-center gap-2">
-            <div className="inline-flex items-center justify-center w-6 h-6 rounded-md bg-linear-to-br from-emerald-300 via-teal-300 to-cyan-300">
-              <PineappleIcon className="w-3.5 h-3.5 text-slate-900" />
+          <Link href="/dashboard" className="flex items-center gap-3">
+            <div className="inline-flex items-center justify-center w-7 h-7 rounded-lg bg-linear-to-br from-emerald-300 via-teal-300 to-cyan-300 shadow-md shadow-emerald-500/20">
+              <PineappleIcon className="w-4 h-4 text-slate-900" />
             </div>
-            <span className="font-bold text-white text-sm">{workspace.name}</span>
+            <span className="font-bold text-white text-sm tracking-tight">{workspace.name}</span>
           </Link>
-          <div className="flex gap-1">
-            {[
-              { label: "Captures", href: `/workspace/${workspace.id}/captures` },
-              { label: "Insights", href: `/workspace/${workspace.id}/insights` },
-              { label: "Settings", href: `/workspace/${workspace.id}/settings` },
-            ].map(({ label, href }) => (
-              <Link
-                key={href}
-                href={href}
-                className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-white/70 hover:bg-white/10 transition"
-              >
-                {label}
-              </Link>
-            ))}
-          </div>
+          <Link href="/dashboard" className="text-xs font-semibold text-emerald-400 hover:text-emerald-300 transition bg-emerald-500/10 px-3 py-1.5 rounded-full border border-emerald-500/20">
+            Dashboard
+          </Link>
         </div>
       </div>
+
+      {/* MOBILE NAV — bottom */}
+      <WorkspaceMobileNav workspaceId={workspace.id} />
 
       {/* CONTENT */}
       <main className="flex-1 md:ml-56 min-h-screen bg-linear-to-br from-slate-900 via-slate-900 to-slate-950">
@@ -85,7 +76,7 @@ export default async function WorkspaceLayout({
           {/* Subtle ambient blobs */}
           <div className="pointer-events-none fixed top-0 right-0 w-96 h-96 bg-emerald-500/4 rounded-full blur-3xl" />
           <div className="pointer-events-none fixed bottom-0 left-1/2 w-96 h-96 bg-amber-500/3 rounded-full blur-3xl" />
-          <div className="relative max-w-5xl mx-auto px-6 py-8">
+          <div className="relative max-w-5xl mx-auto px-6 py-8 pb-24 md:pb-8">
             {children}
           </div>
         </div>

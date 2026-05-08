@@ -47,7 +47,7 @@ export default async function CapturesPage({
       </div>
 
       {/* Stats row — 3 equal cards */}
-      <div className="grid gap-4 md:grid-cols-3">
+      <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
         <div className="rounded-2xl border border-white/10 bg-white/5 p-5">
           <div className="flex items-center gap-3 mb-4">
             <div className="inline-flex items-center justify-center w-8 h-8 rounded-lg bg-emerald-500/15">
@@ -68,7 +68,7 @@ export default async function CapturesPage({
           <div className="text-xs uppercase tracking-wide text-white/40 mt-1">Unique event types</div>
         </div>
 
-        <div className="rounded-2xl border border-white/10 bg-white/5 p-5">
+        <div className="col-span-2 rounded-2xl border border-white/10 bg-white/5 p-5 sm:col-span-1">
           <div className="flex items-center gap-3 mb-4">
             <div className="inline-flex items-center justify-center w-8 h-8 rounded-lg bg-cyan-500/15">
               <BarChart2Icon className="w-4 h-4 text-cyan-400" />
@@ -112,12 +112,12 @@ export default async function CapturesPage({
                 key={`${capture.ts}-${i}`}
                 className="rounded-xl border border-white/10 bg-white/3 px-4 py-3"
               >
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                  <div className="flex items-center gap-2.5">
-                    <span className="w-2 h-2 rounded-full bg-emerald-400 shrink-0" />
-                    <span className="font-semibold text-white">{capture.event}</span>
+                <div className="flex items-start justify-between gap-2">
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <span className="w-2 h-2 rounded-full bg-emerald-400 shrink-0 mt-0.5" />
+                    <span className="font-semibold text-white truncate">{capture.event}</span>
                   </div>
-                  <div className="text-xs text-white/40">{new Date(capture.ts).toLocaleString()}</div>
+                  <div className="text-xs text-white/40 shrink-0 mt-0.5">{new Date(capture.ts).toLocaleString()}</div>
                 </div>
                 <pre className="mt-2 rounded-lg bg-slate-950/60 border border-white/6 p-3 text-xs font-mono text-white/60 overflow-x-auto">
                   {capture.properties}

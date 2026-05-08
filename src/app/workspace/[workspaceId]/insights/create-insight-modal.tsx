@@ -60,7 +60,7 @@ export default function CreateInsightModal({ workspaceId, topEvents, onClose }: 
       onClick={(e) => { if (e.target === backdropRef.current) onClose(); }}
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4"
     >
-      <div className="w-full max-w-lg rounded-2xl border border-white/10 bg-slate-900 shadow-2xl">
+      <div className="w-full max-w-lg rounded-2xl border border-white/10 bg-slate-900 shadow-2xl max-h-[90dvh] overflow-y-auto">
         {/* Modal header */}
         <div className="flex items-center justify-between border-b border-white/10 px-6 py-4">
           <h2 className="font-semibold text-white">New insight</h2>
@@ -152,26 +152,26 @@ export default function CreateInsightModal({ workspaceId, topEvents, onClose }: 
           )}
 
           {/* Footer */}
-          <div className="flex items-center justify-between pt-1">
+          <div className="flex flex-col-reverse gap-2 pt-1 sm:flex-row sm:items-center sm:justify-between">
             <Link
               href="/docs/insight-types"
               target="_blank"
-              className="text-xs text-white/30 hover:text-white/60 transition"
+              className="text-xs text-white/30 hover:text-white/60 transition text-center sm:text-left"
             >
-              <span className="flex items-center gap-1">Contribute an insight type <ChevronRightIcon className="w-3 h-3" /></span>
+              <span className="flex items-center justify-center gap-1 sm:justify-start">Contribute an insight type <ChevronRightIcon className="w-3 h-3" /></span>
             </Link>
             <div className="flex gap-2">
               <button
                 type="button"
                 onClick={onClose}
-                className="rounded-lg border border-white/10 px-4 py-2 text-sm text-white/60 hover:bg-white/5 transition"
+                className="flex-1 rounded-lg border border-white/10 px-4 py-2.5 text-sm text-white/60 hover:bg-white/5 transition sm:flex-none sm:py-2"
               >
                 Cancel
               </button>
               <button
                 type="submit"
                 disabled={loading}
-                className="flex items-center gap-1.5 rounded-lg bg-emerald-400 px-4 py-2 text-sm font-semibold text-slate-900 hover:bg-emerald-300 transition disabled:opacity-60"
+                className="flex-1 flex items-center justify-center gap-1.5 rounded-lg bg-emerald-400 px-4 py-2.5 text-sm font-semibold text-slate-900 hover:bg-emerald-300 transition disabled:opacity-60 sm:flex-none sm:py-2"
               >
                 {loading ? "Creating…" : <><CheckIcon className="w-3.5 h-3.5" />Create</>}
               </button>

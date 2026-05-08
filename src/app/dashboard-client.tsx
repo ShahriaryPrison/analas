@@ -95,20 +95,20 @@ export default function DashboardClient({ workspaces }: { workspaces: Workspace[
             </div>
 
             {/* Key copy row */}
-            <div className="flex items-center gap-2">
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
               <code className="flex-1 truncate rounded-xl border border-white/10 bg-slate-900/60 px-4 py-2.5 text-xs font-mono text-white/90">
                 {newKey}
               </code>
               <button
                 onClick={() => copy(newKey!)}
-                className="shrink-0 flex items-center gap-1.5 rounded-xl bg-emerald-400 px-4 py-2.5 text-sm font-semibold text-slate-900 hover:bg-emerald-300 transition min-w-[90px]"
+                className="flex items-center justify-center gap-1.5 rounded-xl bg-emerald-400 px-4 py-2.5 text-sm font-semibold text-slate-900 hover:bg-emerald-300 transition sm:shrink-0 sm:min-w-[90px]"
               >
                 {copied ? <><CheckIcon className="w-3.5 h-3.5" />Copied</> : <><CopyIcon className="w-3.5 h-3.5" />Copy</>}
               </button>
             </div>
 
             {/* Quick-start steps */}
-            <div className="grid gap-3 md:grid-cols-3 text-sm">
+            <div className="grid gap-3 sm:grid-cols-3 text-sm">
               {[
                 {
                   step: "1",
@@ -221,24 +221,24 @@ export default function DashboardClient({ workspaces }: { workspaces: Workspace[
                     </div>
                   </div>
 
-                  <div className="flex flex-wrap gap-2 text-xs">
+                  <div className="grid grid-cols-3 gap-2 md:flex md:flex-wrap text-xs">
                     <Link
                       href={`/workspace/${ws.id}/captures`}
-                      className="flex items-center gap-1.5 rounded-xl border border-white/8 bg-white/4 px-3 py-1.5 text-white/60 hover:bg-white/8 hover:text-white/90 transition"
+                      className="flex items-center justify-center gap-1.5 rounded-xl border border-white/8 bg-white/4 px-3 py-2 md:py-1.5 text-white/60 hover:bg-white/8 hover:text-white/90 transition"
                     >
                       <ZapIcon className="w-3.5 h-3.5" />
                       Captures
                     </Link>
                     <Link
                       href={`/workspace/${ws.id}/insights`}
-                      className="flex items-center gap-1.5 rounded-xl border border-white/8 bg-white/4 px-3 py-1.5 text-white/60 hover:bg-white/8 hover:text-white/90 transition"
+                      className="flex items-center justify-center gap-1.5 rounded-xl border border-white/8 bg-white/4 px-3 py-2 md:py-1.5 text-white/60 hover:bg-white/8 hover:text-white/90 transition"
                     >
                       <BarChart2Icon className="w-3.5 h-3.5" />
                       Insights
                     </Link>
                     <Link
                       href={`/workspace/${ws.id}/settings`}
-                      className="flex items-center gap-1.5 rounded-xl border border-white/8 bg-white/4 px-3 py-1.5 text-white/60 hover:bg-white/8 hover:text-white/90 transition"
+                      className="flex items-center justify-center gap-1.5 rounded-xl border border-white/8 bg-white/4 px-3 py-2 md:py-1.5 text-white/60 hover:bg-white/8 hover:text-white/90 transition"
                     >
                       <SlidersIcon className="w-3.5 h-3.5" />
                       Settings

@@ -82,8 +82,8 @@ const FEATURES = [
 const PLANS = [
   {
     name: "Free",
-    price: "$0",
-    period: "/ forever",
+    price: "Free",
+    period: "for now",
     description: "For indie devs and side projects.",
     features: [
       "1 workspace",
@@ -93,12 +93,13 @@ const PLANS = [
       "Captures & Insights",
     ],
     cta: "Start for free",
-    highlight: false,
+    highlight: true,
+    disabled: false,
   },
   {
     name: "Pro",
-    price: "$29",
-    period: "/ month",
+    price: "-",
+    period: "TBA",
     description: "For production apps that need more.",
     features: [
       "5 workspaces",
@@ -107,13 +108,14 @@ const PLANS = [
       "90-day data retention",
       "Priority support",
     ],
-    cta: "Get started",
-    highlight: true,
+    cta: "Coming Soon",
+    highlight: false,
+    disabled: true,
   },
   {
     name: "Enterprise",
-    price: "Custom",
-    period: "",
+    price: "-",
+    period: "TBA",
     description: "For teams with serious scale.",
     features: [
       "Unlimited workspaces",
@@ -122,8 +124,9 @@ const PLANS = [
       "Custom retention",
       "Dedicated support",
     ],
-    cta: "Talk to us",
+    cta: "Coming Soon",
     highlight: false,
+    disabled: true,
   },
 ];
 
@@ -258,25 +261,25 @@ export default function LandingPage() {
           </div>
 
           {/* live stream */}
-          <div className="rounded-2xl border border-white/10 bg-slate-900/80 shadow-2xl shadow-black/60 overflow-hidden">
+          <div className="rounded-2xl border border-white/10 bg-slate-900/80 shadow-2xl shadow-black/60 overflow-hidden transition-all duration-300 hover:shadow-emerald-500/5 hover:border-white/20">
             <div className="flex items-center justify-between border-b border-white/8 bg-slate-950/50 px-4 py-3">
               <div className="flex items-center gap-2">
-                <span className="h-2 w-2 animate-pulse rounded-full bg-emerald-400" />
+                <span className="h-2 w-2 animate-pulse rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.8)]" />
                 <span className="font-mono text-xs text-white/40">Live Captures</span>
               </div>
               <span className="text-xs text-white/25">acme-inc workspace</span>
             </div>
             <div className="divide-y divide-white/5">
-              {EVENTS.map((ev) => (
-                <div key={ev.event + ev.ts} className="px-4 py-3 hover:bg-white/3 transition-colors">
+              {EVENTS.map((ev, i) => (
+                <div key={ev.event + ev.ts} className={`px-4 py-3 hover:bg-white/5 transition-colors ${i === 0 ? "bg-white/[0.02]" : ""}`}>
                   <div className="flex items-center justify-between gap-2 mb-1">
                     <div className="flex items-center gap-2">
-                      <span className={`h-1.5 w-1.5 rounded-full bg-${ev.dot}-400`} />
-                      <span className="text-sm font-medium">{ev.event}</span>
+                      <span className={`h-1.5 w-1.5 rounded-full bg-${ev.dot}-400 ${i === 0 ? "animate-pulse shadow-[0_0_5px_currentColor]" : ""}`} />
+                      <span className={`text-sm font-medium ${i === 0 ? "text-white" : "text-white/80"}`}>{ev.event}</span>
                     </div>
                     <span className="shrink-0 text-xs text-white/30">{ev.ts}</span>
                   </div>
-                  <code className="text-xs text-white/40 font-mono">{ev.props}</code>
+                  <code className={`text-xs font-mono ${i === 0 ? "text-white/60" : "text-white/40"}`}>{ev.props}</code>
                 </div>
               ))}
             </div>
@@ -340,10 +343,10 @@ export default function LandingPage() {
                 gradient: "from-cyan-500/15",
               },
             ].map(({ step, title, body, gradient }) => (
-              <div key={step} className={`relative bg-slate-900/60 p-8 bg-linear-to-b ${gradient} to-transparent`}>
-                <div className="mb-5 text-5xl font-black text-white/8 leading-none select-none">{step}</div>
-                <h3 className="text-lg font-semibold mb-3">{title}</h3>
-                <p className="text-sm text-white/55 leading-relaxed">{body}</p>
+              <div key={step} className={`group relative bg-slate-900/60 p-8 bg-linear-to-b ${gradient} to-transparent transition-colors hover:bg-slate-900/40`}>
+                <div className="mb-5 text-5xl font-black text-white/5 group-hover:text-white/10 leading-none select-none transition-colors">{step}</div>
+                <h3 className="text-lg font-semibold mb-3 text-white/90 group-hover:text-white transition-colors">{title}</h3>
+                <p className="text-sm text-white/50 group-hover:text-white/60 leading-relaxed transition-colors">{body}</p>
               </div>
             ))}
           </div>
@@ -391,12 +394,19 @@ export default function LandingPage() {
 
             {/* code panels */}
             <div className="grid divide-y divide-white/8 md:grid-cols-2 md:divide-x md:divide-y-0">
-              <div>
-                <div className="flex items-center gap-2 border-b border-white/8 px-4 py-2.5">
-                  <span className="h-2 w-2 rounded-full bg-amber-400" />
-                  <span className="font-mono text-xs text-white/40">cURL</span>
+              <div className="group relative">
+                <div className="flex items-center justify-between border-b border-white/8 px-4 py-2.5 bg-white/[0.01]">
+                  <div className="flex items-center gap-2">
+                    <span className="h-2 w-2 rounded-full bg-amber-400 shadow-[0_0_5px_rgba(251,191,36,0.6)]" />
+                    <span className="font-mono text-xs text-white/40 group-hover:text-white/60 transition-colors">cURL</span>
+                  </div>
+                  <button className="text-xs text-white/20 hover:text-white/80 transition-colors" title="Copy to clipboard">
+                    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                    </svg>
+                  </button>
                 </div>
-                <pre className="overflow-x-auto p-5 text-xs font-mono leading-relaxed text-white/75">{`curl -X POST 'https://your-app.com/api/capture' \\
+                <pre className="overflow-x-auto p-5 text-xs font-mono leading-relaxed text-white/60 group-hover:text-white/75 transition-colors">{`curl -X POST 'https://your-app.com/api/capture' \\
   -H 'Authorization: Bearer <your-api-key>' \\
   -H 'Content-Type: application/json' \\
   -d '{
@@ -409,12 +419,19 @@ export default function LandingPage() {
   }'`}</pre>
               </div>
 
-              <div>
-                <div className="flex items-center gap-2 border-b border-white/8 px-4 py-2.5">
-                  <span className="h-2 w-2 rounded-full bg-sky-400" />
-                  <span className="font-mono text-xs text-white/40">JavaScript / TypeScript</span>
+              <div className="group relative">
+                <div className="flex items-center justify-between border-b border-white/8 px-4 py-2.5 bg-white/[0.01]">
+                  <div className="flex items-center gap-2">
+                    <span className="h-2 w-2 rounded-full bg-sky-400 shadow-[0_0_5px_rgba(56,189,248,0.6)]" />
+                    <span className="font-mono text-xs text-white/40 group-hover:text-white/60 transition-colors">JavaScript / TypeScript</span>
+                  </div>
+                  <button className="text-xs text-white/20 hover:text-white/80 transition-colors" title="Copy to clipboard">
+                    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                    </svg>
+                  </button>
                 </div>
-                <pre className="overflow-x-auto p-5 text-xs font-mono leading-relaxed text-white/75">{`await fetch('/api/capture', {
+                <pre className="overflow-x-auto p-5 text-xs font-mono leading-relaxed text-white/60 group-hover:text-white/75 transition-colors">{`await fetch('/api/capture', {
   method: 'POST',
   headers: {
     'Authorization': 'Bearer <your-api-key>',
@@ -459,13 +476,16 @@ export default function LandingPage() {
             {FEATURES.map((f) => (
               <div
                 key={f.title}
-                className="group rounded-2xl border border-white/8 bg-white/3 p-6 transition-colors hover:border-white/15 hover:bg-white/5"
+                className="group relative rounded-2xl border border-white/8 bg-white/3 p-6 transition-all duration-300 hover:-translate-y-1 hover:border-white/20 hover:bg-white/5 hover:shadow-2xl hover:shadow-emerald-500/10 overflow-hidden"
               >
-                <div className="mb-4 flex h-10 w-10 items-center justify-center rounded-xl border border-white/10 bg-slate-800/60">
-                  {f.icon}
+                <div className="absolute inset-0 bg-linear-to-br from-white/5 to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
+                <div className="relative z-10">
+                  <div className="mb-4 flex h-10 w-10 items-center justify-center rounded-xl border border-white/10 bg-slate-800/60 shadow-inner group-hover:bg-slate-800 transition-colors">
+                    {f.icon}
+                  </div>
+                  <h3 className="mb-2 font-semibold text-white/90 group-hover:text-white transition-colors">{f.title}</h3>
+                  <p className="text-sm leading-relaxed text-white/50 group-hover:text-white/60 transition-colors">{f.body}</p>
                 </div>
-                <h3 className="mb-2 font-semibold">{f.title}</h3>
-                <p className="text-sm leading-relaxed text-white/50">{f.body}</p>
               </div>
             ))}
           </div>
@@ -481,7 +501,7 @@ export default function LandingPage() {
             <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-emerald-400">Pricing</p>
             <h2 className="text-3xl font-bold md:text-4xl">Simple, per-workspace pricing</h2>
             <p className="mx-auto mt-4 max-w-md text-white/55">
-              Start free. Scale when you need it. No per-seat fees, ever.
+              The basic usage is <strong className="font-bold text-white">free for now</strong>. Advanced tiers will be enabled later.
             </p>
           </div>
 
@@ -493,11 +513,11 @@ export default function LandingPage() {
                   plan.highlight
                     ? "border-emerald-500/40 bg-linear-to-b from-emerald-500/10 to-emerald-500/3 shadow-2xl shadow-emerald-500/15"
                     : "border-white/10 bg-white/3"
-                }`}
+                } ${plan.disabled ? "opacity-50 grayscale-[50%]" : ""}`}
               >
                 {plan.highlight && (
                   <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 rounded-full bg-emerald-400 px-3 py-0.5 text-xs font-bold text-slate-900">
-                    Most popular
+                    Free for now
                   </div>
                 )}
 
@@ -519,16 +539,22 @@ export default function LandingPage() {
                   ))}
                 </ul>
 
-                <Link
-                  href="/register"
-                  className={`block w-full rounded-xl py-3 text-center text-sm font-semibold transition ${
-                    plan.highlight
-                      ? "bg-emerald-400 text-slate-900 hover:bg-emerald-300 shadow-lg shadow-emerald-500/20"
-                      : "border border-white/10 bg-white/5 hover:bg-white/10"
-                  }`}
-                >
-                  {plan.cta}
-                </Link>
+                {plan.disabled ? (
+                  <div className="block w-full rounded-xl py-3 text-center text-sm font-semibold border border-white/10 bg-white/5 cursor-not-allowed text-white/50">
+                    {plan.cta}
+                  </div>
+                ) : (
+                  <Link
+                    href="/register"
+                    className={`block w-full rounded-xl py-3 text-center text-sm font-semibold transition ${
+                      plan.highlight
+                        ? "bg-emerald-400 text-slate-900 hover:bg-emerald-300 shadow-lg shadow-emerald-500/20"
+                        : "border border-white/10 bg-white/5 hover:bg-white/10"
+                    }`}
+                  >
+                    {plan.cta}
+                  </Link>
+                )}
               </div>
             ))}
           </div>
