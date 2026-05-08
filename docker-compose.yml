@@ -50,6 +50,7 @@ services:
       - CLICKHOUSE_DB=${CLICKHOUSE_DB:-analas_analytics}
     volumes:
       - clickhouse_data:/var/lib/clickhouse
+      - ./clickhouse-init:/docker-entrypoint-initdb.d:ro
     ulimits:
       nofile:
         soft: 262144

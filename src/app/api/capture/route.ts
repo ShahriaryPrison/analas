@@ -12,21 +12,49 @@ type CaptureEvent = {
 const RATE_LIMIT = 600;
 const rateMap = new Map<string, { ts: number; count: number }>();
 
-async function ensureEventsTable() {
+const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+const apiCache = new Map<string, { tenantId: string; expiresAt: number }>();
+
+type InsertEvent = {
+  tenant_id: string;
+  event: string;
+  properties: string;
+  ts: string;
+};
+
+const MAX_BUFFER_SIZE = 100;
+const FLUSH_INTERVAL_MS = 5000;
+let eventsBuffer: InsertEvent[] = [];
+let flushTimer: NodeJS.Timeout | null = null;
+
+async function flushEvents() {
+  if (eventsBuffer.length === 0) return;
+  const batch = [...eventsBuffer];
+  eventsBuffer = []; // clear buffer
+  
   try {
-    const { stream } = await clickhouse.exec({
-      query: `
-        CREATE TABLE IF NOT EXISTS events (
-          tenant_id  String,
-          event      String,
-          properties String,
-          ts         DateTime64(3)
-        ) ENGINE = MergeTree() ORDER BY (tenant_id, ts)
-      `,
+    await clickhouse.insert({
+      table: "events",
+      values: batch,
+      format: "JSONEachRow",
     });
-    stream.resume(); // drain so the socket closes cleanly
-  } catch {
-    // already exists or ClickHouse unreachable — non-fatal
+  } catch (e) {
+    console.error("ClickHouse batch insert failed:", e);
+  }
+}
+
+function queueEvent(event: InsertEvent) {
+  eventsBuffer.push(event);
+  
+  if (eventsBuffer.length >= MAX_BUFFER_SIZE) {
+    if (flushTimer) clearTimeout(flushTimer);
+    flushTimer = null;
+    flushEvents(); // trigger flush immediately
+  } else if (!flushTimer) {
+    flushTimer = setTimeout(() => {
+      flushTimer = null;
+      flushEvents();
+    }, FLUSH_INTERVAL_MS);
   }
 }
 
@@ -39,12 +67,19 @@ export async function POST(req: Request) {
     const key = auth.replace(/^Bearer\s+/i, "").trim();
     const keyHash = crypto.createHash("sha256").update(key).digest("hex");
 
-    // Include workspace so we have the correct tenantId for ClickHouse
-    const api = await prisma.apiKey.findUnique({
-      where: { keyHash },
-      include: { workspace: { select: { tenantId: true } } },
-    });
-    if (!api) return NextResponse.json({ error: "Invalid API key" }, { status: 401 });
+    let tenantId = "";
+    const cached = apiCache.get(keyHash);
+    if (cached && cached.expiresAt > Date.now()) {
+      tenantId = cached.tenantId;
+    } else {
+      const api = await prisma.apiKey.findUnique({
+        where: { keyHash },
+        include: { workspace: { select: { tenantId: true } } },
+      });
+      if (!api) return NextResponse.json({ error: "Invalid API key" }, { status: 401 });
+      tenantId = api.workspace.tenantId;
+      apiCache.set(keyHash, { tenantId, expiresAt: Date.now() + CACHE_TTL });
+    }
 
     // In-memory rate limit (per key, 1-minute window)
     const now = Date.now();
@@ -64,26 +99,12 @@ export async function POST(req: Request) {
 
     const timestamp = body.timestamp ? new Date(body.timestamp) : new Date();
 
-    await ensureEventsTable();
-
-    // Use insert API — zero string interpolation, no SQL injection
-    try {
-      await clickhouse.insert({
-        table: "events",
-        values: [
-          {
-            tenant_id: api.workspace.tenantId,
-            event: body.event,
-            properties: JSON.stringify(body.properties ?? {}),
-            ts: timestamp.toISOString().replace("T", " ").replace(/\.\d{3}Z$/, ""),
-          },
-        ],
-        format: "JSONEachRow",
-      });
-    } catch (e) {
-      console.error("ClickHouse insert failed:", e);
-      // accept the request anyway so we never block producers
-    }
+    queueEvent({
+      tenant_id: tenantId,
+      event: body.event,
+      properties: JSON.stringify(body.properties ?? {}),
+      ts: timestamp.toISOString().replace("T", " ").replace(/\.\d{3}Z$/, ""),
+    });
 
     return NextResponse.json({ status: "accepted" }, { status: 202 });
   } catch (err) {
