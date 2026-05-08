@@ -9,6 +9,20 @@ services:
     depends_on:
       - app
 
+  migrator:
+    build: 
+      context: .
+      target: builder
+      args:
+        - NPM_REGISTRY=${NPM_REGISTRY:-https://registry.npmjs.org/}
+    container_name: analas_migrator
+    env_file:
+      - .env
+    depends_on:
+      postgres:
+        condition: service_started
+    command: npx prisma db push
+
   app:
     build: 
       context: .
@@ -19,8 +33,12 @@ services:
     env_file:
       - .env
     depends_on:
-      - postgres
-      - clickhouse
+      migrator:
+        condition: service_completed_successfully
+      postgres:
+        condition: service_started
+      clickhouse:
+        condition: service_started
 
   clickhouse:
     image: clickhouse/clickhouse-server:latest
