@@ -118,7 +118,6 @@ export default function CreateInsightModal({ workspaceId, topEvents, onClose }: 
       onClick={(e) => { if (e.target === backdropRef.current) onClose(); }}
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4"
     >
-    >
       <div className="w-full max-w-4xl rounded-2xl border border-white/10 bg-slate-900 shadow-2xl max-h-[90dvh] flex flex-col">
         {/* Modal header */}
         <div className="flex items-center justify-between border-b border-white/10 px-6 py-4">
