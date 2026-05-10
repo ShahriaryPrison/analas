@@ -163,6 +163,7 @@ export default function InsightCard({ workspaceId, insight }: Props) {
       {insight.type === "count" && error && (
         <p className="text-sm text-red-400/70">Could not load data.</p>
       )}
+      </div>
     </article>
   );
 }

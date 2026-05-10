@@ -17,3 +17,13 @@ export async function queryJson<T>(
   });
   return resultSet.json<T>();
 }
+
+export async function getTopEvents(tenantId: string, limit: number = 10) {
+  const rows = await queryJson<{ event: string }>(
+    `SELECT event FROM events 
+     WHERE tenant_id = {tenantId:String} 
+     GROUP BY event ORDER BY count() DESC LIMIT {limit:Int32}`,
+    { tenantId, limit }
+  ).catch(() => []);
+  return rows.map(r => r.event);
+}
