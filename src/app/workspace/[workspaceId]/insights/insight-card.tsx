@@ -5,8 +5,8 @@ import { getInsightType } from "@/lib/insight-types";
 import { BarChart2Icon, ActivityIcon } from "@/components/icons";
 import DeleteInsightButton from "./delete-insight-button";
 
-type Row = { day: string; count: number };
-type InsightData = { total: number; rows: Row[] };
+export type Row = { day: string; count: number; label?: string; val?: string };
+export type InsightData = { total: number; rows: Row[] };
 
 type Props = {
   workspaceId: string;
@@ -67,6 +67,28 @@ export default function InsightCard({ workspaceId, insight }: Props) {
       </div>
 
       {/* Body */}
+      {/* Multi-Trend (Comparison) */}
+      {insight.type === "multi_trend" && (
+        <div className="space-y-4">
+          {error ? (
+            <p className="text-sm text-red-400/70">Could not load data.</p>
+          ) : !data ? (
+            <div className="grid grid-cols-7 gap-2">
+              {Array.from({ length: 7 }).map((_, i) => (
+                <div key={i} className="h-32 w-full animate-pulse rounded-lg bg-white/5" />
+              ))}
+            </div>
+          ) : (
+            insight.queryConfig.displayType === "line" ? (
+              <MultiTrendLineChart rows={data.rows} />
+            ) : (
+              <MultiTrendChart rows={data.rows} />
+            )
+          )}
+        </div>
+      )}
+
+      {/* Trend */}
       {insight.type === "trend" && (
         <div className="space-y-2">
           <div className="flex items-center gap-1.5 text-xs text-white/40">
@@ -89,7 +111,48 @@ export default function InsightCard({ workspaceId, insight }: Props) {
               No data yet.
             </div>
           ) : (
-            <TrendChart rows={data.rows} />
+            insight.queryConfig.displayType === "line" ? (
+              <TrendLineChart rows={data.rows} />
+            ) : (
+              <TrendChart rows={data.rows} />
+            )
+          )}
+        </div>
+      )}
+
+      {/* Breakdown */}
+      {insight.type === "breakdown" && (
+        <div className="space-y-2">
+          {error ? (
+            <p className="text-sm text-red-400/70">Could not load data.</p>
+          ) : !data ? (
+            <div className="space-y-2">
+              {[1, 2, 3].map((i) => (
+                <div key={i} className="h-8 w-full animate-pulse rounded-lg bg-white/5" />
+              ))}
+            </div>
+          ) : data.rows.length === 0 ? (
+            <div className="rounded-xl border border-dashed border-white/10 bg-white/5 p-4 text-sm text-white/50">
+              No data for this property.
+            </div>
+          ) : (
+            <BreakdownList rows={data.rows} />
+          )}
+        </div>
+      )}
+
+      {/* Funnel */}
+      {insight.type === "funnel" && (
+        <div className="space-y-4">
+          {error ? (
+            <p className="text-sm text-red-400/70">Could not load data.</p>
+          ) : !data ? (
+            <div className="space-y-4">
+              <div className="h-12 w-full animate-pulse rounded-lg bg-white/5" />
+              <div className="h-12 w-full animate-pulse rounded-lg bg-white/5" />
+            </div>
+          ) : (
+            <FunnelView rows={data.rows} />
           )}
         </div>
       )}
@@ -101,7 +164,7 @@ export default function InsightCard({ workspaceId, insight }: Props) {
   );
 }
 
-function TrendChart({ rows }: { rows: Row[] }) {
+export function TrendChart({ rows }: { rows: Row[] }) {
   const max = Math.max(...rows.map((r) => r.count), 1);
   return (
     <div className="grid grid-cols-7 gap-2">
@@ -116,6 +179,188 @@ function TrendChart({ rows }: { rows: Row[] }) {
           <div className="text-[11px] text-white/50">{row.day.slice(5)}</div>
         </div>
       ))}
+    </div>
+  );
+}
+
+const PALETTE = ["bg-emerald-400", "bg-indigo-400", "bg-amber-400", "bg-rose-400", "bg-cyan-400"];
+
+export function MultiTrendChart({ rows }: { rows: any[] }) {
+  const events = Object.keys(rows[0]?.counts || {});
+  const max = Math.max(...rows.flatMap(r => Object.values(r.counts as Record<string, number>)), 1);
+
+  return (
+    <div className="space-y-6">
+      <div className="grid grid-cols-7 gap-1">
+        {rows.map((dayRow) => (
+          <div key={dayRow.day} className="flex flex-col items-center gap-2">
+            <div className="flex h-32 w-full items-end justify-center gap-0.5 rounded-lg border border-white/5 bg-white/2 p-1">
+              {events.map((ev, i) => {
+                const count = dayRow.counts[ev] || 0;
+                return (
+                  <div
+                    key={ev}
+                    title={`${ev}: ${count}`}
+                    className={`w-full rounded-sm transition-all duration-500 ${PALETTE[i % PALETTE.length]}`}
+                    style={{ height: `${(count / max) * 100}%`, minHeight: count > 0 ? "2px" : "0" }}
+                  />
+                );
+              })}
+            </div>
+            <div className="text-[10px] text-white/30">{dayRow.day.slice(8)}</div>
+          </div>
+        ))}
+      </div>
+      
+      {/* Legend */}
+      <div className="flex flex-wrap gap-x-4 gap-y-2 pt-2 border-t border-white/5">
+         {events.map((ev, i) => (
+           <div key={ev} className="flex items-center gap-2">
+              <div className={`w-2 h-2 rounded-full ${PALETTE[i % PALETTE.length]}`} />
+              <span className="text-[11px] font-medium text-white/60">{ev}</span>
+           </div>
+         ))}
+      </div>
+    </div>
+  );
+}
+
+export function BreakdownList({ rows }: { rows: Row[] }) {
+  const max = Math.max(...rows.map((r) => r.count), 1);
+  return (
+    <div className="space-y-2">
+      {rows.map((row) => (
+        <div key={row.val} className="space-y-1">
+          <div className="flex items-center justify-between text-xs text-white/70">
+            <span className="truncate pr-4">{row.val || "(empty)"}</span>
+            <span className="tabular-nums font-medium text-white">{row.count.toLocaleString()}</span>
+          </div>
+          <div className="h-1.5 w-full rounded-full bg-white/5 overflow-hidden">
+            <div
+              className="h-full bg-cyan-400/60 transition-all duration-500"
+              style={{ width: `${(row.count / max) * 100}%` }}
+            />
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+export function FunnelView({ rows }: { rows: Row[] }) {
+  const firstCount = rows[0]?.count || 1;
+  return (
+    <div className="space-y-4">
+      {rows.map((row, i) => (
+        <div key={row.label} className="relative">
+          <div className="flex items-center justify-between mb-1.5">
+            <div className="flex items-center gap-2">
+              <span className="flex h-5 w-5 items-center justify-center rounded bg-white/10 text-[10px] font-bold text-white/60">
+                {i + 1}
+              </span>
+              <span className="text-sm font-medium text-white">{row.label}</span>
+            </div>
+            <div className="text-right">
+              <div className="text-sm font-bold text-white">{row.count.toLocaleString()}</div>
+              {i > 0 && (
+                <div className="text-[10px] text-emerald-400 font-medium">
+                  {((row.count / firstCount) * 100).toFixed(1)}% conversion
+                </div>
+              )}
+            </div>
+          </div>
+          <div className="h-2 w-full rounded-full bg-white/5 overflow-hidden">
+            <div
+              className="h-full bg-emerald-400/80 transition-all duration-700"
+              style={{ width: `${(row.count / firstCount) * 100}%` }}
+            />
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+export function TrendLineChart({ rows }: { rows: Row[] }) {
+  const max = Math.max(...rows.map((r) => r.count), 1);
+  const width = 700;
+  const height = 120;
+  
+  const points = rows.map((r, i) => {
+    const x = (i / (rows.length - 1)) * width;
+    const y = height - (r.count / max) * height;
+    return `${x},${y}`;
+  }).join(" ");
+
+  return (
+    <div className="w-full h-32 flex items-center justify-center">
+       <svg viewBox={`0 0 ${width} ${height}`} className="w-full h-full overflow-visible">
+          <polyline
+            fill="none"
+            stroke="#34d399"
+            strokeWidth="3"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            points={points}
+            className="transition-all duration-700"
+          />
+       </svg>
+    </div>
+  );
+}
+
+export function MultiTrendLineChart({ rows }: { rows: any[] }) {
+  const events = Object.keys(rows[0]?.counts || {});
+  const max = Math.max(...rows.flatMap(r => Object.values(r.counts as Record<string, number>)), 1);
+  const width = 700;
+  const height = 120;
+
+  return (
+    <div className="space-y-6">
+      <div className="w-full h-32">
+        <svg viewBox={`0 0 ${width} ${height}`} className="w-full h-full overflow-visible">
+           {events.map((ev, i) => {
+              const points = rows.map((r, ri) => {
+                const x = (ri / (rows.length - 1)) * width;
+                const count = r.counts[ev] || 0;
+                const y = height - (count / max) * height;
+                return `${x},${y}`;
+              }).join(" ");
+
+              const color = PALETTE[i % PALETTE.length].replace("bg-", "#").replace("-400", "");
+              // Map tailwind bg classes to hex for SVG
+              const colorMap: Record<string, string> = {
+                "bg-emerald-400": "#34d399",
+                "bg-indigo-400": "#818cf8",
+                "bg-amber-400": "#fbbf24",
+                "bg-rose-400": "#fb7185",
+                "bg-cyan-400": "#22d3ee"
+              };
+
+              return (
+                <polyline
+                  key={ev}
+                  fill="none"
+                  stroke={colorMap[PALETTE[i % PALETTE.length]] || "#34d399"}
+                  strokeWidth="3"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  points={points}
+                  className="transition-all duration-700"
+                />
+              );
+           })}
+        </svg>
+      </div>
+
+      {/* Legend */}
+      <div className="flex flex-wrap gap-x-4 gap-y-2 pt-2 border-t border-white/5">
+         {events.map((ev, i) => (
+           <div key={ev} className="flex items-center gap-2">
+              <div className={`w-2 h-2 rounded-full ${PALETTE[i % PALETTE.length]}`} />
+              <span className="text-[11px] font-medium text-white/60">{ev}</span>
+           </div>
+         ))}
+      </div>
     </div>
   );
 }
