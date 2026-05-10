@@ -9,7 +9,8 @@ import {
   ArrowLeftIcon, 
   BarChart2Icon, 
   ActivityIcon,
-  ZapIcon
+  ZapIcon,
+  PlusIcon
 } from "@/components/icons";
 import { 
   TrendChart, 
