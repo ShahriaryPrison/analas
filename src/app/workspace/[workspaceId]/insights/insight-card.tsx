@@ -5,7 +5,7 @@ import { getInsightType } from "@/lib/insight-types";
 import { BarChart2Icon, ActivityIcon } from "@/components/icons";
 import DeleteInsightButton from "./delete-insight-button";
 
-export type Row = { day: string; count: number; label?: string; val?: string; counts?: Record<string, number> };
+export type Row = { day: string; count?: number; label?: string; val?: string; counts?: Record<string, number> };
 export type InsightData = { total: number; rows: Row[] };
 
 type Props = {
@@ -169,7 +169,7 @@ export default function InsightCard({ workspaceId, insight }: Props) {
 }
 
 export function TrendChart({ rows }: { rows: Row[] }) {
-  const max = Math.max(...rows.map((r) => r.count), 1);
+  const max = Math.max(...rows.map((r) => r.count || 0), 1);
   return (
     <div className="grid grid-cols-7 gap-2">
       {rows.map((row) => (
@@ -177,7 +177,7 @@ export function TrendChart({ rows }: { rows: Row[] }) {
           <div className="flex h-32 w-full items-end rounded-lg border border-white/10 bg-white/5 p-2">
             <div
               className="w-full rounded-md bg-emerald-400 transition-all duration-500"
-              style={{ height: `${(row.count / max) * 100}%`, minHeight: row.count > 0 ? "4px" : "0" }}
+              style={{ height: `${((row.count || 0) / max) * 100}%`, minHeight: (row.count || 0) > 0 ? "4px" : "0" }}
             />
           </div>
           <div className="text-[11px] text-white/50">{row.day.slice(5)}</div>
@@ -230,19 +230,19 @@ export function MultiTrendChart({ rows }: { rows: any[] }) {
 }
 
 export function BreakdownList({ rows }: { rows: Row[] }) {
-  const max = Math.max(...rows.map((r) => r.count), 1);
+  const max = Math.max(...rows.map((r) => r.count || 0), 1);
   return (
     <div className="space-y-2">
       {rows.map((row) => (
         <div key={row.val} className="space-y-1">
           <div className="flex items-center justify-between text-xs text-white/70">
             <span className="truncate pr-4">{row.val || "(empty)"}</span>
-            <span className="tabular-nums font-medium text-white">{row.count.toLocaleString()}</span>
+            <span className="tabular-nums font-medium text-white">{(row.count || 0).toLocaleString()}</span>
           </div>
           <div className="h-1.5 w-full rounded-full bg-white/5 overflow-hidden">
             <div
               className="h-full bg-cyan-400/60 transition-all duration-500"
-              style={{ width: `${(row.count / max) * 100}%` }}
+              style={{ width: `${((row.count || 0) / max) * 100}%` }}
             />
           </div>
         </div>
@@ -265,10 +265,10 @@ export function FunnelView({ rows }: { rows: Row[] }) {
               <span className="text-sm font-medium text-white">{row.label}</span>
             </div>
             <div className="text-right">
-              <div className="text-sm font-bold text-white">{row.count.toLocaleString()}</div>
+              <div className="text-sm font-bold text-white">{(row.count || 0).toLocaleString()}</div>
               {i > 0 && (
                 <div className="text-[10px] text-emerald-400 font-medium">
-                  {((row.count / firstCount) * 100).toFixed(1)}% conversion
+                  {(((row.count || 0) / firstCount) * 100).toFixed(1)}% conversion
                 </div>
               )}
             </div>
@@ -276,7 +276,7 @@ export function FunnelView({ rows }: { rows: Row[] }) {
           <div className="h-2 w-full rounded-full bg-white/5 overflow-hidden">
             <div
               className="h-full bg-emerald-400/80 transition-all duration-700"
-              style={{ width: `${(row.count / firstCount) * 100}%` }}
+              style={{ width: `${((row.count || 0) / firstCount) * 100}%` }}
             />
           </div>
         </div>
@@ -285,13 +285,13 @@ export function FunnelView({ rows }: { rows: Row[] }) {
   );
 }
 export function TrendLineChart({ rows }: { rows: Row[] }) {
-  const max = Math.max(...rows.map((r) => r.count), 1);
+  const max = Math.max(...rows.map((r) => r.count || 0), 1);
   const width = 700;
   const height = 120;
   
   const points = rows.map((r, i) => {
     const x = (i / (rows.length - 1)) * width;
-    const y = height - (r.count / max) * height;
+    const y = height - ((r.count || 0) / max) * height;
     return `${x},${y}`;
   }).join(" ");
 
