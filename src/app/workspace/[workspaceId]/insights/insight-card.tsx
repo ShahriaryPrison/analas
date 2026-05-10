@@ -5,7 +5,7 @@ import { getInsightType } from "@/lib/insight-types";
 import { BarChart2Icon, ActivityIcon } from "@/components/icons";
 import DeleteInsightButton from "./delete-insight-button";
 
-export type Row = { day: string; count?: number; label?: string; val?: string; counts?: Record<string, number> };
+export type Row = { day?: string; count?: number; label?: string; val?: string; counts?: Record<string, number> };
 export type InsightData = { total: number; rows: Row[] };
 
 type Props = {
@@ -172,15 +172,15 @@ export function TrendChart({ rows }: { rows: Row[] }) {
   const max = Math.max(...rows.map((r) => r.count || 0), 1);
   return (
     <div className="grid grid-cols-7 gap-2">
-      {rows.map((row) => (
-        <div key={row.day} className="flex flex-col items-center gap-2">
+      {rows.map((row, i) => (
+        <div key={row.day || i} className="flex flex-col items-center gap-2">
           <div className="flex h-32 w-full items-end rounded-lg border border-white/10 bg-white/5 p-2">
             <div
               className="w-full rounded-md bg-emerald-400 transition-all duration-500"
               style={{ height: `${((row.count || 0) / max) * 100}%`, minHeight: (row.count || 0) > 0 ? "4px" : "0" }}
             />
           </div>
-          <div className="text-[11px] text-white/50">{row.day.slice(5)}</div>
+          <div className="text-[11px] text-white/50">{(row.day || "").slice(5)}</div>
         </div>
       ))}
     </div>
@@ -196,22 +196,22 @@ export function MultiTrendChart({ rows }: { rows: any[] }) {
   return (
     <div className="space-y-6">
       <div className="grid grid-cols-7 gap-1">
-        {rows.map((dayRow) => (
-          <div key={dayRow.day} className="flex flex-col items-center gap-2">
+        {rows.map((dayRow, i) => (
+          <div key={dayRow.day || i} className="flex flex-col items-center gap-2">
             <div className="flex h-32 w-full items-end justify-center gap-0.5 rounded-lg border border-white/5 bg-white/2 p-1">
-              {events.map((ev, i) => {
+              {events.map((ev, ei) => {
                 const count = dayRow.counts[ev] || 0;
                 return (
                   <div
                     key={ev}
                     title={`${ev}: ${count}`}
-                    className={`w-full rounded-sm transition-all duration-500 ${PALETTE[i % PALETTE.length]}`}
+                    className={`w-full rounded-sm transition-all duration-500 ${PALETTE[ei % PALETTE.length]}`}
                     style={{ height: `${(count / max) * 100}%`, minHeight: count > 0 ? "2px" : "0" }}
                   />
                 );
               })}
             </div>
-            <div className="text-[10px] text-white/30">{dayRow.day.slice(8)}</div>
+            <div className="text-[10px] text-white/30">{(dayRow.day || "").slice(8)}</div>
           </div>
         ))}
       </div>
@@ -330,8 +330,6 @@ export function MultiTrendLineChart({ rows }: { rows: any[] }) {
                 return `${x},${y}`;
               }).join(" ");
 
-              const color = PALETTE[i % PALETTE.length].replace("bg-", "#").replace("-400", "");
-              // Map tailwind bg classes to hex for SVG
               const colorMap: Record<string, string> = {
                 "bg-emerald-400": "#34d399",
                 "bg-indigo-400": "#818cf8",
