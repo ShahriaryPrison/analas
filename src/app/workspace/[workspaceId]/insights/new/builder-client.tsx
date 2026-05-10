@@ -129,112 +129,173 @@ export default function InsightBuilder({ workspaceId, topEvents }: Props) {
         
         <main className="space-y-12">
           {/* STEP 1: SELECT TYPE */}
-          <section className={`space-y-6 transition-all duration-500 ${step > 1 ? "opacity-40 grayscale pointer-events-none" : ""}`}>
-            <div className="flex items-center gap-3">
-              <span className="flex h-8 w-8 items-center justify-center rounded-full bg-emerald-500/10 text-emerald-400 text-sm font-bold ring-1 ring-emerald-500/20">1</span>
-              <h2 className="text-lg font-semibold text-white">What do you want to measure?</h2>
+          <section className="space-y-6">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <span className={`flex h-8 w-8 items-center justify-center rounded-full text-sm font-bold ring-1 transition-all ${
+                  step > 1 ? "bg-emerald-500 text-slate-900 ring-emerald-500" : "bg-emerald-500/10 text-emerald-400 ring-emerald-500/20"
+                }`}>
+                  {step > 1 ? <CheckIcon className="w-4 h-4" /> : "1"}
+                </span>
+                <h2 className="text-lg font-semibold text-white">Select a metric</h2>
+              </div>
+              {step > 1 && (
+                <button 
+                  onClick={() => setStep(1)}
+                  className="text-xs font-bold text-emerald-400 hover:text-emerald-300 transition uppercase tracking-widest"
+                >
+                  Change
+                </button>
+              )}
             </div>
             
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {INSIGHT_TYPES.map(t => (
-                <button
-                  key={t.id}
-                  onClick={() => { setType(t.id); setStep(2); }}
-                  className={`group relative text-left p-6 rounded-2xl border transition-all duration-300 ${
-                    type === t.id 
-                    ? "bg-emerald-500/5 border-emerald-500/40 ring-1 ring-emerald-500/40" 
-                    : "bg-surface-900 border-white/5 hover:border-white/20"
-                  }`}
-                >
-                  <span className="text-2xl mb-4 block group-hover:scale-110 transition-transform">{t.icon}</span>
-                  <h3 className="font-bold text-white mb-1">{t.label}</h3>
-                  <p className="text-xs text-white/40 leading-relaxed">{t.description}</p>
-                </button>
-              ))}
-            </div>
+            {step === 1 ? (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 animate-in fade-in zoom-in-95 duration-500">
+                {INSIGHT_TYPES.map(t => (
+                  <button
+                    key={t.id}
+                    onClick={() => { setType(t.id); setStep(2); }}
+                    className={`group relative text-left p-6 rounded-2xl border transition-all duration-300 ${
+                      type === t.id 
+                      ? "bg-emerald-500/5 border-emerald-500/40 ring-1 ring-emerald-500/40" 
+                      : "bg-surface-900 border-white/5 hover:border-white/20"
+                    }`}
+                  >
+                    <span className="text-2xl mb-4 block group-hover:scale-110 transition-transform">{t.icon}</span>
+                    <h3 className="font-bold text-white mb-1">{t.label}</h3>
+                    <p className="text-xs text-white/40 leading-relaxed">{t.description}</p>
+                  </button>
+                ))}
+              </div>
+            ) : (
+              <div className="glass-panel p-4 rounded-xl flex items-center gap-4 border-emerald-500/20">
+                 <span className="text-xl">{selectedType?.icon}</span>
+                 <div>
+                    <div className="text-sm font-bold text-white">{selectedType?.label}</div>
+                    <div className="text-[10px] text-white/30 uppercase font-black tracking-widest">Metric Type</div>
+                 </div>
+              </div>
+            )}
           </section>
 
           {/* STEP 2: CONFIGURE */}
           {type && (
-            <section className={`space-y-6 transition-all duration-500 ${step !== 2 ? "opacity-40 grayscale pointer-events-none" : ""}`}>
-              <div className="flex items-center gap-3">
-                <span className="flex h-8 w-8 items-center justify-center rounded-full bg-emerald-500/10 text-emerald-400 text-sm font-bold ring-1 ring-emerald-500/20">2</span>
-                <h2 className="text-lg font-semibold text-white">Which events or properties?</h2>
+            <section className={`space-y-6 transition-all duration-500 ${step < 2 ? "opacity-20 pointer-events-none translate-y-4" : ""}`}>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <span className={`flex h-8 w-8 items-center justify-center rounded-full text-sm font-bold ring-1 transition-all ${
+                    step > 2 ? "bg-emerald-500 text-slate-900 ring-emerald-500" : "bg-emerald-500/10 text-emerald-400 ring-emerald-500/20"
+                  }`}>
+                    {step > 2 ? <CheckIcon className="w-4 h-4" /> : "2"}
+                  </span>
+                  <h2 className="text-lg font-semibold text-white">Configure measurement</h2>
+                </div>
+                {step > 2 && (
+                  <button 
+                    onClick={() => setStep(2)}
+                    className="text-xs font-bold text-emerald-400 hover:text-emerald-300 transition uppercase tracking-widest"
+                  >
+                    Modify
+                  </button>
+                )}
               </div>
 
-              <div className="glass-panel rounded-2xl p-8 space-y-8">
-                {selectedType?.configFields.map(f => (
-                  <div key={f.key} className="space-y-3">
-                    <label className="text-sm font-medium text-white/70 block">{f.label}</label>
-                    {f.options ? (
-                      <div className="flex flex-wrap gap-2">
-                        {f.options.map(opt => (
-                          <button
-                            key={opt.value}
-                            onClick={() => setQueryConfig({ ...queryConfig, [f.key]: opt.value })}
-                            className={`px-4 py-2 rounded-xl text-sm border transition ${
-                              queryConfig[f.key] === opt.value
-                              ? "bg-emerald-400 text-slate-900 border-emerald-400 font-bold"
-                              : "bg-white/5 border-white/10 text-white/60 hover:bg-white/10"
-                            }`}
-                          >
-                            {opt.label}
-                          </button>
-                        ))}
-                      </div>
-                    ) : (
-                      <div className="space-y-4">
-                        <input
-                          autoFocus
-                          value={queryConfig[f.key] || ""}
-                          onChange={(e) => setQueryConfig({ ...queryConfig, [f.key]: e.target.value })}
-                          className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white outline-none focus:ring-2 focus:ring-emerald-400/40 transition placeholder:text-white/20"
-                          placeholder={f.placeholder}
-                        />
-                        {(f.key === "eventName" || f.key === "eventNames" || f.key === "eventSteps") && (
-                          <div className="flex flex-wrap gap-2">
-                            {topEvents.map(ev => {
-                              const isMulti = f.key === "eventNames" || f.key === "eventSteps";
-                              const currentVal = queryConfig[f.key] || "";
-                              const vals = currentVal.split(",").map(v => v.trim()).filter(Boolean);
-                              const isSelected = isMulti ? vals.includes(ev) : currentVal === ev;
-                              
-                              return (
-                                <button
-                                  key={ev}
-                                  onClick={() => {
-                                    if (isMulti) {
-                                      if (isSelected) setQueryConfig({ ...queryConfig, [f.key]: vals.filter(v => v !== ev).join(", ") });
-                                      else setQueryConfig({ ...queryConfig, [f.key]: [...vals, ev].join(", ") });
-                                    } else {
-                                      setQueryConfig({ ...queryConfig, [f.key]: ev });
-                                    }
-                                  }}
-                                  className={`px-3 py-1.5 rounded-lg text-xs border transition ${
-                                    isSelected 
-                                    ? "bg-emerald-500/20 border-emerald-500/40 text-emerald-300 font-bold" 
-                                    : "bg-white/5 border-white/5 text-white/40 hover:text-white/60"
-                                  }`}
-                                >
-                                  {ev}
-                                </button>
-                              );
-                            })}
+              {step >= 2 && (
+                <div className={`glass-panel rounded-2xl p-8 space-y-8 animate-in slide-in-from-top-4 duration-500 ${step > 2 ? "opacity-40 grayscale pointer-events-none" : ""}`}>
+                  {selectedType?.configFields.map(f => (
+                    <div key={f.key} className="space-y-3">
+                      <label className="text-sm font-medium text-white/70 block">{f.label}</label>
+                      {f.options ? (
+                        <div className="flex flex-wrap gap-2">
+                          {f.options.map(opt => (
+                            <button
+                              key={opt.value}
+                              onClick={() => setQueryConfig({ ...queryConfig, [f.key]: opt.value })}
+                              className={`px-4 py-2 rounded-xl text-sm border transition ${
+                                queryConfig[f.key] === opt.value
+                                ? "bg-emerald-400 text-slate-900 border-emerald-400 font-bold"
+                                : "bg-white/5 border-white/10 text-white/60 hover:bg-white/10"
+                              }`}
+                            >
+                              {opt.label}
+                            </button>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="space-y-4 relative group/field">
+                          <div className="relative">
+                            <input
+                              value={queryConfig[f.key] || ""}
+                              onChange={(e) => setQueryConfig({ ...queryConfig, [f.key]: e.target.value })}
+                              className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white outline-none focus:ring-2 focus:ring-emerald-400/40 transition placeholder:text-white/20 pr-10"
+                              placeholder={f.placeholder}
+                            />
+                            {(f.key === "eventName" || f.key === "eventNames" || f.key === "eventSteps") && (
+                              <ActivityIcon className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-white/20 group-focus-within/field:text-emerald-400 transition" />
+                            )}
                           </div>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                ))}
+                          
+                          {/* Searchable Discovery Panel */}
+                          {(f.key === "eventName" || f.key === "eventNames" || f.key === "eventSteps") && (
+                            <div className="space-y-3">
+                              <div className="text-[10px] font-black text-white/20 uppercase tracking-[0.2em]">Suggested Events</div>
+                              <div className="flex flex-wrap gap-2">
+                                {topEvents
+                                  .filter(ev => !queryConfig[f.key] || ev.toLowerCase().includes(queryConfig[f.key].toLowerCase()))
+                                  .slice(0, 12)
+                                  .map(ev => {
+                                    const isMulti = f.key === "eventNames" || f.key === "eventSteps";
+                                    const currentVal = queryConfig[f.key] || "";
+                                    const vals = currentVal.split(",").map(v => v.trim()).filter(Boolean);
+                                    const isSelected = isMulti ? vals.includes(ev) : currentVal === ev;
+                                    
+                                    return (
+                                      <button
+                                        key={ev}
+                                        onClick={() => {
+                                          if (isMulti) {
+                                            if (isSelected) setQueryConfig({ ...queryConfig, [f.key]: vals.filter(v => v !== ev).join(", ") });
+                                            else setQueryConfig({ ...queryConfig, [f.key]: [...vals, ev].join(", ") });
+                                          } else {
+                                            setQueryConfig({ ...queryConfig, [f.key]: ev });
+                                          }
+                                        }}
+                                        className={`px-3 py-1.5 rounded-lg text-xs border transition flex items-center gap-2 ${
+                                          isSelected 
+                                          ? "bg-emerald-500 text-slate-900 border-emerald-500 font-bold" 
+                                          : "bg-white/5 border-white/5 text-white/50 hover:bg-white/10 hover:text-white"
+                                        }`}
+                                      >
+                                        {ev}
+                                        {!isSelected && <PlusIcon className="w-3 h-3 opacity-30" />}
+                                      </button>
+                                    );
+                                  })}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  ))}
 
-                <button 
-                  onClick={() => setStep(3)}
-                  disabled={!selectedType?.configFields.every(f => queryConfig[f.key])}
-                  className="w-full py-4 bg-white text-slate-900 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-emerald-300 transition disabled:opacity-30"
-                >
-                  Confirm & Preview <ChevronRightIcon className="w-4 h-4" />
-                </button>
-              </div>
+                  <div className="flex gap-4 pt-4">
+                    <button 
+                      onClick={() => setStep(1)}
+                      className="flex-1 py-4 bg-white/5 border border-white/10 text-white/40 rounded-xl font-bold hover:bg-white/10 hover:text-white transition"
+                    >
+                      Back
+                    </button>
+                    <button 
+                      onClick={() => setStep(3)}
+                      disabled={!selectedType?.configFields.every(f => queryConfig[f.key])}
+                      className="flex-[2] py-4 bg-white text-slate-900 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-emerald-300 transition disabled:opacity-30"
+                    >
+                      Continue <ChevronRightIcon className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+              )}
             </section>
           )}
 
