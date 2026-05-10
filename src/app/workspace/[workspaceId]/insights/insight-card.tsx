@@ -5,7 +5,7 @@ import { getInsightType } from "@/lib/insight-types";
 import { BarChart2Icon, ActivityIcon } from "@/components/icons";
 import DeleteInsightButton from "./delete-insight-button";
 
-export type Row = { day: string; count: number; label?: string; val?: string };
+export type Row = { day: string; count: number; label?: string; val?: string; counts?: Record<string, number> };
 export type InsightData = { total: number; rows: Row[] };
 
 type Props = {
