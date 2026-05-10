@@ -31,42 +31,45 @@ export default function InsightCard({ workspaceId, insight }: Props) {
   }, [workspaceId, insight.id]);
 
   return (
-    <article className="rounded-2xl border border-white/10 bg-slate-900/70 p-6 backdrop-blur-xl space-y-4">
+    <article className="glass-panel rounded-3xl p-6 h-full flex flex-col space-y-6 group transition-all duration-300">
       {/* Header */}
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <div className="flex items-center gap-2 mb-0.5">
-            {insight.type === "count" ? (
-              <BarChart2Icon className="w-3.5 h-3.5 text-white/30" />
-            ) : (
-              <ActivityIcon className="w-3.5 h-3.5 text-white/30" />
-            )}
-            <span className="text-[11px] font-semibold uppercase tracking-wide text-white/40">
+      <div className="flex items-start justify-between gap-4">
+        <div className="min-w-0">
+          <div className="flex items-center gap-2 mb-2">
+            <span className="flex h-6 w-6 items-center justify-center rounded-lg bg-white/5 text-[10px] font-black text-white/40 group-hover:text-emerald-400 transition-colors">
+              {typeDef.icon}
+            </span>
+            <span className="text-[10px] font-black uppercase tracking-[0.15em] text-white/30">
               {typeDef.label}
             </span>
           </div>
-          <h3 className="text-lg font-semibold text-white">{insight.name}</h3>
-          <div className="flex flex-wrap gap-x-3 gap-y-1 mt-1">
-            {typeDef.configFields.map((f) => (
-              <span key={f.key} className="text-sm text-white/50">
-                {f.label}: {String(insight.queryConfig[f.key] || "—")}
-              </span>
-            ))}
-          </div>
+          <h3 className="text-xl font-black text-white tracking-tight truncate leading-tight">
+            {insight.name}
+          </h3>
+          <p className="text-[11px] text-white/30 font-medium mt-1 uppercase tracking-wider">
+            {Object.values(insight.queryConfig).filter(v => typeof v === 'string').join(" • ")}
+          </p>
         </div>
-        <div className="flex items-center gap-3">
-          {data ? (
-            <div className="rounded-full bg-emerald-500/15 px-3 py-1 text-sm font-semibold text-emerald-300">
-              {data.total.toLocaleString()} {data.total === 1 ? "event" : "events"}
+        
+        <div className="flex flex-col items-end gap-2 shrink-0">
+           {data ? (
+            <div className="text-right">
+               <div className="text-2xl font-black text-white tracking-tighter tabular-nums leading-none">
+                 {data.total.toLocaleString()}
+               </div>
+               <div className="text-[9px] font-bold text-emerald-400/70 uppercase tracking-widest mt-1">
+                 Total
+               </div>
             </div>
-          ) : !error ? (
-            <div className="h-7 w-24 animate-pulse rounded-full bg-white/10" />
-          ) : null}
+          ) : (
+            <div className="h-8 w-16 animate-pulse rounded-lg bg-white/5" />
+          )}
           <DeleteInsightButton workspaceId={workspaceId} insightId={insight.id} />
         </div>
       </div>
 
       {/* Body */}
+      <div className="flex-1 min-h-[160px] flex flex-col justify-end">
       {/* Multi-Trend (Comparison) */}
       {insight.type === "multi_trend" && (
         <div className="space-y-4">
