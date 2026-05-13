@@ -242,7 +242,20 @@ export default function InsightBuilder({ workspaceId, topEvents }: Props) {
                               <div className="text-[10px] font-black text-white/20 uppercase tracking-[0.2em]">Suggested Events</div>
                               <div className="flex flex-wrap gap-2">
                                 {topEvents
-                                  .filter(ev => !queryConfig[f.key] || ev.toLowerCase().includes(queryConfig[f.key].toLowerCase()))
+                                  .filter(ev => {
+                                    const isMulti = f.key === "eventNames" || f.key === "eventSteps";
+                                    const currentVal = queryConfig[f.key] || "";
+                                    let searchPart = isMulti ? currentVal.split(",").pop()?.trim() || "" : currentVal;
+                                    
+                                    if (isMulti && searchPart) {
+                                      const vals = currentVal.split(",").map(v => v.trim()).filter(Boolean);
+                                      if (vals.includes(searchPart)) {
+                                        searchPart = ""; // Reset search if the last part is already a selected value
+                                      }
+                                    }
+                                    
+                                    return !searchPart || ev.toLowerCase().includes(searchPart.toLowerCase());
+                                  })
                                   .slice(0, 12)
                                   .map(ev => {
                                     const isMulti = f.key === "eventNames" || f.key === "eventSteps";

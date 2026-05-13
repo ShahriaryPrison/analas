@@ -1,12 +1,16 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { clickhouse } from "@/lib/clickhouse";
+import { clickhouse, insertEvents } from "@/lib/clickhouse";
 import crypto from "node:crypto";
 
 type CaptureEvent = {
   event: string;
+  userId?: string;
+  anonymousId?: string;
+  sessionId?: string;
   properties?: Record<string, unknown>;
   timestamp?: string | number;
+  [key: string]: any;
 };
 
 const RATE_LIMIT = 600;
@@ -18,6 +22,8 @@ const apiCache = new Map<string, { tenantId: string; expiresAt: number }>();
 type InsertEvent = {
   tenant_id: string;
   event: string;
+  user_id: string;
+  session_id: string;
   properties: string;
   ts: string;
 };
@@ -33,11 +39,7 @@ async function flushEvents() {
   eventsBuffer = []; // clear buffer
   
   try {
-    await clickhouse.insert({
-      table: "events",
-      values: batch,
-      format: "JSONEachRow",
-    });
+    await insertEvents("events", batch);
   } catch (e) {
     console.error("ClickHouse batch insert failed:", e);
   }
@@ -93,20 +95,44 @@ export async function POST(req: Request) {
       rateMap.set(keyHash, entry);
     }
 
-    const body = (await req.json()) as CaptureEvent;
-    if (!body || typeof body.event !== "string" || body.event.length === 0)
-      return NextResponse.json({ error: "Invalid payload" }, { status: 400 });
+    const rawBody = await req.json();
+    const items = Array.isArray(rawBody) ? rawBody : [rawBody];
+    
+    let validCount = 0;
 
-    const timestamp = body.timestamp ? new Date(body.timestamp) : new Date();
+    for (const item of items) {
+      if (!item || typeof item !== "object" || typeof item.event !== "string" || item.event.length === 0) {
+        continue;
+      }
 
-    queueEvent({
-      tenant_id: tenantId,
-      event: body.event,
-      properties: JSON.stringify(body.properties ?? {}),
-      ts: timestamp.toISOString().replace("T", " ").replace(/\.\d{3}Z$/, ""),
-    });
+      const timestamp = item.timestamp ? new Date(item.timestamp) : new Date();
+      
+      const userId = String(item.userId || item.anonymousId || item.properties?.userId || item.properties?.anonymousId || "");
+      const sessionId = String(item.sessionId || item.properties?.sessionId || "");
 
-    return NextResponse.json({ status: "accepted" }, { status: 202 });
+      const properties = { ...item };
+      delete properties.event;
+      delete properties.timestamp;
+      delete properties.userId;
+      delete properties.anonymousId;
+      delete properties.sessionId;
+
+      queueEvent({
+        tenant_id: tenantId,
+        event: item.event,
+        user_id: userId,
+        session_id: sessionId,
+        properties: JSON.stringify(properties),
+        ts: timestamp.toISOString().replace("T", " ").replace(/\.\d{3}Z$/, ""),
+      });
+      validCount++;
+    }
+
+    if (validCount === 0 && items.length > 0) {
+      return NextResponse.json({ error: "Invalid payload: no valid events found" }, { status: 400 });
+    }
+
+    return NextResponse.json({ status: "accepted", ingested: validCount }, { status: 202 });
   } catch (err) {
     console.error(err);
     return NextResponse.json({ error: "Internal error" }, { status: 500 });

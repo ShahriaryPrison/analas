@@ -143,6 +143,32 @@ Then: `certbot --nginx -d analas.example.com`
 
 ---
 
+## API Documentation
+
+Send events to your instance using a simple `POST` request. You can send a single event object or an array of objects (bulk). 
+
+**Endpoint:** `POST /api/capture`  
+**Auth:** `Authorization: Bearer <YOUR_API_KEY>`
+
+**Key Features:**
+- **Bulk Ingestion:** Send arrays `[{ event: "click" }, { event: "view" }]` for high-throughput batching.
+- **Dynamic User Tracking:** If your payload includes `userId`, `anonymousId`, or `sessionId` (either at the root or inside `properties`), Analas automatically extracts them into ultra-fast indexed columns for funnel and unique-user queries.
+- **Flexible Payload:** Any other fields are safely stored as JSON and can be queried instantly.
+
+**Example Payload:**
+```json
+[
+  {
+    "event": "page_loaded",
+    "userId": "user_123",
+    "sessionId": "sess_abc",
+    "properties": { "path": "/home" }
+  }
+]
+```
+
+---
+
 ## Contributing
 
 PRs are welcome. For large changes please open an issue first.

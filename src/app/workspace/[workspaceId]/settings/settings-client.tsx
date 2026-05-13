@@ -63,8 +63,8 @@ export default function SettingsClient({
     setTimeout(() => setCodeCopied(false), 2000);
   }
 
-  const jsCode = `fetch('${typeof window !== "undefined" ? window.location.origin : ""}/api/capture', {\n  method: 'POST',\n  headers: {\n    'Authorization': 'Bearer ${newKey}',\n    'Content-Type': 'application/json'\n  },\n  body: JSON.stringify({\n    event: 'test_event',\n    properties: { source: 'js' }\n  })\n})`;
-  const curlCode = `curl -X POST '${typeof window !== "undefined" ? window.location.origin : ""}/api/capture' \\\n  -H 'Authorization: Bearer ${newKey}' \\\n  -H 'Content-Type: application/json' \\\n  -d '{"event":"test_event","properties":{"source":"curl"}}'`;
+  const jsCode = `fetch('${typeof window !== "undefined" ? window.location.origin : ""}/api/capture', {\n  method: 'POST',\n  headers: {\n    'Authorization': 'Bearer ${newKey}',\n    'Content-Type': 'application/json'\n  },\n  body: JSON.stringify([\n    {\n      event: 'test_event',\n      userId: 'user_123',\n      sessionId: 'sess_abc',\n      properties: { source: 'js' }\n    }\n  ])\n})`;
+  const curlCode = `curl -X POST '${typeof window !== "undefined" ? window.location.origin : ""}/api/capture' \\\n  -H 'Authorization: Bearer ${newKey}' \\\n  -H 'Content-Type: application/json' \\\n  -d '[{"event":"test_event","userId":"user_123","sessionId":"sess_abc","properties":{"source":"curl"}}]'`;
 
   return (
     <div className="rounded-2xl border border-white/10 bg-white/5 p-6 space-y-5">
