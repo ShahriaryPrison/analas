@@ -129,7 +129,11 @@ export async function fetchInsightData(
     // Build the dynamic windowFunnel query
     // windowFunnel(window)(timestamp, cond1, cond2, ...)
     const stepConditions = steps.map((_, i) => `event = {step${i}:String}`).join(", ");
-    const params: Record<string, any> = { tenantId, distinctId: isNativeId ? "" : distinctId, steps };
+    
+    const params: Record<string, any> = { tenantId, steps };
+    if (!isNativeId) {
+      params.distinctId = distinctId;
+    }
     steps.forEach((s, i) => params[`step${i}`] = s);
 
     const rows = await queryJson<FunnelRow>(
@@ -150,7 +154,10 @@ export async function fetchInsightData(
        )
        GROUP BY level ORDER BY level ASC`,
       params
-    ).catch(() => []);
+    ).catch((e) => {
+      console.error("Funnel error:", e);
+      return [];
+    });
 
     // Calculate cumulative counts: Step N count is the sum of all levels >= N
     const finalRows = steps.map((stepName, i) => {
@@ -182,6 +189,9 @@ export async function fetchInsightData(
     else if (aggregation === "p50") aggFunc = `quantile(0.5)(${extracted})`;
     else if (aggregation === "p95") aggFunc = `quantile(0.95)(${extracted})`;
 
+    const rawParams: Record<string, any> = { tenantId, event: eventName, timeFrame, timezone: APP_TIMEZONE };
+    if (!isNative) rawParams.property = property;
+
     const raw = await queryJson<{ day: string; count: string | number }>(
       `SELECT formatDateTime(ts, '%Y-%m-%d', {timezone:String}) AS day, ${aggFunc} AS count
        FROM events
@@ -190,10 +200,16 @@ export async function fetchInsightData(
          AND ts >= now() - INTERVAL {timeFrame:Int32} DAY
          ${isNative ? `AND ${property} != ''` : ""}
        GROUP BY day ORDER BY day ASC`,
-      { tenantId, event: eventName, timeFrame, property: isNative ? "" : property, timezone: APP_TIMEZONE }
-    ).catch(() => []);
+      rawParams
+    ).catch((e) => {
+      console.error("Metric raw error:", e);
+      return [];
+    });
 
     const filledRows = fillDays(raw, timeFrame);
+
+    const totalParams: Record<string, any> = { tenantId, event: eventName, timeFrame };
+    if (!isNative) totalParams.property = property;
 
     const totalRaw = await queryJson<{ total: string | number }>(
       `SELECT ${aggFunc} AS total FROM events
@@ -201,8 +217,11 @@ export async function fetchInsightData(
          AND event = {event:String}
          AND ts >= now() - INTERVAL {timeFrame:Int32} DAY
          ${isNative ? `AND ${property} != ''` : ""}`,
-      { tenantId, event: eventName, timeFrame, property: isNative ? "" : property }
-    ).catch(() => []);
+      totalParams
+    ).catch((e) => {
+      console.error("Metric total error:", e);
+      return [];
+    });
     
     // Some aggregations like quantiles or avg might return NaN/Null if no rows, so fallback to 0
     let total = Number(totalRaw[0]?.total);
