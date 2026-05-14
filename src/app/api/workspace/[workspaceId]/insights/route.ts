@@ -43,11 +43,18 @@ export async function POST(
     });
   }
 
+  const lastInsight = await prisma.insight.findFirst({
+    where: { dashboardId: dashboard.id },
+    orderBy: { position: "desc" },
+  });
+  const newPosition = (lastInsight?.position ?? 0) + 1;
+
   const insight = await prisma.insight.create({
     data: {
       name,
       type,
       queryConfig,
+      position: newPosition,
       dashboardId: dashboard.id,
     },
   });

@@ -158,6 +158,22 @@ export function ArrowLeftIcon({ className }: { className?: string }) {
   );
 }
 
+export function ArrowRightIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      className={`w-4 h-4${className ? ` ${className}` : ""}`}
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={1.75}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      viewBox="0 0 24 24"
+    >
+      <path d="M5 12h14M12 5l7 7-7 7" />
+    </svg>
+  );
+}
+
 export function LogOutIcon({ className }: { className?: string }) {
   return (
     <svg

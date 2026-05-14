@@ -65,10 +65,12 @@ export default function InsightCard({ workspaceId, insight }: Props) {
           ) : (
             <div className="h-8 w-16 animate-pulse rounded-lg bg-white/5" />
           )}
-          <div className="flex items-center gap-1 mt-1">
+          <div className="flex items-center bg-white/5 border border-white/10 rounded-lg overflow-hidden mt-1 divide-x divide-white/10">
             <MoveInsightButton workspaceId={workspaceId} insightId={insight.id} direction="up" />
             <MoveInsightButton workspaceId={workspaceId} insightId={insight.id} direction="down" />
-            <DeleteInsightButton workspaceId={workspaceId} insightId={insight.id} />
+            <div className="px-1.5 flex items-center justify-center">
+              <DeleteInsightButton workspaceId={workspaceId} insightId={insight.id} />
+            </div>
           </div>
         </div>
       </div>

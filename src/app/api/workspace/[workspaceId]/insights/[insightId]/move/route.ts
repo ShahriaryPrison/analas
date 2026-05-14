@@ -24,7 +24,27 @@ export async function POST(
       return NextResponse.json({ error: "Not found" }, { status: 404 });
     }
 
-    // 2. Find the neighbor to swap with
+    // 2. Self-healing: if position is 0, initialize all insights for this dashboard
+    if (currentInsight.position === 0) {
+      const allInsights = await prisma.insight.findMany({
+        where: { dashboardId: currentInsight.dashboardId },
+        orderBy: { id: "asc" },
+      });
+      
+      let newPosition = 1;
+      for (const ins of allInsights) {
+        await prisma.insight.update({
+          where: { id: ins.id },
+          data: { position: newPosition },
+        });
+        if (ins.id === currentInsight.id) {
+          currentInsight.position = newPosition;
+        }
+        newPosition++;
+      }
+    }
+
+    // 3. Find the neighbor to swap with
     const neighbor = await prisma.insight.findFirst({
       where: {
         dashboardId: currentInsight.dashboardId,

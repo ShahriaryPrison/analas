@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { ArrowLeftIcon, ArrowRightIcon } from "@/components/icons";
 
 export default function MoveInsightButton({
   workspaceId,
@@ -42,10 +43,10 @@ export default function MoveInsightButton({
     <button
       onClick={move}
       disabled={loading}
-      className="p-1.5 rounded-lg text-white/30 hover:text-white/70 hover:bg-white/5 transition disabled:opacity-50"
-      title={`Move ${direction}`}
+      className="p-1.5 text-white/30 hover:text-white hover:bg-white/10 transition disabled:opacity-50"
+      title={`Move ${direction === "up" ? "Left" : "Right"}`}
     >
-      {direction === "up" ? "⬅️" : "➡️"}
+      {direction === "up" ? <ArrowLeftIcon className="w-3.5 h-3.5" /> : <ArrowRightIcon className="w-3.5 h-3.5" />}
     </button>
   );
 }

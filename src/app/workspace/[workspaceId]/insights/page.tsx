@@ -82,8 +82,8 @@ export default async function InsightsPage({
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             {topEvents.map((item) => (
               <div key={item.event} className="glass-panel p-5 rounded-2xl space-y-4 group">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold text-white/70 group-hover:text-emerald-400 transition truncate pr-2">{item.event}</span>
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-xs font-bold text-white/70 group-hover:text-emerald-400 transition truncate">{item.event}</span>
                   <CopyEventName name={item.event} />
                 </div>
                 <div className="flex items-end justify-between gap-4">
