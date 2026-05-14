@@ -96,7 +96,7 @@ export async function fetchInsightData(
       `SELECT formatDateTime(ts, '%Y-%m-%d', {timezone:String}) AS day, event, count() AS count
        FROM events
        WHERE tenant_id = {tenantId:String}
-         AND event IN ({events:Array(String)})
+         AND event IN {events:Array(String)}
          AND ts >= now() - INTERVAL {timeFrame:Int32} DAY
        GROUP BY day, event ORDER BY day ASC, event ASC`,
       { tenantId, events, timeFrame, timezone: APP_TIMEZONE }
@@ -148,7 +148,7 @@ export async function fetchInsightData(
               ) AS level
           FROM events
           WHERE tenant_id = {tenantId:String}
-            AND event IN ({steps:Array(String)})
+            AND event IN {steps:Array(String)}
             AND ts >= now() - INTERVAL 30 DAY
           GROUP BY ${groupByExpr}
        )
