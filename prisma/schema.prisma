@@ -67,6 +67,7 @@ model Insight {
   name        String
   type        String
   queryConfig Json
+  position    Int      @default(0)
   dashboardId String
   dashboard   Dashboard @relation(fields: [dashboardId], references: [id])
 }

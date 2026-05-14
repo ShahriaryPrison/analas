@@ -133,6 +133,7 @@ export const INSIGHT_TYPES: InsightTypeDef[] = [
         options: [
           { label: "Bar Chart", value: "bar" },
           { label: "Line Chart", value: "line" },
+          { label: "Big Number", value: "number" },
         ],
       },
     ],

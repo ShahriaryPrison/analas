@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { INSIGHT_TYPES, getInsightType } from "@/lib/insight-types";
 import { XIcon, CheckIcon, ChevronRightIcon, ActivityIcon, BarChart2Icon } from "@/components/icons";
-import { TrendChart, BreakdownList, FunnelView, type InsightData } from "./insight-card";
+import { TrendChart, TrendLineChart, BreakdownList, FunnelView, type InsightData } from "./insight-card";
 import Link from "next/link";
 
 type Props = {
@@ -331,7 +331,17 @@ export default function CreateInsightModal({ workspaceId, topEvents, onClose }: 
 
                     {/* Preview Chart */}
                     <div className={previewLoading ? "opacity-40 grayscale transition-all duration-500" : "transition-all duration-500"}>
-                      {type === "trend" && previewData && <TrendChart rows={previewData.rows} />}
+                      {(type === "trend" || type === "metric") && previewData && (
+                        queryConfig.displayType === "number" ? (
+                           <div className="rounded-xl border border-white/10 bg-white/5 p-8 text-center">
+                              <span className="text-sm text-white/50 italic">Number mode shows a single giant number (above).</span>
+                           </div>
+                        ) : queryConfig.displayType === "line" ? (
+                           <TrendLineChart rows={previewData.rows} />
+                        ) : (
+                           <TrendChart rows={previewData.rows} />
+                        )
+                      )}
                       {type === "breakdown" && previewData && <BreakdownList rows={previewData.rows} />}
                       {type === "funnel" && previewData && <FunnelView rows={previewData.rows} />}
                       {type === "count" && (

@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { getInsightType } from "@/lib/insight-types";
 import { BarChart2Icon, ActivityIcon } from "@/components/icons";
 import DeleteInsightButton from "./delete-insight-button";
+import MoveInsightButton from "./move-insight-button";
 
 export type Row = { day?: string; count?: number; label?: string; val?: string; counts?: Record<string, number> };
 export type InsightData = { total: number; rows: Row[] };
@@ -64,7 +65,11 @@ export default function InsightCard({ workspaceId, insight }: Props) {
           ) : (
             <div className="h-8 w-16 animate-pulse rounded-lg bg-white/5" />
           )}
-          <DeleteInsightButton workspaceId={workspaceId} insightId={insight.id} />
+          <div className="flex items-center gap-1 mt-1">
+            <MoveInsightButton workspaceId={workspaceId} insightId={insight.id} direction="up" />
+            <MoveInsightButton workspaceId={workspaceId} insightId={insight.id} direction="down" />
+            <DeleteInsightButton workspaceId={workspaceId} insightId={insight.id} />
+          </div>
         </div>
       </div>
 
@@ -182,12 +187,14 @@ export default function InsightCard({ workspaceId, insight }: Props) {
             <div className="rounded-xl border border-dashed border-white/10 bg-white/5 p-4 text-sm text-white/50">
               No data yet.
             </div>
+          ) : insight.queryConfig.displayType === "number" ? (
+             <div className="rounded-xl border border-dashed border-white/10 bg-white/5 p-4 text-sm text-center text-white/50">
+                Number displayed above
+             </div>
+          ) : insight.queryConfig.displayType === "line" ? (
+            <TrendLineChart rows={data.rows} />
           ) : (
-            insight.queryConfig.displayType === "line" ? (
-              <TrendLineChart rows={data.rows} />
-            ) : (
-              <TrendChart rows={data.rows} />
-            )
+            <TrendChart rows={data.rows} />
           )}
         </div>
       )}

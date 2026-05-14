@@ -12,7 +12,7 @@ export default async function InsightsPage({
   const { workspaceId } = await params;
   const { workspace } = await getAuthorizedWorkspace(workspaceId);
 
-  const insights = workspace.dashboards.flatMap((d) => d.insights);
+  const insights = workspace.dashboards.flatMap((d) => d.insights).sort((a, b) => a.position - b.position);
 
   const topEvents = await queryJson<EventCountRow>(
     `SELECT event, count() AS count
