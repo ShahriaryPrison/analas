@@ -131,6 +131,12 @@ export default function SettingsClient({
                 {codeCopied ? <CheckIcon className="w-3.5 h-3.5 text-emerald-400" /> : <CopyIcon className="w-3.5 h-3.5" />}
               </button>
             </div>
+            <div className="mt-2 flex items-start gap-2 bg-slate-900/50 border border-emerald-500/20 p-2.5 rounded-lg">
+               <span className="text-[10px] uppercase font-bold text-emerald-400 mt-0.5 shrink-0">Tip</span>
+               <p className="text-xs text-emerald-100/70 leading-relaxed">
+                 Include <strong className="text-emerald-300">userId</strong> or <strong className="text-emerald-300">sessionId</strong> in your payload to unlock lightning-fast Unique User and Funnel metrics.
+               </p>
+            </div>
           </div>
           <button
             onClick={() => setNewKey(null)}

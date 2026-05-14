@@ -4,7 +4,7 @@ import { ZapIcon, ActivityIcon, BarChart2Icon } from "@/components/icons";
 
 import { APP_TIMEZONE } from "@/lib/insight-query";
 
-type CaptureRow = { event: string; properties: string; ts: string };
+type CaptureRow = { event: string; user_id: string; session_id: string; properties: string; ts: string };
 type EventCountRow = { event: string; count: string | number };
 
 export default async function CapturesPage({
@@ -19,7 +19,7 @@ export default async function CapturesPage({
   try {
     [captures, eventCounts] = await Promise.all([
       queryJson<CaptureRow>(
-        `SELECT event, properties, formatDateTime(ts, '%Y-%m-%d %H:%M:%S', {timezone:String}) AS ts
+        `SELECT event, user_id, session_id, properties, formatDateTime(ts, '%Y-%m-%d %H:%M:%S', {timezone:String}) AS ts
          FROM events
          WHERE tenant_id = {tenantId:String}
          ORDER BY ts DESC LIMIT 50`,
@@ -109,26 +109,79 @@ export default async function CapturesPage({
         <h2 className="text-base font-semibold text-white mb-4">Capture feed</h2>
         <div className="space-y-2">
           {captures.length ? (
-            captures.map((capture, i) => (
-              <div
-                key={`${capture.ts}-${i}`}
-                className="rounded-xl border border-white/10 bg-white/3 px-4 py-3"
-              >
-                <div className="flex items-start justify-between gap-2">
-                  <div className="flex items-center gap-2.5 min-w-0">
-                    <span className="w-2 h-2 rounded-full bg-emerald-400 shrink-0 mt-0.5" />
-                    <span className="font-semibold text-white truncate">{capture.event}</span>
+            captures.map((capture, i) => {
+              const hasIdentity = !!(capture.user_id || capture.session_id);
+              return (
+                <div
+                  key={`${capture.ts}-${i}`}
+                  className="rounded-xl border border-white/10 bg-white/3 px-4 py-3"
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <span className="w-2 h-2 rounded-full bg-emerald-400 shrink-0 mt-0.5" />
+                      <span className="font-semibold text-white truncate">{capture.event}</span>
+                    </div>
+                    <div className="flex items-center gap-3 shrink-0 mt-0.5">
+                      {!hasIdentity && (
+                        <a
+                          href={`/workspace/${workspaceId}/settings`}
+                          title="This event is missing a user or session ID. Click to learn how to add it."
+                          className="flex items-center gap-1 text-[10px] uppercase font-bold text-blue-300/80 bg-blue-500/10 border border-blue-500/20 px-1.5 py-0.5 rounded transition hover:bg-blue-500/20 hover:text-blue-200"
+                        >
+                          ⚠️ Missing Identity
+                        </a>
+                      )}
+                      <div className="text-xs text-white/40">{capture.ts}</div>
+                    </div>
                   </div>
-                  <div className="text-xs text-white/40 shrink-0 mt-0.5">{capture.ts}</div>
+                  <pre className="mt-2 rounded-lg bg-slate-950/60 border border-white/6 p-3 text-xs font-mono text-white/60 overflow-x-auto">
+                    {capture.properties}
+                  </pre>
                 </div>
-                <pre className="mt-2 rounded-lg bg-slate-950/60 border border-white/6 p-3 text-xs font-mono text-white/60 overflow-x-auto">
-                  {capture.properties}
-                </pre>
-              </div>
-            ))
+              );
+            })
           ) : (
-            <div className="rounded-xl border border-dashed border-white/10 bg-white/5 p-6 text-sm text-white/50">
-              No capture calls yet. Send a test event with the API key to see it here.
+            <div className="rounded-2xl border border-dashed border-white/10 bg-white/5 p-8 text-center sm:p-12">
+              <div className="inline-flex items-center justify-center w-12 h-12 rounded-2xl bg-white/5 mb-6 shadow-inner border border-white/10">
+                <ZapIcon className="w-6 h-6 text-white/50" />
+              </div>
+              <h3 className="text-xl font-bold text-white mb-2">Waiting for events</h3>
+              <p className="text-sm text-white/50 max-w-sm mx-auto mb-8">
+                Your analytics stream is empty. Send your first event to see it appear here instantly.
+              </p>
+              
+              <div className="text-left bg-slate-950/60 border border-white/10 rounded-xl p-5 max-w-2xl mx-auto space-y-4">
+                <div className="flex items-center justify-between border-b border-white/10 pb-3">
+                  <h4 className="text-sm font-semibold text-white">Quick Start</h4>
+                  <a href={`/workspace/${workspaceId}/settings`} className="text-xs font-semibold text-emerald-400 hover:text-emerald-300 transition px-3 py-1.5 rounded-lg bg-emerald-500/10 border border-emerald-500/20">
+                    Get API Key →
+                  </a>
+                </div>
+                
+                <div className="space-y-3">
+                  <p className="text-xs text-white/60">
+                    Send a POST request to <code className="text-emerald-300 bg-emerald-500/10 px-1 rounded">/api/capture</code> with your payload:
+                  </p>
+                  <pre className="text-[11px] font-mono text-white/70 bg-black/40 p-3 rounded-lg border border-white/5 overflow-x-auto">
+{`[
+  {
+    "event": "page_loaded",
+    "userId": "user_123",      // Optional: unlocks Unique User metrics
+    "sessionId": "sess_abc",   // Optional: unlocks Funnel tracking
+    "properties": {            // Custom data for Breakdowns
+      "path": "/home"
+    }
+  }
+]`}
+                  </pre>
+                  <div className="flex items-start gap-2 bg-blue-500/10 border border-blue-500/20 p-3 rounded-lg mt-2">
+                     <span className="text-[10px] uppercase font-bold text-blue-400 mt-0.5 shrink-0">Tip</span>
+                     <p className="text-xs text-blue-200/70 leading-relaxed">
+                       Always include <strong>userId</strong> or <strong>sessionId</strong> if available. Analas automatically indexes these root fields for lightning-fast advanced aggregations.
+                     </p>
+                  </div>
+                </div>
+              </div>
             </div>
           )}
         </div>
