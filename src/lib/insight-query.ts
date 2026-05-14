@@ -136,8 +136,7 @@ export async function fetchInsightData(
     }
     steps.forEach((s, i) => params[`step${i}`] = s);
 
-    const rows = await queryJson<FunnelRow>(
-      `SELECT
+    const queryStr = `SELECT
           level,
           count() AS count
        FROM (
@@ -152,19 +151,32 @@ export async function fetchInsightData(
             AND ts >= now() - INTERVAL 30 DAY
           GROUP BY ${groupByExpr}
        )
-       GROUP BY level ORDER BY level ASC`,
-      params
-    ).catch((e) => {
-      console.error("Funnel error:", e);
-      return [];
+       GROUP BY level ORDER BY level ASC`;
+
+    console.log("=== FUNNEL DEBUG START ===");
+    console.log("config:", config);
+    console.log("isNativeId:", isNativeId, "groupByExpr:", groupByExpr);
+    console.log("params:", params);
+    console.log("queryStr:", queryStr);
+
+    const rows = await queryJson<FunnelRow>(queryStr, params).catch((e: any) => {
+      console.error("=== FUNNEL DB ERROR ===");
+      console.error("Message:", e.message);
+      console.error("Full Error:", e);
+      return [] as FunnelRow[];
     });
+
+    console.log("Raw Funnel Rows from DB:", rows);
 
     // Calculate cumulative counts: Step N count is the sum of all levels >= N
     const finalRows = steps.map((stepName, i) => {
       const level = i + 1;
-      const count = rows.filter(r => r.level >= level).reduce((s, r) => s + Number(r.count), 0);
+      const count = rows.filter(r => Number(r.level) >= level).reduce((s, r) => s + Number(r.count), 0);
       return { label: stepName, count };
     });
+    
+    console.log("Final Computed Rows:", finalRows);
+    console.log("=== FUNNEL DEBUG END ===");
 
     return {
       total: finalRows[0]?.count || 0,
