@@ -165,7 +165,7 @@ export default function InsightCard({ workspaceId, insight }: Props) {
         <div className="space-y-2">
           <div className="flex items-center gap-1.5 text-xs text-white/40">
             <ActivityIcon className="w-3 h-3" />
-            Last {insight.queryConfig.timeFrame || "7"} days
+            Last {String(insight.queryConfig.timeFrame || "7")} days
           </div>
           {error ? (
             <p className="text-sm text-red-400/70">Could not load metric data.</p>
