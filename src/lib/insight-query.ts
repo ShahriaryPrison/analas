@@ -142,7 +142,7 @@ export async function fetchInsightData(
        FROM (
           SELECT
               windowFunnel(86400)(
-                  ts,
+                  toDateTime(ts),
                   ${stepConditions}
               ) AS level
           FROM events
