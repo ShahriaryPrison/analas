@@ -160,6 +160,38 @@ export default function InsightCard({ workspaceId, insight }: Props) {
         </div>
       )}
 
+      {/* Metric (Advanced Aggregations) */}
+      {insight.type === "metric" && (
+        <div className="space-y-2">
+          <div className="flex items-center gap-1.5 text-xs text-white/40">
+            <ActivityIcon className="w-3 h-3" />
+            Last {insight.queryConfig.timeFrame || "7"} days
+          </div>
+          {error ? (
+            <p className="text-sm text-red-400/70">Could not load metric data.</p>
+          ) : !data ? (
+            <div className="grid grid-cols-7 gap-2">
+              {Array.from({ length: 7 }).map((_, i) => (
+                <div key={i} className="flex flex-col items-center gap-2">
+                  <div className="h-32 w-full animate-pulse rounded-lg bg-white/5" />
+                  <div className="h-3 w-8 animate-pulse rounded bg-white/5" />
+                </div>
+              ))}
+            </div>
+          ) : data.rows.length === 0 ? (
+            <div className="rounded-xl border border-dashed border-white/10 bg-white/5 p-4 text-sm text-white/50">
+              No data yet.
+            </div>
+          ) : (
+            insight.queryConfig.displayType === "line" ? (
+              <TrendLineChart rows={data.rows} />
+            ) : (
+              <TrendChart rows={data.rows} />
+            )
+          )}
+        </div>
+      )}
+
       {insight.type === "count" && error && (
         <p className="text-sm text-red-400/70">Could not load data.</p>
       )}

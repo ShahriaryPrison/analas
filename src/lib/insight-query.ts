@@ -153,5 +153,51 @@ export async function fetchInsightData(
     };
   }
 
+  if (type === "metric") {
+    const eventName = String(config.eventName || "");
+    const aggregation = String(config.aggregation || "uniq");
+    const property = String(config.property || "");
+
+    const isNative = property === "user_id" || property === "session_id";
+    const extracted = isNative 
+      ? property 
+      : (aggregation === "uniq" 
+         ? `JSONExtractString(properties, {property:String})` 
+         : `JSONExtractFloat(properties, {property:String})`);
+
+    let aggFunc = `uniq(${extracted})`;
+    if (aggregation === "avg") aggFunc = `avg(${extracted})`;
+    else if (aggregation === "p50") aggFunc = `quantile(0.5)(${extracted})`;
+    else if (aggregation === "p95") aggFunc = `quantile(0.95)(${extracted})`;
+
+    const raw = await queryJson<{ day: string; count: string | number }>(
+      `SELECT formatDateTime(ts, '%Y-%m-%d') AS day, ${aggFunc} AS count
+       FROM events
+       WHERE tenant_id = {tenantId:String}
+         AND event = {event:String}
+         AND ts >= now() - INTERVAL {timeFrame:Int32} DAY
+         ${isNative ? `AND ${property} != ''` : ""}
+       GROUP BY day ORDER BY day ASC`,
+      { tenantId, event: eventName, timeFrame, property: isNative ? "" : property }
+    ).catch(() => []);
+
+    const filledRows = fillDays(raw, timeFrame);
+
+    const totalRaw = await queryJson<{ total: string | number }>(
+      `SELECT ${aggFunc} AS total FROM events
+       WHERE tenant_id = {tenantId:String}
+         AND event = {event:String}
+         AND ts >= now() - INTERVAL {timeFrame:Int32} DAY
+         ${isNative ? `AND ${property} != ''` : ""}`,
+      { tenantId, event: eventName, timeFrame, property: isNative ? "" : property }
+    ).catch(() => []);
+    
+    // Some aggregations like quantiles or avg might return NaN/Null if no rows, so fallback to 0
+    let total = Number(totalRaw[0]?.total);
+    if (isNaN(total)) total = 0;
+
+    return { total, rows: filledRows };
+  }
+
   return { total: 0, rows: [] };
 }

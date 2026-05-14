@@ -97,6 +97,46 @@ export const INSIGHT_TYPES: InsightTypeDef[] = [
       { key: "distinctId", label: "User ID property", placeholder: "distinct_id" },
     ],
   },
+  {
+    id: "metric",
+    label: "Metric",
+    description: "Advanced aggregations (average, unique count, percentiles).",
+    icon: "∑",
+    configFields: [
+      { key: "eventName", label: "Event name", placeholder: "page_loaded" },
+      {
+        key: "aggregation",
+        label: "Aggregation type",
+        placeholder: "Select aggregation",
+        options: [
+          { label: "Unique Count", value: "uniq" },
+          { label: "Average", value: "avg" },
+          { label: "Median (P50)", value: "p50" },
+          { label: "95th Percentile (P95)", value: "p95" }
+        ]
+      },
+      { key: "property", label: "Target property", placeholder: "user_id, latency_ms" },
+      {
+        key: "timeFrame",
+        label: "Time frame",
+        placeholder: "Select range",
+        options: [
+          { label: "Last 7 days", value: "7" },
+          { label: "Last 30 days", value: "30" },
+          { label: "Last 90 days", value: "90" },
+        ],
+      },
+      {
+        key: "displayType",
+        label: "Display as",
+        placeholder: "Select style",
+        options: [
+          { label: "Bar Chart", value: "bar" },
+          { label: "Line Chart", value: "line" },
+        ],
+      },
+    ],
+  },
 ];
 
 export function getInsightType(id: string): InsightTypeDef {

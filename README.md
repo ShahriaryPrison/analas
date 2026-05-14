@@ -169,6 +169,24 @@ Send events to your instance using a simple `POST` request. You can send a singl
 
 ---
 
+## Advanced Data Exploration (Custom SQL & BI)
+
+Analas is intentionally designed as a hyper-fast, distraction-free product analytics dashboard. It covers 95% of use cases (Trends, Funnels, Metric Aggregations) natively without you ever writing a line of code.
+
+However, since you own your data, **Power Users and Data Engineers** can easily run raw custom SQL queries by connecting any third-party Business Intelligence (BI) tool directly to the underlying ClickHouse database!
+
+1. Install your favorite BI tool (e.g., [Metabase](https://www.metabase.com/), [Grafana](https://grafana.com/), or [Superset](https://superset.apache.org/)).
+2. Add a new Database Connection using the official ClickHouse driver.
+3. Connect it to your Analas server on port `8123` (or whatever port you exposed in your `docker-compose.yml`).
+   - **Host:** `your-server-ip`
+   - **Port:** `8123`
+   - **Database:** `default`
+   - **Username/Password:** (The credentials from your `.env` file)
+
+You can now query the raw `events` table with full SQL flexibility while keeping the main Analas dashboard clean for your everyday users!
+
+---
+
 ## Contributing
 
 PRs are welcome. For large changes please open an issue first.
