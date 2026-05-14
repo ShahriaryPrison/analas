@@ -9,13 +9,23 @@ export interface InsightData {
   rows: any[];
 }
 
+export const APP_TIMEZONE = process.env.NEXT_PUBLIC_TIMEZONE || "Asia/Tehran";
+
 export function fillDays(rows: { day: string; count: string | number }[], length: number = 7): DailyRow[] {
   const map = new Map(rows.map((r) => [r.day, Number(r.count)]));
   const result = [];
+  
   for (let i = length - 1; i >= 0; i--) {
     const d = new Date();
     d.setDate(d.getDate() - i);
-    const key = d.toISOString().slice(0, 10);
+    // Format the date in the specific timezone using en-CA to get YYYY-MM-DD
+    const key = new Intl.DateTimeFormat('en-CA', { 
+      timeZone: APP_TIMEZONE, 
+      year: 'numeric', 
+      month: '2-digit', 
+      day: '2-digit' 
+    }).format(d);
+    
     result.push({ day: key, count: map.get(key) ?? 0 });
   }
   return result;
@@ -42,13 +52,13 @@ export async function fetchInsightData(
   if (type === "trend") {
     const eventName = String(config.eventName || "");
     const raw = await queryJson<{ day: string; count: string | number }>(
-      `SELECT formatDateTime(ts, '%Y-%m-%d') AS day, count() AS count
+      `SELECT formatDateTime(ts, '%Y-%m-%d', {timezone:String}) AS day, count() AS count
        FROM events
        WHERE tenant_id = {tenantId:String}
          AND event = {event:String}
          AND ts >= now() - INTERVAL {timeFrame:Int32} DAY
        GROUP BY day ORDER BY day ASC`,
-      { tenantId, event: eventName, timeFrame }
+      { tenantId, event: eventName, timeFrame, timezone: APP_TIMEZONE }
     ).catch(() => []);
 
     const filledRows = fillDays(raw, timeFrame);
@@ -83,13 +93,13 @@ export async function fetchInsightData(
     if (events.length === 0) return { total: 0, rows: [] };
 
     const raw = await queryJson<{ day: string; event: string; count: string | number }>(
-      `SELECT formatDateTime(ts, '%Y-%m-%d') AS day, event, count() AS count
+      `SELECT formatDateTime(ts, '%Y-%m-%d', {timezone:String}) AS day, event, count() AS count
        FROM events
        WHERE tenant_id = {tenantId:String}
          AND event IN ({events:Array(String)})
          AND ts >= now() - INTERVAL {timeFrame:Int32} DAY
        GROUP BY day, event ORDER BY day ASC, event ASC`,
-      { tenantId, events, timeFrame }
+      { tenantId, events, timeFrame, timezone: APP_TIMEZONE }
     ).catch(() => []);
 
     // Transform into grouped rows: [{ day, counts: { event1: N, event2: M } }]
@@ -171,14 +181,14 @@ export async function fetchInsightData(
     else if (aggregation === "p95") aggFunc = `quantile(0.95)(${extracted})`;
 
     const raw = await queryJson<{ day: string; count: string | number }>(
-      `SELECT formatDateTime(ts, '%Y-%m-%d') AS day, ${aggFunc} AS count
+      `SELECT formatDateTime(ts, '%Y-%m-%d', {timezone:String}) AS day, ${aggFunc} AS count
        FROM events
        WHERE tenant_id = {tenantId:String}
          AND event = {event:String}
          AND ts >= now() - INTERVAL {timeFrame:Int32} DAY
          ${isNative ? `AND ${property} != ''` : ""}
        GROUP BY day ORDER BY day ASC`,
-      { tenantId, event: eventName, timeFrame, property: isNative ? "" : property }
+      { tenantId, event: eventName, timeFrame, property: isNative ? "" : property, timezone: APP_TIMEZONE }
     ).catch(() => []);
 
     const filledRows = fillDays(raw, timeFrame);
