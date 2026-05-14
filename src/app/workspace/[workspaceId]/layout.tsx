@@ -15,7 +15,7 @@ export default async function WorkspaceLayout({
   const { workspace, membership } = await getAuthorizedWorkspace(workspaceId);
 
   return (
-    <div className="flex min-h-screen bg-slate-950">
+    <div className="flex flex-col md:flex-row min-h-screen bg-slate-950">
 
       {/* SIDEBAR — desktop only */}
       <aside className="hidden md:flex flex-col fixed inset-y-0 left-0 w-56 bg-slate-950 border-r border-white/6 z-20">
