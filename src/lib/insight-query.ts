@@ -122,12 +122,14 @@ export async function fetchInsightData(
     const steps = stepsStr.split(",").map(s => s.trim()).filter(Boolean);
     if (steps.length === 0) return { total: 0, rows: [] };
 
-    const distinctId = String(config.distinctId || "distinct_id");
+    const distinctId = String(config.distinctId || "user_id");
+    const isNativeId = distinctId === "user_id" || distinctId === "session_id";
+    const groupByExpr = isNativeId ? distinctId : `JSONExtractString(properties, {distinctId:String})`;
 
     // Build the dynamic windowFunnel query
     // windowFunnel(window)(timestamp, cond1, cond2, ...)
     const stepConditions = steps.map((_, i) => `event = {step${i}:String}`).join(", ");
-    const params: Record<string, any> = { tenantId, distinctId, steps };
+    const params: Record<string, any> = { tenantId, distinctId: isNativeId ? "" : distinctId, steps };
     steps.forEach((s, i) => params[`step${i}`] = s);
 
     const rows = await queryJson<FunnelRow>(
@@ -144,7 +146,7 @@ export async function fetchInsightData(
           WHERE tenant_id = {tenantId:String}
             AND event IN ({steps:Array(String)})
             AND ts >= now() - INTERVAL 30 DAY
-          GROUP BY JSONExtractString(properties, {distinctId:String})
+          GROUP BY ${groupByExpr}
        )
        GROUP BY level ORDER BY level ASC`,
       params

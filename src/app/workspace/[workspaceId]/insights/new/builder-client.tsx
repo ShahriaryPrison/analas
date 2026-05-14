@@ -288,6 +288,30 @@ export default function InsightBuilder({ workspaceId, topEvents }: Props) {
                               </div>
                             </div>
                           )}
+
+                          {f.key === "distinctId" && (
+                            <div className="space-y-3">
+                              <div className="text-[10px] font-black text-white/20 uppercase tracking-[0.2em]">Common Identities</div>
+                              <div className="flex flex-wrap gap-2">
+                                {["user_id", "session_id"].map(idStr => {
+                                  const isSelected = queryConfig[f.key] === idStr;
+                                  return (
+                                    <button
+                                      key={idStr}
+                                      onClick={() => setQueryConfig({ ...queryConfig, [f.key]: idStr })}
+                                      className={`px-3 py-1.5 rounded-lg text-xs border transition flex items-center gap-2 ${
+                                        isSelected 
+                                        ? "bg-emerald-500 text-slate-900 border-emerald-500 font-bold" 
+                                        : "bg-white/5 border-white/5 text-white/50 hover:bg-white/10 hover:text-white"
+                                      }`}
+                                    >
+                                      {idStr}
+                                    </button>
+                                  );
+                                })}
+                              </div>
+                            </div>
+                          )}
                         </div>
                       )}
                     </div>

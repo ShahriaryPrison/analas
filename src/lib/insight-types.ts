@@ -94,7 +94,7 @@ export const INSIGHT_TYPES: InsightTypeDef[] = [
     icon: "⬇",
     configFields: [
       { key: "eventSteps", label: "Funnel steps (in order)", placeholder: "page_view, signup, purchase" },
-      { key: "distinctId", label: "User ID property", placeholder: "distinct_id" },
+      { key: "distinctId", label: "User ID property", placeholder: "user_id" },
     ],
   },
   {
