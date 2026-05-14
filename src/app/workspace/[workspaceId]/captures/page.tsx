@@ -2,6 +2,8 @@ import { getAuthorizedWorkspace } from "@/lib/workspace-access";
 import { queryJson } from "@/lib/clickhouse";
 import { ZapIcon, ActivityIcon, BarChart2Icon } from "@/components/icons";
 
+import { APP_TIMEZONE } from "@/lib/insight-query";
+
 type CaptureRow = { event: string; properties: string; ts: string };
 type EventCountRow = { event: string; count: string | number };
 
@@ -17,11 +19,11 @@ export default async function CapturesPage({
   try {
     [captures, eventCounts] = await Promise.all([
       queryJson<CaptureRow>(
-        `SELECT event, properties, toString(ts) AS ts
+        `SELECT event, properties, formatDateTime(ts, '%Y-%m-%d %H:%M:%S', {timezone:String}) AS ts
          FROM events
          WHERE tenant_id = {tenantId:String}
          ORDER BY ts DESC LIMIT 50`,
-        { tenantId: workspace.tenantId }
+        { tenantId: workspace.tenantId, timezone: APP_TIMEZONE }
       ),
       queryJson<EventCountRow>(
         `SELECT event, count() AS count
@@ -117,7 +119,7 @@ export default async function CapturesPage({
                     <span className="w-2 h-2 rounded-full bg-emerald-400 shrink-0 mt-0.5" />
                     <span className="font-semibold text-white truncate">{capture.event}</span>
                   </div>
-                  <div className="text-xs text-white/40 shrink-0 mt-0.5">{new Date(capture.ts).toLocaleString()}</div>
+                  <div className="text-xs text-white/40 shrink-0 mt-0.5">{capture.ts}</div>
                 </div>
                 <pre className="mt-2 rounded-lg bg-slate-950/60 border border-white/6 p-3 text-xs font-mono text-white/60 overflow-x-auto">
                   {capture.properties}
