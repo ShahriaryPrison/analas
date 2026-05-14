@@ -19,7 +19,7 @@ export default async function CapturesPage({
   try {
     [captures, eventCounts] = await Promise.all([
       queryJson<CaptureRow>(
-        `SELECT event, user_id, session_id, properties, formatDateTime(ts, '%Y-%m-%d %H:%M:%S', {timezone:String}) AS ts
+        `SELECT event, user_id, session_id, properties, formatDateTime(ts, '%Y-%m-%d %H:%i:%S', {timezone:String}) AS ts
          FROM events
          WHERE tenant_id = {tenantId:String}
          ORDER BY ts DESC LIMIT 50`,
@@ -110,16 +110,36 @@ export default async function CapturesPage({
         <div className="space-y-2">
           {captures.length ? (
             captures.map((capture, i) => {
-              const hasIdentity = !!(capture.user_id || capture.session_id);
+              const u = capture.user_id?.trim() || "";
+              const s = capture.session_id?.trim() || "";
+              const hasUserId = u !== "" && u !== "''" && u !== '""' && u !== "null" && u !== "undefined";
+              const hasSessionId = s !== "" && s !== "''" && s !== '""' && s !== "null" && s !== "undefined";
+              const hasIdentity = hasUserId || hasSessionId;
+
               return (
                 <div
                   key={`${capture.ts}-${i}`}
                   className="rounded-xl border border-white/10 bg-white/3 px-4 py-3"
                 >
                   <div className="flex items-start justify-between gap-2">
-                    <div className="flex items-center gap-2.5 min-w-0">
-                      <span className="w-2 h-2 rounded-full bg-emerald-400 shrink-0 mt-0.5" />
-                      <span className="font-semibold text-white truncate">{capture.event}</span>
+                    <div className="flex flex-wrap items-center gap-2 min-w-0">
+                      <div className="flex items-center gap-2.5">
+                        <span className="w-2 h-2 rounded-full bg-emerald-400 shrink-0 mt-0.5" />
+                        <span className="font-semibold text-white truncate">{capture.event}</span>
+                      </div>
+                      
+                      <div className="flex items-center gap-1.5">
+                        {hasUserId && (
+                          <span className="inline-flex items-center rounded bg-indigo-500/15 border border-indigo-500/20 px-1.5 py-0.5 text-[10px] font-mono text-indigo-300">
+                            usr: {u}
+                          </span>
+                        )}
+                        {hasSessionId && (
+                          <span className="inline-flex items-center rounded bg-purple-500/15 border border-purple-500/20 px-1.5 py-0.5 text-[10px] font-mono text-purple-300">
+                            sess: {s}
+                          </span>
+                        )}
+                      </div>
                     </div>
                     <div className="flex items-center gap-3 shrink-0 mt-0.5">
                       {!hasIdentity && (
