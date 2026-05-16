@@ -4,6 +4,18 @@ import { getAppSession } from "@/lib/session";
 
 type Params = { params: Promise<{ token: string }> };
 
+/**
+ * Canonical app origin: always use NEXTAUTH_URL so that Docker's internal
+ * 0.0.0.0 address never leaks into redirect URLs.
+ */
+function getOrigin(req: NextRequest): string {
+  return (
+    process.env.NEXTAUTH_URL ??
+    process.env.NEXT_PUBLIC_APP_URL ??
+    req.nextUrl.origin
+  ).replace(/\/$/, ""); // strip trailing slash
+}
+
 // ── GET /api/invite/[token] ───────────────────────────────────────────────────
 // Resolves a public invite token.
 // - Logged in  → join workspace → redirect to workspace
@@ -27,7 +39,7 @@ export async function GET(req: NextRequest, { params }: Params) {
   }
 
   const session = await getAppSession();
-  const origin = req.nextUrl.origin;
+  const origin = getOrigin(req);
 
   if (!session) {
     return NextResponse.redirect(`${origin}/register?invite=${token}`);
