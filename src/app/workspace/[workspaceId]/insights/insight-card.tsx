@@ -216,25 +216,26 @@ export function TrendChart({ rows }: { rows: Row[] }) {
   const [hoveredBar, setHoveredBar] = useState<number | null>(null);
   const max = Math.max(...rows.map((r) => r.count || 0), 1);
   return (
-    <div className="relative grid grid-cols-7 gap-2">
+    <div className="grid grid-cols-7 gap-2">
       {rows.map((row, i) => (
-        <div key={row.day || i} className="flex flex-col items-center gap-2">
-          <div
-            className="flex h-32 w-full items-end rounded-lg border border-white/10 bg-white/5 p-2"
-            onMouseEnter={() => setHoveredBar(i)}
-            onMouseLeave={() => setHoveredBar(null)}
-          >
+        <div
+          key={row.day || i}
+          className="relative flex flex-col items-center gap-2"
+          onMouseEnter={() => setHoveredBar(i)}
+          onMouseLeave={() => setHoveredBar(null)}
+        >
+          {/* Tooltip */}
+          {hoveredBar === i && (
+            <div className="absolute -top-8 left-1/2 -translate-x-1/2 px-2 py-1 text-xs font-semibold text-white bg-zinc-900/90 border border-white/10 rounded-lg shadow-xl whitespace-nowrap z-20 backdrop-blur-sm">
+              {row.count?.toLocaleString()}
+            </div>
+          )}
+          <div className="flex h-32 w-full items-end rounded-lg border border-white/10 bg-white/5 p-2">
             <div
               className="w-full rounded-md bg-emerald-400 transition-all duration-500"
               style={{ height: `${((row.count || 0) / max) * 100}%`, minHeight: (row.count || 0) > 0 ? "4px" : "0" }}
             />
           </div>
-          {/* Tooltip */}
-          {hoveredBar === i && (
-            <div className="absolute -top-8 left-1/2 -translate-x-1/2 px-2 py-1 text-xs text-white bg-black/70 rounded-md shadow-lg whitespace-nowrap z-10">
-              {row.count?.toLocaleString()}
-            </div>
-          )}
           <div className="text-[11px] text-white/50">{(row.day || "").slice(5)}</div>
         </div>
       ))}
@@ -251,13 +252,21 @@ export function MultiTrendChart({ rows }: { rows: any[] }) {
 
   return (
     <div className="space-y-6">
-      <div className="relative grid grid-cols-7 gap-1">
+      <div className="grid grid-cols-7 gap-1">
         {rows.map((dayRow, i) => (
-          <div key={dayRow.day || i} className="flex flex-col items-center gap-2">
+          <div
+            key={dayRow.day || i}
+            className="relative flex flex-col items-center gap-2"
+          >
+            {/* Tooltip for segment */}
+            {hoveredSegment && hoveredSegment.dayIdx === i && (
+              <div className="absolute -top-8 left-1/2 -translate-x-1/2 px-2 py-1 text-xs font-semibold text-white bg-zinc-900/90 border border-white/10 rounded-lg shadow-xl whitespace-nowrap z-20 backdrop-blur-sm">
+                {hoveredSegment.ev}: {dayRow.counts[hoveredSegment.ev]?.toLocaleString()}
+              </div>
+            )}
             <div className="flex h-32 w-full items-end justify-center gap-0.5 rounded-lg border border-white/5 bg-white/2 p-1">
               {events.map((ev, ei) => {
                 const count = dayRow.counts[ev] || 0;
-                const isHovered = hoveredSegment && hoveredSegment.dayIdx === i && hoveredSegment.ev === ev;
                 return (
                   <div
                     key={ev}
@@ -269,12 +278,6 @@ export function MultiTrendChart({ rows }: { rows: any[] }) {
                 );
               })}
             </div>
-            {/* Tooltip for segment */}
-            {hoveredSegment && hoveredSegment.dayIdx === i && (
-              <div className="absolute -top-8 left-1/2 -translate-x-1/2 px-2 py-1 text-xs text-white bg-black/70 rounded-md shadow-lg whitespace-nowrap z-10">
-                {dayRow.counts[hoveredSegment.ev]?.toLocaleString()}
-              </div>
-            )}
             <div className="text-[10px] text-white/30">{(dayRow.day || "").slice(8)}</div>
           </div>
         ))}
@@ -354,14 +357,16 @@ export function TrendLineChart({ rows }: { rows: Row[] }) {
   const width = 700;
   const height = 120;
   
-  const points = rows.map((r, i) => {
-    const x = (i / (rows.length - 1)) * width;
-    const y = height - ((r.count || 0) / max) * height;
-    return `${x},${y}`;
-  }).join(" ");
+  const pointCoords = rows.map((r, i) => ({
+    x: (i / Math.max(rows.length - 1, 1)) * width,
+    y: height - ((r.count || 0) / max) * height,
+    count: r.count || 0,
+  }));
+
+  const pointsStr = pointCoords.map(p => `${p.x},${p.y}`).join(" ");
 
   return (
-    <div className="relative w-full h-32 flex items-center justify-center">
+    <div className="relative w-full h-32">
        <svg viewBox={`0 0 ${width} ${height}`} className="w-full h-full overflow-visible">
           <polyline
             fill="none"
@@ -369,26 +374,40 @@ export function TrendLineChart({ rows }: { rows: Row[] }) {
             strokeWidth="3"
             strokeLinecap="round"
             strokeLinejoin="round"
-            points={points}
+            points={pointsStr}
             className="transition-all duration-700"
           />
-          {/* Render points for hover */}
-          {rows.map((row, idx) => (
+          {/* Visible dot on hovered point */}
+          {hoveredPoint !== null && (
             <circle
-              key={idx}
-              cx={((idx) / (rows.length - 1)) * width}
-              cy={height - ((row.count || 0) / max) * height}
-              r={4}
+              cx={pointCoords[hoveredPoint].x}
+              cy={pointCoords[hoveredPoint].y}
+              r={5}
               fill="#34d399"
-              className="opacity-0"
+              stroke="#fff"
+              strokeWidth={1.5}
+            />
+          )}
+          {/* Invisible wide hit areas per point */}
+          {pointCoords.map((p, idx) => (
+            <rect
+              key={idx}
+              x={p.x - width / rows.length / 2}
+              y={0}
+              width={width / rows.length}
+              height={height}
+              fill="transparent"
               onMouseEnter={() => setHoveredPoint(idx)}
               onMouseLeave={() => setHoveredPoint(null)}
             />
           ))}
        </svg>
-       {/* Tooltip */}
+       {/* Tooltip positioned above the hovered data point */}
        {hoveredPoint !== null && (
-         <div className="absolute -top-8 left-0 transform -translate-x-1/2 px-2 py-1 text-xs text-white bg-black/70 rounded-md shadow-lg whitespace-nowrap z-10">
+         <div
+           className="absolute -top-7 -translate-x-1/2 px-2 py-1 text-xs font-semibold text-white bg-zinc-900/90 border border-white/10 rounded-lg shadow-xl whitespace-nowrap z-20 backdrop-blur-sm pointer-events-none"
+           style={{ left: `${(pointCoords[hoveredPoint].x / width) * 100}%` }}
+         >
            {rows[hoveredPoint].count?.toLocaleString()}
          </div>
        )}
@@ -397,7 +416,7 @@ export function TrendLineChart({ rows }: { rows: Row[] }) {
 }
 
 export function MultiTrendLineChart({ rows }: { rows: any[] }) {
-  const [hoveredLineSegment, setHoveredLineSegment] = useState<{ ev: string; pointIdx: number } | null>(null);
+  const [hoveredPointIdx, setHoveredPointIdx] = useState<number | null>(null);
   const events = Object.keys(rows[0]?.counts || {});
   const max = Math.max(...rows.flatMap(r => Object.values(r.counts as Record<string, number>)), 1);
   const width = 700;
@@ -409,7 +428,7 @@ export function MultiTrendLineChart({ rows }: { rows: any[] }) {
         <svg viewBox={`0 0 ${width} ${height}`} className="w-full h-full overflow-visible">
            {events.map((ev, i) => {
               const points = rows.map((r, ri) => {
-                const x = (ri / (rows.length - 1)) * width;
+                const x = (ri / Math.max(rows.length - 1, 1)) * width;
                 const count = r.counts[ev] || 0;
                 const y = height - (count / max) * height;
                 return { x, y, count };
@@ -436,34 +455,48 @@ export function MultiTrendLineChart({ rows }: { rows: any[] }) {
                     points={points.map(p => `${p.x},${p.y}`).join(" ")}
                     className="transition-all duration-700"
                   />
-                  {/* Hover circles */}
-                  {points.map((p, idx) => (
+                  {/* Visible dot on hovered point for this line */}
+                  {hoveredPointIdx !== null && (
                     <circle
-                      key={idx}
-                      cx={p.x}
-                      cy={p.y}
-                      r={4}
+                      cx={points[hoveredPointIdx].x}
+                      cy={points[hoveredPointIdx].y}
+                      r={5}
                       fill={strokeColor}
-                      className="opacity-0"
-                      onMouseEnter={() => setHoveredLineSegment({ ev, pointIdx: idx })}
-                      onMouseLeave={() => setHoveredLineSegment(null)}
+                      stroke="#fff"
+                      strokeWidth={1.5}
                     />
-                  ))}
+                  )}
                 </g>
               );
            })}
+           {/* Invisible column hit areas rendered on top */}
+           {rows.map((_, idx) => (
+             <rect
+               key={idx}
+               x={(idx / Math.max(rows.length - 1, 1)) * width - width / rows.length / 2}
+               y={0}
+               width={width / rows.length}
+               height={height}
+               fill="transparent"
+               onMouseEnter={() => setHoveredPointIdx(idx)}
+               onMouseLeave={() => setHoveredPointIdx(null)}
+             />
+           ))}
         </svg>
-        {/* Tooltip for line segment */}
-        {hoveredLineSegment && (
-          <div className="absolute -top-8 left-0 transform -translate-x-1/2 px-2 py-1 text-xs text-white bg-black/70 rounded-md shadow-lg whitespace-nowrap z-10">
-            {(() => {
-              const ev = hoveredLineSegment.ev;
-              const pointIdx = hoveredLineSegment.pointIdx;
-              const dayRow = rows[pointIdx];
-              return dayRow?.counts[ev]?.toLocaleString() ?? "";
-            })()}
-          </div>
-        )}
+        {/* Tooltip positioned above the hovered column */}
+        {hoveredPointIdx !== null && (() => {
+          const xPct = (hoveredPointIdx / Math.max(rows.length - 1, 1)) / 1 * 100;
+          const dayRow = rows[hoveredPointIdx];
+          const label = events.map(ev => `${ev}: ${(dayRow?.counts[ev] || 0).toLocaleString()}`).join(" · ");
+          return (
+            <div
+              className="absolute -top-7 -translate-x-1/2 px-2 py-1 text-xs font-semibold text-white bg-zinc-900/90 border border-white/10 rounded-lg shadow-xl whitespace-nowrap z-20 backdrop-blur-sm pointer-events-none"
+              style={{ left: `${xPct}%` }}
+            >
+              {label}
+            </div>
+          );
+        })()}
       </div>
 
       {/* Legend */}
