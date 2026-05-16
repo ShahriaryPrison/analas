@@ -23,11 +23,7 @@ export default function InsightCard({ workspaceId, insight }: Props) {
   const [data, setData] = useState<InsightData | null>(null);
   const [error, setError] = useState(false);
   const typeDef = getInsightType(insight.type);
-  // Hover state for different chart types
-  const [hoveredBar, setHoveredBar] = useState<number | null>(null);
-  const [hoveredSegment, setHoveredSegment] = useState<{ dayIdx: number; ev: string } | null>(null);
-  const [hoveredPoint, setHoveredPoint] = useState<number | null>(null);
-  const [hoveredLineSegment, setHoveredLineSegment] = useState<{ ev: string; pointIdx: number } | null>(null);
+
 
 
 
@@ -217,6 +213,7 @@ export default function InsightCard({ workspaceId, insight }: Props) {
 }
 
 export function TrendChart({ rows }: { rows: Row[] }) {
+  const [hoveredBar, setHoveredBar] = useState<number | null>(null);
   const max = Math.max(...rows.map((r) => r.count || 0), 1);
   return (
     <div className="relative grid grid-cols-7 gap-2">
@@ -248,6 +245,7 @@ export function TrendChart({ rows }: { rows: Row[] }) {
 const PALETTE = ["bg-emerald-400", "bg-indigo-400", "bg-amber-400", "bg-rose-400", "bg-cyan-400"];
 
 export function MultiTrendChart({ rows }: { rows: any[] }) {
+  const [hoveredSegment, setHoveredSegment] = useState<{ dayIdx: number; ev: string } | null>(null);
   const events = Object.keys(rows[0]?.counts || {});
   const max = Math.max(...rows.flatMap(r => Object.values(r.counts as Record<string, number>)), 1);
 
@@ -351,6 +349,7 @@ export function FunnelView({ rows }: { rows: Row[] }) {
   );
 }
 export function TrendLineChart({ rows }: { rows: Row[] }) {
+  const [hoveredPoint, setHoveredPoint] = useState<number | null>(null);
   const max = Math.max(...rows.map((r) => r.count || 0), 1);
   const width = 700;
   const height = 120;
