@@ -13,6 +13,11 @@ export default function RegisterPage() {
   const [loading, setLoading] = useState(false);
   const router = useRouter();
 
+  // Capture invite token from URL (?invite=TOKEN) set by /invite/[token] redirect
+  const inviteToken = typeof window !== "undefined"
+    ? new URLSearchParams(window.location.search).get("invite")
+    : null;
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
@@ -21,7 +26,7 @@ export default function RegisterPage() {
     try {
       const res = await fetch("/api/register", {
         method: "POST",
-        body: JSON.stringify({ email, password, name }),
+        body: JSON.stringify({ email, password, name, inviteToken }),
         headers: { "Content-Type": "application/json" },
       });
 

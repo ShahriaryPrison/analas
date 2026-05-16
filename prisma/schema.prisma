@@ -24,13 +24,15 @@ model User {
 }
 
 model Workspace {
-  id         String   @id @default(cuid())
-  name       String
-  tenantId   String   @unique
-  plan       Plan     @default(FREE)
-  members    WorkspaceMember[]
-  apiKeys    ApiKey[]
-  dashboards Dashboard[]
+  id                String            @id @default(cuid())
+  name              String
+  tenantId          String            @unique
+  plan              Plan              @default(FREE)
+  members           WorkspaceMember[]
+  apiKeys           ApiKey[]
+  dashboards        Dashboard[]
+  invites           WorkspaceInvite[]
+  inviteLinkEnabled Boolean           @default(false)
 }
 
 model WorkspaceMember {
@@ -70,4 +72,16 @@ model Insight {
   position    Int      @default(0)
   dashboardId String
   dashboard   Dashboard @relation(fields: [dashboardId], references: [id])
+}
+
+model WorkspaceInvite {
+  id          String    @id @default(cuid())
+  token       String    @unique
+  email       String?                   // null = public link (anyone with the token)
+  role        String    @default("MEMBER")
+  workspaceId String
+  workspace   Workspace @relation(fields: [workspaceId], references: [id])
+  createdAt   DateTime  @default(now())
+  expiresAt   DateTime?                 // optional expiry for public links
+  usedAt      DateTime?                 // stamped when invite is accepted
 }

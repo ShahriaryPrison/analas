@@ -5,7 +5,7 @@ import crypto from "node:crypto";
 
 export async function POST(req: Request) {
   try {
-    const { email, password, name } = await req.json();
+    const { email, password, name, inviteToken } = await req.json();
 
     // 1. Hash the password
     const hashedPassword = await bcrypt.hash(password, 10);
@@ -47,6 +47,55 @@ export async function POST(req: Request) {
 
       return { user, workspace };
     });
+
+    // 3. Auto-join any pending email invites for this email (outside main tx)
+    const pendingEmailInvites = await prisma.workspaceInvite.findMany({
+      where: { email: email.trim().toLowerCase(), usedAt: null },
+    });
+
+    for (const invite of pendingEmailInvites) {
+      // Skip if already a member (shouldn't happen, but be safe)
+      const existing = await prisma.workspaceMember.findFirst({
+        where: { workspaceId: invite.workspaceId, userId: result.user.id },
+      });
+      if (!existing) {
+        await prisma.workspaceMember.create({
+          data: { workspaceId: invite.workspaceId, userId: result.user.id, role: invite.role },
+        });
+      }
+      await prisma.workspaceInvite.update({
+        where: { id: invite.id },
+        data: { usedAt: new Date() },
+      });
+    }
+
+    // 4. Honor a public link invite token if provided
+    if (inviteToken && typeof inviteToken === "string") {
+      const publicInvite = await prisma.workspaceInvite.findUnique({
+        where: { token: inviteToken },
+      });
+
+      if (
+        publicInvite &&
+        publicInvite.email === null &&
+        !publicInvite.usedAt &&
+        (!publicInvite.expiresAt || publicInvite.expiresAt > new Date())
+      ) {
+        const alreadyMember = await prisma.workspaceMember.findFirst({
+          where: { workspaceId: publicInvite.workspaceId, userId: result.user.id },
+        });
+        if (!alreadyMember) {
+          await prisma.workspaceMember.create({
+            data: {
+              workspaceId: publicInvite.workspaceId,
+              userId: result.user.id,
+              role: publicInvite.role,
+            },
+          });
+        }
+        // Public link tokens are NOT marked as used (reusable)
+      }
+    }
 
     // Return the raw key to the client once so they can copy it (show-once)
     return NextResponse.json(

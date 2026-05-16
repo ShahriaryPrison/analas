@@ -15,6 +15,7 @@ export async function getAuthorizedWorkspace(workspaceId: string) {
       apiKeys: true,
       members: { include: { user: true } },
       dashboards: { include: { insights: true } },
+      invites: { where: { usedAt: null } },
     },
   });
 
@@ -23,6 +24,21 @@ export async function getAuthorizedWorkspace(workspaceId: string) {
   const membership = workspace.members.find(
     (m) => m.user.email === session.user.email
   );
+
+  return { workspace, membership, session };
+}
+
+/**
+ * Like getAuthorizedWorkspace but also blocks MEMBER role from accessing
+ * admin-only pages (settings). Redirects MEMBER to their captures page.
+ */
+export async function requireAdminAccess(workspaceId: string) {
+  const { workspace, membership, session } =
+    await getAuthorizedWorkspace(workspaceId);
+
+  if (!membership || membership.role === "MEMBER") {
+    redirect(`/workspace/${workspaceId}/captures`);
+  }
 
   return { workspace, membership, session };
 }

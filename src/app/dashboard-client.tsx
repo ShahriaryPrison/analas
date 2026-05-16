@@ -19,13 +19,32 @@ type Workspace = {
   memberCount: number;
 };
 
-export default function DashboardClient({ workspaces }: { workspaces: Workspace[] }) {
+export default function DashboardClient({ workspaces: initialWorkspaces }: { workspaces: Workspace[] }) {
+  const [workspaces, setWorkspaces] = useState<Workspace[]>(initialWorkspaces);
   const [newKey, setNewKey] = useState<string | null>(null);
   const [origin, setOrigin] = useState("");
   const [copied, setCopied] = useState(false);
   const [codeCopied, setCodeCopied] = useState(false);
   const [dismissed, setDismissed] = useState(false);
   const [lang, setLang] = useState<"js" | "curl">("curl");
+  const [leavingId, setLeavingId] = useState<string | null>(null);
+  const [leaveError, setLeaveError] = useState<string | null>(null);
+
+  async function leaveWorkspace(workspaceId: string) {
+    setLeavingId(workspaceId);
+    setLeaveError(null);
+    try {
+      const res = await fetch(`/api/workspace/${workspaceId}/members/leave`, { method: "POST" });
+      if (res.ok) {
+        setWorkspaces((prev) => prev.filter((ws) => ws.id !== workspaceId));
+      } else {
+        const data = await res.json();
+        setLeaveError(data.error ?? "Failed to leave workspace.");
+      }
+    } finally {
+      setLeavingId(null);
+    }
+  }
 
   useEffect(() => {
     const sp = new URLSearchParams(window.location.search);
@@ -236,6 +255,7 @@ export default function DashboardClient({ workspaces }: { workspaces: Workspace[
                       <BarChart2Icon className="w-3.5 h-3.5" />
                       Insights
                     </Link>
+                    {/* Settings — always visible (MEMBER role can't reach the page; server redirects them) */}
                     <Link
                       href={`/workspace/${ws.id}/settings`}
                       className="flex items-center justify-center gap-1.5 rounded-xl border border-white/8 bg-white/4 px-3 py-2 md:py-1.5 text-white/60 hover:bg-white/8 hover:text-white/90 transition"
@@ -243,6 +263,15 @@ export default function DashboardClient({ workspaces }: { workspaces: Workspace[
                       <SlidersIcon className="w-3.5 h-3.5" />
                       Settings
                     </Link>
+                    {ws.role !== "OWNER" && (
+                      <button
+                        onClick={() => leaveWorkspace(ws.id)}
+                        disabled={leavingId === ws.id}
+                        className="flex items-center justify-center gap-1.5 rounded-xl border border-red-500/20 bg-red-500/8 px-3 py-2 md:py-1.5 text-xs text-red-400 hover:bg-red-500/15 transition disabled:opacity-50"
+                      >
+                        {leavingId === ws.id ? "Leaving…" : "Leave"}
+                      </button>
+                    )}
                   </div>
                 </div>
               ))
@@ -253,6 +282,11 @@ export default function DashboardClient({ workspaces }: { workspaces: Workspace[
               </div>
             )}
           </div>
+          {leaveError && (
+            <div className="rounded-xl border border-red-500/20 bg-red-500/10 px-4 py-3 text-sm text-red-300">
+              {leaveError}
+            </div>
+          )}
         </section>
       </main>
     </div>

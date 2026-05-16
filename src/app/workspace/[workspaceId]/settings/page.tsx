@@ -1,4 +1,4 @@
-import { getAuthorizedWorkspace } from "@/lib/workspace-access";
+import { requireAdminAccess } from "@/lib/workspace-access";
 import SettingsClient from "./settings-client";
 import { SparklesIcon, UsersIcon, KeyIcon } from "@/components/icons";
 
@@ -6,7 +6,7 @@ export default async function SettingsPage({
   params,
 }: Readonly<{ params: Promise<{ workspaceId: string }> }>) {
   const { workspaceId } = await params;
-  const { workspace, membership } = await getAuthorizedWorkspace(workspaceId);
+  const { workspace, membership } = await requireAdminAccess(workspaceId);
 
   const keys = workspace.apiKeys.map((k) => ({
     id: k.id,
@@ -14,12 +14,31 @@ export default async function SettingsPage({
     createdAt: k.createdAt.toISOString(),
   }));
 
+  const members = workspace.members.map((m) => ({
+    id: m.userId,
+    name: m.user.name ?? null,
+    email: m.user.email,
+    role: m.role,
+  }));
+
+  const pendingInvites = workspace.invites
+    .filter((i) => i.email !== null)
+    .map((i) => ({
+      id: i.id,
+      email: i.email!,
+      role: i.role,
+      createdAt: i.createdAt.toISOString(),
+    }));
+
+  // Get current public link token if enabled
+  const publicLinkInvite = workspace.invites.find((i) => i.email === null);
+
   return (
     <section className="space-y-8">
       {/* Page header */}
       <div>
         <h1 className="text-2xl font-bold text-white">Settings</h1>
-        <p className="text-sm text-white/50 mt-1">Manage your workspace configuration and API keys.</p>
+        <p className="text-sm text-white/50 mt-1">Manage your workspace configuration and team.</p>
       </div>
 
       {/* Workspace info card */}
@@ -59,7 +78,16 @@ export default async function SettingsPage({
         </dl>
       </div>
 
-      <SettingsClient workspaceId={workspaceId} initialKeys={keys} />
+      <SettingsClient
+        workspaceId={workspaceId}
+        initialKeys={keys}
+        members={members}
+        pendingInvites={pendingInvites}
+        myRole={membership?.role ?? "OWNER"}
+        inviteLinkEnabled={workspace.inviteLinkEnabled}
+        inviteLinkToken={publicLinkInvite?.token ?? null}
+        inviteLinkExpiry={publicLinkInvite?.expiresAt?.toISOString() ?? null}
+      />
     </section>
   );
 }
