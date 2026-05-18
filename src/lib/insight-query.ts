@@ -6,6 +6,7 @@ export type FunnelRow = { level: number; count: number };
 
 export interface InsightData {
   total: number;
+  returning?: number;
   rows: any[];
 }
 
