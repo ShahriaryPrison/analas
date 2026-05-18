@@ -19,6 +19,7 @@ import {
   MultiTrendLineChart,
   BreakdownList, 
   FunnelView, 
+  RetentionTable,
   type InsightData 
 } from "../insight-card";
 import Link from "next/link";
@@ -46,6 +47,15 @@ const MOCK_DATA: Record<string, InsightData> = {
   ]},
   funnel: { total: 1000, rows: [
     { label: "Visited Page", count: 1000 }, { label: "Added to Cart", count: 420 }, { label: "Purchased", count: 115 }
+  ]},
+  retention: { total: 3150, rows: [
+    { cohort: "2026-05-12", size: 350, days: [350, 180, 120, 90, 70, 60, 50, 45] },
+    { cohort: "2026-05-13", size: 500, days: [500, 300, 200, 150, 120, 90, 80, 0] },
+    { cohort: "2026-05-14", size: 450, days: [450, 250, 180, 130, 110, 80, 0, 0] },
+    { cohort: "2026-05-15", size: 600, days: [600, 350, 250, 190, 150, 0, 0, 0] },
+    { cohort: "2026-05-16", size: 550, days: [550, 300, 220, 170, 0, 0, 0, 0] },
+    { cohort: "2026-05-17", size: 400, days: [400, 210, 150, 0, 0, 0, 0, 0] },
+    { cohort: "2026-05-18", size: 300, days: [300, 160, 0, 0, 0, 0, 0, 0] }
   ]}
 };
 
@@ -417,6 +427,7 @@ export default function InsightBuilder({ workspaceId, topEvents }: Props) {
                       )}
                       {type === "breakdown" && <BreakdownList rows={activeData.rows} />}
                       {type === "funnel" && <FunnelView rows={activeData.rows} />}
+                      {type === "retention" && <RetentionTable rows={activeData.rows} timeFrame={Number(queryConfig.timeFrame || "7")} />}
                     </div>
                   </div>
                 ) : (

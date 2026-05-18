@@ -242,5 +242,85 @@ export async function fetchInsightData(
     return { total, rows: filledRows };
   }
 
+  if (type === "retention") {
+    const startEvent = String(config.startEvent || "");
+    const returnEvent = String(config.returnEvent || "");
+    const distinctIdRaw = String(config.distinctId || "session_id");
+    
+    if (!startEvent || !returnEvent) return { total: 0, rows: [] };
+
+    const isNativeId = distinctIdRaw === "user_id" || distinctIdRaw === "session_id";
+    const distinctId = isNativeId ? distinctIdRaw : `JSONExtractString(properties, {distinctId:String})`;
+
+    const daySelectors = Array.from({ length: timeFrame }, (_, i) => {
+      const day = i + 1;
+      return `count(DISTINCT IF(dateDiff('day', cohort_date, action_date) = ${day}, user_id, NULL)) AS day_${day}`;
+    }).join(",\n          ");
+
+    const params: Record<string, any> = { tenantId, startEvent, returnEvent, timeFrame };
+    if (!isNativeId) {
+      params.distinctId = distinctIdRaw;
+    }
+
+    const queryStr = `
+      SELECT
+          formatDateTime(cohort_date, '%Y-%m-%d') AS cohort,
+          count(DISTINCT user_id) AS size,
+          ${daySelectors}
+      FROM (
+          SELECT
+              ${distinctId} AS user_id,
+              minIf(toDate(ts, '${APP_TIMEZONE}'), event = {startEvent:String}) AS cohort_date,
+              groupArrayIf(toDate(ts, '${APP_TIMEZONE}'), event = {returnEvent:String}) AS return_dates
+          FROM events
+          WHERE tenant_id = {tenantId:String}
+            AND (event = {startEvent:String} OR event = {returnEvent:String})
+            AND ts >= now() - INTERVAL {timeFrame:Int32} DAY
+            AND ${distinctId} != ''
+          GROUP BY user_id
+      )
+      LEFT ARRAY JOIN return_dates AS action_date
+      WHERE cohort_date IS NOT NULL
+      GROUP BY cohort_date
+      ORDER BY cohort_date ASC
+    `;
+
+    const raw = await queryJson<any>(queryStr, params).catch((e) => {
+      console.error("Retention error:", e);
+      return [];
+    });
+
+    const rows = raw.map(r => {
+      const days = [Number(r.size)];
+      for (let i = 1; i <= timeFrame; i++) {
+        days.push(Number(r[`day_${i}`] || 0));
+      }
+      return { cohort: r.cohort, size: Number(r.size), days };
+    });
+
+    // Ensure we fill in empty days
+    const resultRows = [];
+    for (let i = timeFrame - 1; i >= 0; i--) {
+      const d = new Date();
+      d.setDate(d.getDate() - i);
+      const dateStr = new Intl.DateTimeFormat('en-CA', { 
+        timeZone: APP_TIMEZONE, 
+        year: 'numeric', month: '2-digit', day: '2-digit' 
+      }).format(d);
+
+      const existing = rows.find(r => r.cohort === dateStr);
+      if (existing) {
+        resultRows.push(existing);
+      } else {
+        const emptyDays = [0];
+        for (let j = 1; j <= timeFrame; j++) emptyDays.push(0);
+        resultRows.push({ cohort: dateStr, size: 0, days: emptyDays });
+      }
+    }
+
+    const total = resultRows.reduce((s, r) => s + r.size, 0);
+    return { total, rows: resultRows };
+  }
+
   return { total: 0, rows: [] };
 }

@@ -6,7 +6,7 @@ import { BarChart2Icon, ActivityIcon } from "@/components/icons";
 import DeleteInsightButton from "./delete-insight-button";
 import MoveInsightButton from "./move-insight-button";
 
-export type Row = { day?: string; count?: number; label?: string; val?: string; counts?: Record<string, number> };
+export type Row = { day?: string; count?: number; label?: string; val?: string; counts?: Record<string, number>; cohort?: string; size?: number; days?: number[] };
 export type InsightData = { total: number; rows: Row[] };
 
 type Props = {
@@ -23,9 +23,6 @@ export default function InsightCard({ workspaceId, insight }: Props) {
   const [data, setData] = useState<InsightData | null>(null);
   const [error, setError] = useState(false);
   const typeDef = getInsightType(insight.type);
-
-
-
 
   useEffect(() => {
     fetch(`/api/workspace/${workspaceId}/insights/${insight.id}/data`)
@@ -106,7 +103,7 @@ export default function InsightCard({ workspaceId, insight }: Props) {
         <div className="space-y-2">
           <div className="flex items-center gap-1.5 text-xs text-white/40">
             <ActivityIcon className="w-3 h-3" />
-            Last 7 days
+            Last {String(insight.queryConfig.timeFrame || "7")} days
           </div>
           {error ? (
             <p className="text-sm text-red-400/70">Could not load data.</p>
@@ -166,6 +163,19 @@ export default function InsightCard({ workspaceId, insight }: Props) {
             </div>
           ) : (
             <FunnelView rows={data.rows} />
+          )}
+        </div>
+      )}
+
+      {/* Retention */}
+      {insight.type === "retention" && (
+        <div className="space-y-4">
+          {error ? (
+            <p className="text-sm text-red-400/70">Could not load data.</p>
+          ) : !data ? (
+             <div className="w-full h-32 animate-pulse rounded-lg bg-white/5" />
+          ) : (
+             <RetentionTable rows={data.rows} timeFrame={Number(insight.queryConfig.timeFrame || "7")} />
           )}
         </div>
       )}
@@ -507,6 +517,95 @@ export function MultiTrendLineChart({ rows }: { rows: any[] }) {
               <span className="text-[11px] font-medium text-white/60">{ev}</span>
            </div>
          ))}
+      </div>
+    </div>
+  );
+}
+
+export function RetentionTable({ rows, timeFrame }: { rows: Row[], timeFrame: number }) {
+  // Determine if a cell is in the future based on cohort date and day index
+  const isFuture = (cohortStr: string, dayIdx: number) => {
+    if (!cohortStr) return true;
+    const cohortDate = new Date(cohortStr);
+    const targetDate = new Date(cohortDate);
+    targetDate.setDate(cohortDate.getDate() + dayIdx);
+    
+    // Compare with today's date (ignoring time)
+    const today = new Date();
+    today.setHours(0,0,0,0);
+    targetDate.setHours(0,0,0,0);
+    return targetDate > today;
+  };
+
+  return (
+    <div className="w-full overflow-x-auto pb-2 scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent">
+      <div className="min-w-max">
+        {/* Header Row */}
+        <div className="flex gap-1 mb-1">
+          <div className="w-24 shrink-0 text-[10px] font-bold text-white/40 uppercase tracking-wider px-2 py-1">
+            Cohort
+          </div>
+          <div className="w-16 shrink-0 text-[10px] font-bold text-white/40 uppercase tracking-wider px-2 py-1 text-right">
+            Users
+          </div>
+          {Array.from({ length: timeFrame }).map((_, i) => (
+            <div key={i} className="w-10 shrink-0 text-[10px] font-bold text-white/40 uppercase tracking-wider text-center py-1">
+              D{i + 1}
+            </div>
+          ))}
+        </div>
+
+        {/* Data Rows */}
+        <div className="flex flex-col gap-1">
+          {rows.map((row, i) => {
+            const size = row.size || 0;
+            const days = row.days || [];
+            
+            return (
+              <div key={row.cohort || i} className="flex gap-1">
+                {/* Cohort Date */}
+                <div className="w-24 shrink-0 text-xs font-medium text-white/80 px-2 py-1.5 bg-white/5 rounded">
+                  {(row.cohort || "").slice(5)}
+                </div>
+                {/* Cohort Size */}
+                <div className="w-16 shrink-0 text-xs font-bold text-white px-2 py-1.5 bg-white/5 rounded text-right tabular-nums">
+                  {size.toLocaleString()}
+                </div>
+                {/* Retention Cells */}
+                {Array.from({ length: timeFrame }).map((_, dayIdx) => {
+                  // dayIdx is 0 to timeFrame-1 (which maps to D1 to D{timeFrame})
+                  // In our days array, index 0 is size (D0), index 1 is D1, etc.
+                  // So days[dayIdx + 1] gets D{dayIdx+1}
+                  const val = days[dayIdx + 1] || 0;
+                  const pct = size > 0 ? (val / size) * 100 : 0;
+                  
+                  if (isFuture(row.cohort || "", dayIdx + 1)) {
+                    return (
+                      <div key={dayIdx} className="w-10 shrink-0 bg-white/2 rounded" />
+                    );
+                  }
+
+                  // Determine color intensity based on retention percentage
+                  let bgClass = "bg-emerald-400/5 text-emerald-400/40";
+                  if (pct >= 80) bgClass = "bg-emerald-400/80 text-emerald-950 font-bold";
+                  else if (pct >= 50) bgClass = "bg-emerald-400/50 text-emerald-950 font-bold";
+                  else if (pct >= 20) bgClass = "bg-emerald-400/30 text-white/90";
+                  else if (pct > 0) bgClass = "bg-emerald-400/15 text-emerald-400/70";
+
+                  return (
+                    <div 
+                      key={dayIdx} 
+                      className={`w-10 shrink-0 flex items-center justify-center text-[10px] tabular-nums rounded transition-colors ${bgClass}`}
+                      title={`${val.toLocaleString()} users (${pct.toFixed(1)}%)`}
+                    >
+                      {pct > 0 ? `${pct.toFixed(0)}%` : "-"}
+                    </div>
+                  );
+                })}
+              </div>
+            );
+          })}
+        </div>
       </div>
     </div>
   );

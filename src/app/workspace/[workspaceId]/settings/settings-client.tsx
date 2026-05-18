@@ -45,6 +45,7 @@ export default function SettingsClient({
   inviteLinkEnabled: initialLinkEnabled,
   inviteLinkToken: initialToken,
   inviteLinkExpiry: initialExpiry,
+  appUrl,
 }: {
   workspaceId: string;
   initialKeys: ApiKey[];
@@ -54,6 +55,7 @@ export default function SettingsClient({
   inviteLinkEnabled: boolean;
   inviteLinkToken: string | null;
   inviteLinkExpiry: string | null;
+  appUrl: string;
 }) {
   const isAdmin = myRole === "OWNER" || myRole === "ADMIN";
 
@@ -90,8 +92,8 @@ export default function SettingsClient({
     setTimeout(() => setCb(false), 2000);
   }
 
-  const origin = typeof window !== "undefined" ? window.location.origin : "";
-  const shareUrl = linkToken ? `${origin}/invite/${linkToken}` : "";
+  const shareUrl = linkToken ? `${appUrl.replace(/\/$/, "")}/invite/${linkToken}` : "";
+
 
   // ── API key actions ─────────────────────────────────────────────────────────
   async function createKey() {
@@ -136,7 +138,7 @@ export default function SettingsClient({
           setInviteMsg({ ok: true, text: `${inviteEmail} was added to the workspace.` });
         } else {
           setInvites((prev) => [...prev, data.invite]);
-          setInviteMsg({ ok: true, text: `Invite sent — they'll join when they register with ${inviteEmail}.` });
+          setInviteMsg({ ok: true, text: `Invite saved — they’ll join when they register with ${inviteEmail}.` });
         }
         setInviteEmail("");
       } else {
@@ -145,6 +147,8 @@ export default function SettingsClient({
     } finally {
       setInviting(false);
     }
+    // Auto-dismiss after 5 s
+    setTimeout(() => setInviteMsg(null), 5000);
   }
 
   async function removeMember(userId: string) {
@@ -289,12 +293,8 @@ export default function SettingsClient({
               </button>
             </form>
 
-            {inviteMsg && (
-              <div className={`flex items-start gap-2 rounded-xl px-4 py-3 text-sm ${inviteMsg.ok ? "bg-emerald-500/10 border border-emerald-500/20 text-emerald-300" : "bg-red-500/10 border border-red-500/20 text-red-300"}`}>
-                {inviteMsg.ok ? <CheckIcon className="w-4 h-4 shrink-0 mt-0.5" /> : <XIcon className="w-4 h-4 shrink-0 mt-0.5" />}
-                {inviteMsg.text}
-              </div>
-            )}
+            {/* feedback moved to fixed toast — see bottom of component */}
+
           </div>
         )}
 
@@ -502,6 +502,33 @@ export default function SettingsClient({
           )}
         </div>
       </div>
+
+      {/* ── Fixed invite toast ─────────────────────────────────────────────── */}
+      {inviteMsg && (
+        <div
+          className={`fixed bottom-6 right-6 z-50 flex items-start gap-3 rounded-2xl border px-5 py-4 shadow-2xl text-sm font-medium max-w-sm backdrop-blur-sm transition-all duration-300 ${
+            inviteMsg.ok
+              ? "bg-emerald-900/90 border-emerald-500/40 text-emerald-200 shadow-emerald-900/50"
+              : "bg-red-900/90 border-red-500/40 text-red-200 shadow-red-900/50"
+          }`}
+        >
+          <div className={`shrink-0 mt-0.5 flex h-5 w-5 items-center justify-center rounded-full ${inviteMsg.ok ? "bg-emerald-500/30" : "bg-red-500/30"}`}>
+            {inviteMsg.ok
+              ? <CheckIcon className="w-3 h-3 text-emerald-300" />
+              : <XIcon className="w-3 h-3 text-red-300" />
+            }
+          </div>
+          <span className="flex-1 leading-snug">{inviteMsg.text}</span>
+          <button
+            onClick={() => setInviteMsg(null)}
+            className="shrink-0 text-white/30 hover:text-white/70 transition"
+            aria-label="Dismiss"
+          >
+            <XIcon className="w-3.5 h-3.5" />
+          </button>
+        </div>
+      )}
     </div>
   );
 }
+

@@ -87,6 +87,7 @@ export default async function SettingsPage({
         inviteLinkEnabled={workspace.inviteLinkEnabled}
         inviteLinkToken={publicLinkInvite?.token ?? null}
         inviteLinkExpiry={publicLinkInvite?.expiresAt?.toISOString() ?? null}
+        appUrl={process.env.NEXTAUTH_URL ?? process.env.NEXT_PUBLIC_APP_URL ?? ""}
       />
     </section>
   );
