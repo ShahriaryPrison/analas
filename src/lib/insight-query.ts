@@ -246,6 +246,7 @@ export async function fetchInsightData(
     const startEvent = String(config.startEvent || "");
     const returnEvent = String(config.returnEvent || "");
     const distinctIdRaw = String(config.distinctId || "session_id");
+    const timeFrame = 7;
     
     if (!startEvent || !returnEvent) return { total: 0, rows: [] };
 
@@ -262,7 +263,7 @@ export async function fetchInsightData(
       params.distinctId = distinctIdRaw;
     }
 
-    const queryStr = `
+    const cohortQueryStr = `
       SELECT
           formatDateTime(cohort_date, '%Y-%m-%d') AS cohort,
           count(DISTINCT user_id) AS size,
@@ -285,10 +286,34 @@ export async function fetchInsightData(
       ORDER BY cohort_date ASC
     `;
 
-    const raw = await queryJson<any>(queryStr, params).catch((e) => {
-      console.error("Retention error:", e);
-      return [];
-    });
+    const allTimeQueryStr = `
+      SELECT
+          count(DISTINCT user_id) AS all_time_users,
+          count(DISTINCT IF(last_return > cohort_date, user_id, NULL)) AS returning_users
+      FROM (
+          SELECT
+              ${distinctId} AS user_id,
+              minIf(toDate(ts, '${APP_TIMEZONE}'), event = {startEvent:String}) AS cohort_date,
+              maxIf(toDate(ts, '${APP_TIMEZONE}'), event = {returnEvent:String}) AS last_return
+          FROM events
+          WHERE tenant_id = {tenantId:String}
+            AND (event = {startEvent:String} OR event = {returnEvent:String})
+            AND ${distinctId} != ''
+          GROUP BY user_id
+      )
+      WHERE cohort_date IS NOT NULL
+    `;
+
+    const [raw, allTimeRaw] = await Promise.all([
+      queryJson<any>(cohortQueryStr, params).catch((e) => {
+        console.error("Retention cohort error:", e);
+        return [];
+      }),
+      queryJson<any>(allTimeQueryStr, params).catch((e) => {
+        console.error("Retention all-time error:", e);
+        return [];
+      })
+    ]);
 
     const rows = raw.map(r => {
       const days = [Number(r.size)];
@@ -318,8 +343,10 @@ export async function fetchInsightData(
       }
     }
 
-    const total = resultRows.reduce((s, r) => s + r.size, 0);
-    return { total, rows: resultRows };
+    const total = Number(allTimeRaw[0]?.all_time_users || 0);
+    const returning = Number(allTimeRaw[0]?.returning_users || 0);
+    
+    return { total, returning, rows: resultRows };
   }
 
   return { total: 0, rows: [] };

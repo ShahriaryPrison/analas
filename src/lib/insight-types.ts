@@ -147,16 +147,6 @@ export const INSIGHT_TYPES: InsightTypeDef[] = [
       { key: "startEvent", label: "Start event", placeholder: "page_loaded" },
       { key: "returnEvent", label: "Return event", placeholder: "page_loaded" },
       { key: "distinctId", label: "Identity property (user_id/session_id)", placeholder: "session_id" },
-      {
-        key: "timeFrame",
-        label: "Time frame (Days)",
-        placeholder: "Select range",
-        options: [
-          { label: "7 Days", value: "7" },
-          { label: "14 Days", value: "14" },
-          { label: "30 Days", value: "30" },
-        ],
-      },
     ],
   },
 ];

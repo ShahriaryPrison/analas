@@ -7,7 +7,7 @@ import DeleteInsightButton from "./delete-insight-button";
 import MoveInsightButton from "./move-insight-button";
 
 export type Row = { day?: string; count?: number; label?: string; val?: string; counts?: Record<string, number>; cohort?: string; size?: number; days?: number[] };
-export type InsightData = { total: number; rows: Row[] };
+export type InsightData = { total: number; returning?: number; rows: Row[] };
 
 type Props = {
   workspaceId: string;
@@ -175,7 +175,21 @@ export default function InsightCard({ workspaceId, insight }: Props) {
           ) : !data ? (
              <div className="w-full h-32 animate-pulse rounded-lg bg-white/5" />
           ) : (
-             <RetentionTable rows={data.rows} timeFrame={Number(insight.queryConfig.timeFrame || "7")} />
+             <div className="space-y-4">
+               <div className="flex gap-4">
+                  <div className="glass-panel p-4 rounded-xl flex-1 text-center bg-white/5 border-emerald-500/10">
+                      <div className="text-2xl font-black text-white">{data.total.toLocaleString()}</div>
+                      <div className="text-[9px] font-bold tracking-widest text-white/40 uppercase mt-1">All-Time Users</div>
+                  </div>
+                  <div className="glass-panel p-4 rounded-xl flex-1 text-center bg-emerald-500/5 border-emerald-500/20">
+                      <div className="text-2xl font-black text-emerald-400">
+                         {data.returning ? ((data.returning / data.total) * 100).toFixed(1) : 0}%
+                      </div>
+                      <div className="text-[9px] font-bold tracking-widest text-emerald-400/60 uppercase mt-1">All-Time Return Rate</div>
+                  </div>
+               </div>
+               <RetentionTable rows={data.rows} timeFrame={7} />
+             </div>
           )}
         </div>
       )}

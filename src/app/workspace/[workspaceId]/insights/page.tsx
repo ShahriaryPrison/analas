@@ -49,7 +49,7 @@ export default async function InsightsPage({
               let sizeClass = "bento-item-md";
               if (ins.type === "count") sizeClass = "bento-item-sm";
               if (ins.type === "funnel") sizeClass = "bento-item-lg";
-              if (ins.type === "multi_trend") sizeClass = "bento-item-full";
+              if (ins.type === "multi_trend" || ins.type === "retention") sizeClass = "bento-item-full";
 
               return (
                 <div key={ins.id} className={`${sizeClass} transition-all duration-500 hover:-translate-y-1`}>

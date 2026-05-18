@@ -48,7 +48,7 @@ const MOCK_DATA: Record<string, InsightData> = {
   funnel: { total: 1000, rows: [
     { label: "Visited Page", count: 1000 }, { label: "Added to Cart", count: 420 }, { label: "Purchased", count: 115 }
   ]},
-  retention: { total: 3150, rows: [
+  retention: { total: 3150, returning: 1250, rows: [
     { cohort: "2026-05-12", size: 350, days: [350, 180, 120, 90, 70, 60, 50, 45] },
     { cohort: "2026-05-13", size: 500, days: [500, 300, 200, 150, 120, 90, 80, 0] },
     { cohort: "2026-05-14", size: 450, days: [450, 250, 180, 130, 110, 80, 0, 0] },
@@ -432,7 +432,23 @@ export default function InsightBuilder({ workspaceId, topEvents }: Props) {
                       )}
                       {type === "breakdown" && <BreakdownList rows={activeData.rows} />}
                       {type === "funnel" && <FunnelView rows={activeData.rows} />}
-                      {type === "retention" && <RetentionTable rows={activeData.rows} timeFrame={Number(queryConfig.timeFrame || "7")} />}
+                      {type === "retention" && (
+                         <div className="space-y-4">
+                           <div className="flex gap-4">
+                              <div className="glass-panel p-4 rounded-xl flex-1 text-center bg-white/5 border-emerald-500/10">
+                                  <div className="text-2xl font-black text-white">{activeData.total.toLocaleString()}</div>
+                                  <div className="text-[9px] font-bold tracking-widest text-white/40 uppercase mt-1">All-Time Users</div>
+                              </div>
+                              <div className="glass-panel p-4 rounded-xl flex-1 text-center bg-emerald-500/5 border-emerald-500/20">
+                                  <div className="text-2xl font-black text-emerald-400">
+                                     {activeData.returning ? ((activeData.returning / activeData.total) * 100).toFixed(1) : 0}%
+                                  </div>
+                                  <div className="text-[9px] font-bold tracking-widest text-emerald-400/60 uppercase mt-1">All-Time Return Rate</div>
+                              </div>
+                           </div>
+                           <RetentionTable rows={activeData.rows} timeFrame={7} />
+                         </div>
+                      )}
                     </div>
                   </div>
                 ) : (
