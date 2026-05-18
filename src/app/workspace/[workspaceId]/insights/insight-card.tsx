@@ -175,20 +175,25 @@ export default function InsightCard({ workspaceId, insight }: Props) {
           ) : !data ? (
              <div className="w-full h-32 animate-pulse rounded-lg bg-white/5" />
           ) : (
-             <div className="space-y-4">
-               <div className="flex gap-4">
-                  <div className="glass-panel p-4 rounded-xl flex-1 text-center bg-white/5 border-emerald-500/10">
+             <div className="flex flex-col lg:flex-row gap-6">
+               {/* Left: The Cohort Table */}
+               <div className="flex-1 min-w-0">
+                 <RetentionTable rows={data.rows} timeFrame={7} />
+               </div>
+               
+               {/* Right: All-Time Stats Sidebar */}
+               <div className="flex flex-col gap-4 w-full lg:w-48 shrink-0 justify-end pb-2">
+                  <div className="glass-panel p-4 rounded-xl text-center bg-white/5 border-emerald-500/10 flex flex-col justify-center h-full">
                       <div className="text-2xl font-black text-white">{data.total.toLocaleString()}</div>
-                      <div className="text-[9px] font-bold tracking-widest text-white/40 uppercase mt-1">All-Time Users</div>
+                      <div className="text-[9px] font-bold tracking-widest text-white/40 uppercase mt-2">All-Time Users</div>
                   </div>
-                  <div className="glass-panel p-4 rounded-xl flex-1 text-center bg-emerald-500/5 border-emerald-500/20">
+                  <div className="glass-panel p-4 rounded-xl text-center bg-emerald-500/5 border-emerald-500/20 flex flex-col justify-center h-full">
                       <div className="text-2xl font-black text-emerald-400">
                          {data.returning ? ((data.returning / data.total) * 100).toFixed(1) : 0}%
                       </div>
-                      <div className="text-[9px] font-bold tracking-widest text-emerald-400/60 uppercase mt-1">All-Time Return Rate</div>
+                      <div className="text-[9px] font-bold tracking-widest text-emerald-400/60 uppercase mt-2">All-Time Return Rate</div>
                   </div>
                </div>
-               <RetentionTable rows={data.rows} timeFrame={7} />
              </div>
           )}
         </div>
@@ -553,7 +558,7 @@ export function RetentionTable({ rows, timeFrame }: { rows: Row[], timeFrame: nu
 
   return (
     <div className="w-full overflow-x-auto pb-2 scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent">
-      <div className="min-w-max">
+      <div className="min-w-[500px]">
         {/* Header Row */}
         <div className="flex gap-1 mb-1">
           <div className="w-24 shrink-0 text-[10px] font-bold text-white/40 uppercase tracking-wider px-2 py-1">
@@ -563,7 +568,7 @@ export function RetentionTable({ rows, timeFrame }: { rows: Row[], timeFrame: nu
             Users
           </div>
           {Array.from({ length: timeFrame }).map((_, i) => (
-            <div key={i} className="w-10 shrink-0 text-[10px] font-bold text-white/40 uppercase tracking-wider text-center py-1">
+            <div key={i} className="flex-1 min-w-[40px] text-[10px] font-bold text-white/40 uppercase tracking-wider text-center py-1">
               D{i + 1}
             </div>
           ))}
@@ -578,28 +583,24 @@ export function RetentionTable({ rows, timeFrame }: { rows: Row[], timeFrame: nu
             return (
               <div key={row.cohort || i} className="flex gap-1">
                 {/* Cohort Date */}
-                <div className="w-24 shrink-0 text-xs font-medium text-white/80 px-2 py-1.5 bg-white/5 rounded">
+                <div className="w-24 shrink-0 text-xs font-medium text-white/80 px-2 py-1.5 bg-white/5 rounded flex items-center">
                   {(row.cohort || "").slice(5)}
                 </div>
                 {/* Cohort Size */}
-                <div className="w-16 shrink-0 text-xs font-bold text-white px-2 py-1.5 bg-white/5 rounded text-right tabular-nums">
+                <div className="w-16 shrink-0 text-xs font-bold text-white px-2 py-1.5 bg-white/5 rounded flex items-center justify-end tabular-nums">
                   {size.toLocaleString()}
                 </div>
                 {/* Retention Cells */}
                 {Array.from({ length: timeFrame }).map((_, dayIdx) => {
-                  // dayIdx is 0 to timeFrame-1 (which maps to D1 to D{timeFrame})
-                  // In our days array, index 0 is size (D0), index 1 is D1, etc.
-                  // So days[dayIdx + 1] gets D{dayIdx+1}
                   const val = days[dayIdx + 1] || 0;
                   const pct = size > 0 ? (val / size) * 100 : 0;
                   
                   if (isFuture(row.cohort || "", dayIdx + 1)) {
                     return (
-                      <div key={dayIdx} className="w-10 shrink-0 bg-white/2 rounded" />
+                      <div key={dayIdx} className="flex-1 min-w-[40px] bg-white/2 rounded" />
                     );
                   }
 
-                  // Determine color intensity based on retention percentage
                   let bgClass = "bg-emerald-400/5 text-emerald-400/40";
                   if (pct >= 80) bgClass = "bg-emerald-400/80 text-emerald-950 font-bold";
                   else if (pct >= 50) bgClass = "bg-emerald-400/50 text-emerald-950 font-bold";
@@ -609,7 +610,7 @@ export function RetentionTable({ rows, timeFrame }: { rows: Row[], timeFrame: nu
                   return (
                     <div 
                       key={dayIdx} 
-                      className={`w-10 shrink-0 flex items-center justify-center text-[10px] tabular-nums rounded transition-colors ${bgClass}`}
+                      className={`flex-1 min-w-[40px] flex items-center justify-center text-[10px] tabular-nums rounded transition-colors ${bgClass}`}
                       title={`${val.toLocaleString()} users (${pct.toFixed(1)}%)`}
                     >
                       {pct > 0 ? `${pct.toFixed(0)}%` : "-"}
