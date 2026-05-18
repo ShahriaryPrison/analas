@@ -241,13 +241,13 @@ export default function InsightBuilder({ workspaceId, topEvents }: Props) {
                               className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white outline-none focus:ring-2 focus:ring-emerald-400/40 transition placeholder:text-white/20 pr-10"
                               placeholder={f.placeholder}
                             />
-                            {(f.key === "eventName" || f.key === "eventNames" || f.key === "eventSteps") && (
+                            {(f.key === "eventName" || f.key === "eventNames" || f.key === "eventSteps" || f.key === "startEvent" || f.key === "returnEvent") && (
                               <ActivityIcon className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-white/20 group-focus-within/field:text-emerald-400 transition" />
                             )}
                           </div>
                           
                           {/* Searchable Discovery Panel */}
-                          {(f.key === "eventName" || f.key === "eventNames" || f.key === "eventSteps") && (
+                          {(f.key === "eventName" || f.key === "eventNames" || f.key === "eventSteps" || f.key === "startEvent" || f.key === "returnEvent") && (
                             <div className="space-y-3">
                               <div className="text-[10px] font-black text-white/20 uppercase tracking-[0.2em]">Suggested Events</div>
                               <div className="flex flex-wrap gap-2">
@@ -320,6 +320,11 @@ export default function InsightBuilder({ workspaceId, topEvents }: Props) {
                                   );
                                 })}
                               </div>
+                              {type === "retention" && (
+                                <div className="text-xs text-white/40 leading-relaxed bg-white/5 border border-white/5 rounded-lg p-3">
+                                  <strong>How Identity Works:</strong> Analas uses the chosen identity property (like <code className="text-emerald-400/80">session_id</code>) to track the exact same individual across both the Start Event and the Return Event automatically. No custom tracking code required!
+                                </div>
+                              )}
                             </div>
                           )}
                         </div>
