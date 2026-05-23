@@ -56,6 +56,10 @@ const MOCK_DATA: Record<string, InsightData> = {
     { cohort: "2026-05-16", size: 550, days: [550, 300, 220, 170, 0, 0, 0, 0] },
     { cohort: "2026-05-17", size: 400, days: [400, 210, 150, 0, 0, 0, 0, 0] },
     { cohort: "2026-05-18", size: 300, days: [300, 160, 0, 0, 0, 0, 0, 0] }
+  ]},
+  metric: { total: 342, rows: [
+    { day: "Day 1", count: 210 }, { day: "Day 2", count: 280 }, { day: "Day 3", count: 195 },
+    { day: "Day 4", count: 420 }, { day: "Day 5", count: 380 }, { day: "Day 6", count: 310 }, { day: "Day 7", count: 342 }
   ]}
 };
 
@@ -65,7 +69,8 @@ export default function InsightBuilder({ workspaceId, topEvents }: Props) {
   const [type, setType] = useState("");
   const [queryConfig, setQueryConfig] = useState<Record<string, string>>({
     timeFrame: "7",
-    displayType: "bar"
+    displayType: "bar",
+    aggregation: "uniq",
   });
   const [name, setName] = useState("");
   const [loading, setLoading] = useState(false);
@@ -410,7 +415,11 @@ export default function InsightBuilder({ workspaceId, topEvents }: Props) {
                        <div className="text-6xl font-black text-white tabular-nums tracking-tighter">
                          {activeData.total.toLocaleString()}
                        </div>
-                       <div className="text-[10px] text-white/30 mt-3 font-semibold uppercase tracking-widest">Total Matches</div>
+                       <div className="text-[10px] text-white/30 mt-3 font-semibold uppercase tracking-widest">
+                          {type === "metric"
+                            ? ({ uniq: "Unique Count", avg: "Average", p50: "Median (P50)", p95: "95th Percentile (P95)" } as Record<string,string>)[queryConfig.aggregation] ?? "Aggregate Value"
+                            : "Total Matches"}
+                       </div>
                     </div>
 
                     <div className="pt-10 border-t border-white/5">
@@ -420,10 +429,17 @@ export default function InsightBuilder({ workspaceId, topEvents }: Props) {
                             <p className="text-xs text-white/30">Total count will appear here</p>
                          </div>
                       )}
-                      {type === "trend" && (
-                         queryConfig.displayType === "line" 
-                         ? <TrendLineChart rows={activeData.rows} /> 
-                         : <TrendChart rows={activeData.rows} />
+                      {(type === "trend" || type === "metric") && (
+                         queryConfig.displayType === "number" ? (
+                           <div className="text-center py-6">
+                             <ZapIcon className="w-8 h-8 text-emerald-400/20 mx-auto mb-3" />
+                             <p className="text-xs text-white/30">Single number displayed above</p>
+                           </div>
+                         ) : queryConfig.displayType === "line" ? (
+                           <TrendLineChart rows={activeData.rows} />
+                         ) : (
+                           <TrendChart rows={activeData.rows} />
+                         )
                       )}
                       {type === "multi_trend" && (
                          queryConfig.displayType === "line" 

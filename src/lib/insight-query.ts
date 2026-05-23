@@ -188,22 +188,35 @@ export async function fetchInsightData(
   if (type === "metric") {
     const eventName = String(config.eventName || "");
     const aggregation = String(config.aggregation || "uniq");
-    const property = String(config.property || "");
+    // Sanitize property name — only allow word chars (a-z, 0-9, _) to safely inline it in SQL.
+    // This avoids ClickHouse parameterized-token failures inside JSONExtract* function arguments.
+    const property = String(config.property || "").replace(/[^\w]/g, "");
 
     const isNative = property === "user_id" || property === "session_id";
-    const extracted = isNative 
-      ? property 
-      : (aggregation === "uniq" 
-         ? `JSONExtractString(properties, {property:String})` 
-         : `JSONExtractFloat(properties, {property:String})`);
+
+    // Build the SQL expression for the target property.
+    // We inline the sanitized property name directly rather than using {property:String} because
+    // ClickHouse HTTP parameterized params do not reliably substitute inside JSONExtract* args.
+    const extracted = isNative
+      ? property
+      : aggregation === "uniq"
+        ? `JSONExtractString(properties, '${property}')`
+        : `JSONExtractFloat(properties, '${property}')`;
 
     let aggFunc = `uniq(${extracted})`;
-    if (aggregation === "avg") aggFunc = `avg(${extracted})`;
+    if (aggregation === "avg")  aggFunc = `avg(${extracted})`;
     else if (aggregation === "p50") aggFunc = `quantile(0.5)(${extracted})`;
     else if (aggregation === "p95") aggFunc = `quantile(0.95)(${extracted})`;
 
-    const rawParams: Record<string, any> = { tenantId, event: eventName, timeFrame, timezone: APP_TIMEZONE };
-    if (!isNative) rawParams.property = property;
+    // Exclude events where the target property is missing:
+    // JSONExtractFloat returns 0.0 and JSONExtractString returns '' for absent keys.
+    const propertyFilter = isNative
+      ? `AND ${property} != ''`
+      : aggregation === "uniq"
+        ? `AND JSONExtractString(properties, '${property}') != ''`
+        : `AND JSONExtractFloat(properties, '${property}') != 0`;
+
+    const baseParams: Record<string, any> = { tenantId, event: eventName, timeFrame };
 
     const raw = await queryJson<{ day: string; count: string | number }>(
       `SELECT formatDateTime(ts, '%Y-%m-%d', {timezone:String}) AS day, ${aggFunc} AS count
@@ -211,32 +224,30 @@ export async function fetchInsightData(
        WHERE tenant_id = {tenantId:String}
          AND event = {event:String}
          AND ts >= now() - INTERVAL {timeFrame:Int32} DAY
-         ${isNative ? `AND ${property} != ''` : ""}
+         ${propertyFilter}
        GROUP BY day ORDER BY day ASC`,
-      rawParams
+      { ...baseParams, timezone: APP_TIMEZONE }
     ).catch((e) => {
-      console.error("Metric raw error:", e);
-      return [];
+      console.error("Metric raw query error:", e?.message ?? e);
+      return [] as { day: string; count: string | number }[];
     });
 
     const filledRows = fillDays(raw, timeFrame);
 
-    const totalParams: Record<string, any> = { tenantId, event: eventName, timeFrame };
-    if (!isNative) totalParams.property = property;
-
     const totalRaw = await queryJson<{ total: string | number }>(
-      `SELECT ${aggFunc} AS total FROM events
+      `SELECT ${aggFunc} AS total
+       FROM events
        WHERE tenant_id = {tenantId:String}
          AND event = {event:String}
          AND ts >= now() - INTERVAL {timeFrame:Int32} DAY
-         ${isNative ? `AND ${property} != ''` : ""}`,
-      totalParams
+         ${propertyFilter}`,
+      baseParams
     ).catch((e) => {
-      console.error("Metric total error:", e);
-      return [];
+      console.error("Metric total query error:", e?.message ?? e);
+      return [] as { total: string | number }[];
     });
-    
-    // Some aggregations like quantiles or avg might return NaN/Null if no rows, so fallback to 0
+
+    // quantile/avg return NaN when there are no matching rows — fall back to 0.
     let total = Number(totalRaw[0]?.total);
     if (isNaN(total)) total = 0;
 
