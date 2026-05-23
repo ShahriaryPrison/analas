@@ -69,21 +69,26 @@ export async function fetchInsightData(
 
   if (type === "breakdown") {
     const eventName = String(config.eventName || "");
-    const property = String(config.property || "");
+    // Sanitize: only allow word chars so we can safely inline in SQL
+    const property = String(config.property || "").replace(/[^\w]/g, "");
     const rows = await queryJson<BreakdownRow>(
       `SELECT 
-          JSONExtractString(properties, {property:String}) AS val, 
+          JSONExtractString(properties, '${property}') AS val,
           count() AS count
        FROM events
-       WHERE tenant_id = {tenantId:String} 
+       WHERE tenant_id = {tenantId:String}
          AND event = {event:String}
          AND ts >= now() - INTERVAL 30 DAY
+         AND JSONExtractString(properties, '${property}') != ''
        GROUP BY val
        ORDER BY count DESC
        LIMIT 10`,
-      { tenantId, event: eventName, property }
-    ).catch(() => []);
-    
+      { tenantId, event: eventName }
+    ).catch((e) => {
+      console.error("Breakdown query error:", e?.message ?? e);
+      return [] as BreakdownRow[];
+    });
+
     const total = rows.reduce((s, r) => s + Number(r.count), 0);
     return { total, rows };
   }
@@ -125,16 +130,16 @@ export async function fetchInsightData(
 
     const distinctId = String(config.distinctId || "user_id");
     const isNativeId = distinctId === "user_id" || distinctId === "session_id";
-    const groupByExpr = isNativeId ? distinctId : `JSONExtractString(properties, {distinctId:String})`;
+    // Sanitize and inline: same fix as metric/breakdown — {distinctId:String} inside
+    // JSONExtractString() fails with the ClickHouse HTTP param substitution.
+    const sanitizedDistinctId = distinctId.replace(/[^\w]/g, "");
+    const groupByExpr = isNativeId
+      ? sanitizedDistinctId
+      : `JSONExtractString(properties, '${sanitizedDistinctId}')`;
 
-    // Build the dynamic windowFunnel query
-    // windowFunnel(window)(timestamp, cond1, cond2, ...)
     const stepConditions = steps.map((_, i) => `event = {step${i}:String}`).join(", ");
-    
+
     const params: Record<string, any> = { tenantId, steps };
-    if (!isNativeId) {
-      params.distinctId = distinctId;
-    }
     steps.forEach((s, i) => params[`step${i}`] = s);
 
     const queryStr = `SELECT
@@ -154,30 +159,19 @@ export async function fetchInsightData(
        )
        GROUP BY level ORDER BY level ASC`;
 
-    console.log("=== FUNNEL DEBUG START ===");
-    console.log("config:", config);
-    console.log("isNativeId:", isNativeId, "groupByExpr:", groupByExpr);
-    console.log("params:", params);
-    console.log("queryStr:", queryStr);
-
     const rows = await queryJson<FunnelRow>(queryStr, params).catch((e: any) => {
-      console.error("=== FUNNEL DB ERROR ===");
-      console.error("Message:", e.message);
-      console.error("Full Error:", e);
+      console.error("Funnel query error:", e?.message ?? e);
       return [] as FunnelRow[];
     });
 
-    console.log("Raw Funnel Rows from DB:", rows);
-
-    // Calculate cumulative counts: Step N count is the sum of all levels >= N
+    // Cumulative counts: Step N = sum of all levels >= N
     const finalRows = steps.map((stepName, i) => {
       const level = i + 1;
-      const count = rows.filter(r => Number(r.level) >= level).reduce((s, r) => s + Number(r.count), 0);
+      const count = rows
+        .filter(r => Number(r.level) >= level)
+        .reduce((s, r) => s + Number(r.count), 0);
       return { label: stepName, count };
     });
-    
-    console.log("Final Computed Rows:", finalRows);
-    console.log("=== FUNNEL DEBUG END ===");
 
     return {
       total: finalRows[0]?.count || 0,
@@ -263,17 +257,19 @@ export async function fetchInsightData(
     if (!startEvent || !returnEvent) return { total: 0, rows: [] };
 
     const isNativeId = distinctIdRaw === "user_id" || distinctIdRaw === "session_id";
-    const distinctId = isNativeId ? distinctIdRaw : `JSONExtractString(properties, {distinctId:String})`;
+    // Sanitize and inline — same fix applied to all JSONExtract* argument parameters
+    const sanitizedId = distinctIdRaw.replace(/[^\w]/g, "");
+    const distinctId = isNativeId
+      ? sanitizedId
+      : `JSONExtractString(properties, '${sanitizedId}')`;
 
     const daySelectors = Array.from({ length: timeFrame }, (_, i) => {
       const day = i + 1;
       return `count(DISTINCT IF(dateDiff('day', cohort_date, action_date) = ${day}, user_id, NULL)) AS day_${day}`;
     }).join(",\n          ");
 
+    // No distinctId param needed anymore — it's inlined safely above
     const params: Record<string, any> = { tenantId, startEvent, returnEvent, timeFrame };
-    if (!isNativeId) {
-      params.distinctId = distinctIdRaw;
-    }
 
     const cohortQueryStr = `
       SELECT
