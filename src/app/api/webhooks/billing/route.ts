@@ -36,7 +36,8 @@ export async function POST(req: NextRequest) {
   let body: any;
   try {
     body = JSON.parse(rawBody);
-  } catch {
+  } catch (err) {
+    console.error("[Strite Webhook Error] Invalid JSON received:", rawBody, err);
     return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
   }
 
@@ -44,6 +45,7 @@ export async function POST(req: NextRequest) {
   const dataObject = body.data?.object;
 
   if (!event || !dataObject) {
+    console.error("[Strite Webhook Error] Missing required event payload fields. Event:", event, "Payload:", rawBody);
     return NextResponse.json({ error: "Missing required event payload fields" }, { status: 400 });
   }
 
@@ -53,42 +55,48 @@ export async function POST(req: NextRequest) {
   try {
     switch (event) {
       case "subscription.activated": {
-        const subscriptionId = dataObject.id;
-        const customerId = dataObject.customer?.id || dataObject.customer_id;
+        const subscriptionId = dataObject.subscription_id || dataObject.id;
+        const customerId = dataObject.customer_id || dataObject.customer?.id || "";
+        
+        let customerEmail = dataObject.customer_email || dataObject.customer?.email;
+        let priceId = dataObject.price_id || dataObject.price?.id;
 
-        if (!subscriptionId || !customerId) {
-          return NextResponse.json({ error: "Missing subscription or customer identifiers" }, { status: 400 });
+        if (!subscriptionId) {
+          console.error("[Strite Webhook Error] Missing subscription_id identifier. dataObject:", dataObject);
+          return NextResponse.json({ error: "Missing subscription_id identifier" }, { status: 400 });
         }
 
-        if (!striteApiKey) {
-          console.error("[Strite Webhook] API Key not set, cannot fetch subscription details");
-          return NextResponse.json({ error: "Configuration error" }, { status: 500 });
+        // Fallback to Strite API call if email or price ID is missing from payload
+        if (!customerEmail || !priceId) {
+          if (!striteApiKey) {
+            console.error("[Strite Webhook] API Key not set, cannot fetch fallback subscription details");
+            return NextResponse.json({ error: "Configuration error" }, { status: 500 });
+          }
+
+          const subRes = await fetch(`${striteApiUrl.replace(/\/$/, "")}/api/v1/subscriptions/${subscriptionId}`, {
+            headers: {
+              "Authorization": `Bearer ${striteApiKey}`,
+              "Content-Type": "application/json",
+            },
+          });
+
+          if (subRes.ok) {
+            const subData = await subRes.json();
+            customerEmail = customerEmail || subData.subscription?.customer?.email;
+            priceId = priceId || subData.subscription?.price?.id;
+          }
         }
-
-        // Fetch full subscription details to obtain email and price ID
-        const subRes = await fetch(`${striteApiUrl.replace(/\/$/, "")}/api/v1/subscriptions/${subscriptionId}`, {
-          headers: {
-            "Authorization": `Bearer ${striteApiKey}`,
-            "Content-Type": "application/json",
-          },
-        });
-
-        if (!subRes.ok) {
-          console.error(`[Strite Webhook] Failed to fetch subscription ${subscriptionId}`);
-          return NextResponse.json({ error: "Failed to verify subscription details" }, { status: 500 });
-        }
-
-        const subData = await subRes.json();
-        const customerEmail = subData.subscription?.customer?.email;
-        const priceId = subData.subscription?.price?.id;
 
         if (!customerEmail || !priceId) {
-          return NextResponse.json({ error: "Invalid subscription details received from Strite" }, { status: 400 });
+          console.error("[Strite Webhook Error] Invalid subscription details. email:", customerEmail, "priceId:", priceId);
+          return NextResponse.json({ error: "Invalid subscription details" }, { status: 400 });
         }
 
-        // Map price ID to Plan enum
+        // Map price ID to Plan enum (handles both string e.g. "price_2" and integer e.g. 2 or "2")
         let plan: "PRO" | "BUSINESS" = "PRO";
-        if (priceId === "price_2") plan = "BUSINESS";
+        if (priceId === "price_2" || priceId === 2 || priceId === "2") {
+          plan = "BUSINESS";
+        }
 
         // Find all workspaces where this email belongs
         const memberships = await prisma.workspaceMember.findMany({
@@ -115,7 +123,7 @@ export async function POST(req: NextRequest) {
           where: { id: sessionRecord.workspaceId },
           data: {
             plan,
-            internalBillingCustomerId: String(customerId),
+            internalBillingCustomerId: customerId ? String(customerId) : null,
             internalSubscriptionId: String(subscriptionId),
             billingCycleStart: new Date(),
             currentMonthEvents: 0,
@@ -131,8 +139,9 @@ export async function POST(req: NextRequest) {
       }
 
       case "subscription.renewed": {
-        const subscriptionId = dataObject.id;
+        const subscriptionId = dataObject.subscription_id || dataObject.id;
         if (!subscriptionId) {
+          console.error("[Strite Webhook Error] Missing subscription ID in renewed. dataObject:", dataObject);
           return NextResponse.json({ error: "Missing subscription ID" }, { status: 400 });
         }
 
@@ -141,6 +150,7 @@ export async function POST(req: NextRequest) {
         });
 
         if (!workspace) {
+          console.error("[Strite Webhook Error] Workspace not found for renewed subscription:", subscriptionId);
           return NextResponse.json({ error: "Workspace not found for subscription" }, { status: 404 });
         }
 
@@ -155,8 +165,9 @@ export async function POST(req: NextRequest) {
       }
 
       case "subscription.cancelled": {
-        const subscriptionId = dataObject.id;
+        const subscriptionId = dataObject.subscription_id || dataObject.id;
         if (!subscriptionId) {
+          console.error("[Strite Webhook Error] Missing subscription ID in cancelled. dataObject:", dataObject);
           return NextResponse.json({ error: "Missing subscription ID" }, { status: 400 });
         }
 
@@ -165,6 +176,7 @@ export async function POST(req: NextRequest) {
         });
 
         if (!workspace) {
+          console.error("[Strite Webhook Error] Workspace not found for cancelled subscription:", subscriptionId);
           return NextResponse.json({ error: "Workspace not found for subscription" }, { status: 404 });
         }
 
