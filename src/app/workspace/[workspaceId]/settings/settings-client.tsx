@@ -264,7 +264,7 @@ export default function SettingsClient({
           <div className="flex-1 space-y-1">
             <h4 className="text-sm font-semibold text-emerald-300">Upgrade request received!</h4>
             <p className="text-xs text-emerald-400/80 leading-relaxed">
-              We received your subscription details. Because billing updates rely on a secure background webhook from Strite, it may take a few seconds to reflect. Please refresh this page shortly if your new plan is not active yet.
+              We received your subscription details. Because billing updates rely on a secure background webhook from Strite, it may take a few seconds to reflect. Please refresh this page shortly if your new plan is not active yet. If it takes longer than a few minutes, please contact support on Telegram: <a href="https://t.me/heysamadmin" target="_blank" rel="noopener noreferrer" className="text-emerald-400 hover:underline font-semibold">@heysamadmin</a>.
             </p>
           </div>
           <button 
@@ -458,7 +458,7 @@ export default function SettingsClient({
 
         {isCloud && plan !== "FREE" && (
           <div className="pt-4 border-t border-white/5 flex items-center justify-between text-xs text-white/40">
-            <span>To cancel or manage your subscription, please contact support or visit your customer billing portal.</span>
+            <span>To cancel or manage your subscription, please contact support at <a href="https://t.me/heysamadmin" target="_blank" rel="noopener noreferrer" className="text-emerald-400 hover:underline font-semibold">@heysamadmin</a> on Telegram.</span>
           </div>
         )}
       </div>

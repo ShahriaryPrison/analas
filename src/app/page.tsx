@@ -147,7 +147,7 @@ const PLANS = [
     cta: "Contact Support",
     highlight: false,
     disabled: false,
-    ctaLink: "mailto:support@analas.ir",
+    ctaLink: "https://t.me/heysamadmin",
   },
 ];
 
