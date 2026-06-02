@@ -66,6 +66,7 @@ export default function SettingsClient({
   const isAdmin = myRole === "OWNER" || myRole === "ADMIN";
   const planConfig = getEffectivePlan(plan);
   const isCloud = isCloudHosted();
+  const origin = (appUrl || (typeof window !== "undefined" ? window.location.origin : "")).replace(/\/$/, "");
 
   // ── API Keys state ──────────────────────────────────────────────────────────
   const [keys, setKeys] = useState<ApiKey[]>(initialKeys);
