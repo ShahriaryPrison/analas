@@ -3,8 +3,8 @@ import { getAppSession } from "@/lib/session";
 import { NextResponse } from "next/server";
 
 const PRICE_MAP = {
-  PRO: 1,
-  BUSINESS: 2,
+  PRO: "price_1",
+  BUSINESS: "price_2",
 };
 
 export async function POST(
