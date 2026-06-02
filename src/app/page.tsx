@@ -625,6 +625,26 @@ export default function LandingPage() {
             <Link href="/register" className="hover:text-white/60 transition">Register</Link>
           </div>
         </div>
+
+        {/* Implemented by Heysam Tech Badge */}
+        <div className="mt-8 flex justify-center">
+          <a
+            href="https://heysam-tech.ir"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="group relative inline-flex items-center gap-2.5 overflow-hidden rounded-full border border-white/10 bg-slate-900/50 px-4 py-1.5 text-xs text-white/50 transition-all hover:border-emerald-500/30 hover:bg-emerald-500/5 hover:text-white hover:shadow-[0_0_15px_rgba(16,185,129,0.1)]"
+          >
+            <span className="text-[10px] font-medium uppercase tracking-wider text-white/40">Implemented by</span>
+            <span className="h-3 w-px bg-white/15" />
+            <div className="flex items-center gap-1.5">
+              <span className="font-semibold text-white/80 group-hover:text-emerald-400 transition-colors">Heysam Tech</span>
+              <span className="relative flex h-2 w-2">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+              </span>
+            </div>
+          </a>
+        </div>
       </footer>
     </div>
   );
