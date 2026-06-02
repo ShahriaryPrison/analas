@@ -3,6 +3,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { INSIGHT_TYPES, getInsightType } from "@/lib/insight-types";
+import { hasFeature } from "@/lib/billing/plans";
 import { 
   CheckIcon, 
   ChevronRightIcon, 
@@ -27,6 +28,7 @@ import Link from "next/link";
 type Props = {
   workspaceId: string;
   topEvents: string[];
+  plan: any; // Using any to avoid importing prisma client into client boundary
 };
 
 const MOCK_DATA: Record<string, InsightData> = {
@@ -63,7 +65,7 @@ const MOCK_DATA: Record<string, InsightData> = {
   ]}
 };
 
-export default function InsightBuilder({ workspaceId, topEvents }: Props) {
+export default function InsightBuilder({ workspaceId, topEvents, plan }: Props) {
   const router = useRouter();
   const [step, setStep] = useState(1);
   const [type, setType] = useState("");
@@ -167,21 +169,40 @@ export default function InsightBuilder({ workspaceId, topEvents }: Props) {
             
             {step === 1 ? (
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 animate-in fade-in zoom-in-95 duration-500">
-                {INSIGHT_TYPES.map(t => (
-                  <button
-                    key={t.id}
-                    onClick={() => { setType(t.id); setStep(2); }}
-                    className={`group relative text-left p-6 rounded-2xl border transition-all duration-300 ${
-                      type === t.id 
-                      ? "bg-emerald-500/5 border-emerald-500/40 ring-1 ring-emerald-500/40" 
-                      : "bg-surface-900 border-white/5 hover:border-white/20"
-                    }`}
-                  >
-                    <span className="text-2xl mb-4 block group-hover:scale-110 transition-transform">{t.icon}</span>
-                    <h3 className="font-bold text-white mb-1">{t.label}</h3>
-                    <p className="text-xs text-white/40 leading-relaxed">{t.description}</p>
-                  </button>
-                ))}
+                {INSIGHT_TYPES.map(t => {
+                  let requiredFeature: any = "basic_insights";
+                  if (t.id === "retention") requiredFeature = "cohort_retention";
+                  if (t.id === "funnel") requiredFeature = "funnels";
+                  if (t.id === "metric") requiredFeature = "advanced_filters";
+                  
+                  const isLocked = !hasFeature(plan, requiredFeature);
+
+                  return (
+                    <button
+                      key={t.id}
+                      onClick={() => { 
+                        if (!isLocked) {
+                          setType(t.id); setStep(2); 
+                        }
+                      }}
+                      className={`group relative text-left p-6 rounded-2xl border transition-all duration-300 ${
+                        isLocked ? "opacity-50 grayscale bg-white/5 border-white/5 cursor-not-allowed" :
+                        type === t.id 
+                        ? "bg-emerald-500/5 border-emerald-500/40 ring-1 ring-emerald-500/40" 
+                        : "bg-surface-900 border-white/5 hover:border-white/20"
+                      }`}
+                    >
+                      {isLocked && (
+                        <div className="absolute top-4 right-4 bg-amber-500/20 text-amber-500 text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded-full border border-amber-500/20">
+                          PRO
+                        </div>
+                      )}
+                      <span className="text-2xl mb-4 block group-hover:scale-110 transition-transform">{t.icon}</span>
+                      <h3 className="font-bold text-white mb-1">{t.label}</h3>
+                      <p className="text-xs text-white/40 leading-relaxed">{t.description}</p>
+                    </button>
+                  );
+                })}
               </div>
             ) : (
               <div className="glass-panel p-4 rounded-xl flex items-center gap-4 border-emerald-500/20">

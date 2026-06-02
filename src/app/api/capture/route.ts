@@ -17,7 +17,7 @@ const RATE_LIMIT = 600;
 const rateMap = new Map<string, { ts: number; count: number }>();
 
 const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
-const apiCache = new Map<string, { tenantId: string; expiresAt: number }>();
+const apiCache = new Map<string, { tenantId: string; plan: string; currentMonthEvents: number; expiresAt: number }>();
 
 type InsertEvent = {
   tenant_id: string;
@@ -40,6 +40,18 @@ async function flushEvents() {
   
   try {
     await insertEvents("events", batch);
+
+    // Update Postgres counters
+    const tenantCounts: Record<string, number> = {};
+    for (const e of batch) {
+      tenantCounts[e.tenant_id] = (tenantCounts[e.tenant_id] || 0) + 1;
+    }
+    for (const [tId, count] of Object.entries(tenantCounts)) {
+      await prisma.workspace.update({
+        where: { tenantId: tId },
+        data: { currentMonthEvents: { increment: count } }
+      });
+    }
   } catch (e) {
     console.error("ClickHouse batch insert failed:", e);
   }
@@ -70,17 +82,24 @@ export async function POST(req: Request) {
     const keyHash = crypto.createHash("sha256").update(key).digest("hex");
 
     let tenantId = "";
+    let plan = "";
+    let currentMonthEvents = 0;
+
     const cached = apiCache.get(keyHash);
     if (cached && cached.expiresAt > Date.now()) {
       tenantId = cached.tenantId;
+      plan = cached.plan;
+      currentMonthEvents = cached.currentMonthEvents;
     } else {
       const api = await prisma.apiKey.findUnique({
         where: { keyHash },
-        include: { workspace: { select: { tenantId: true } } },
+        include: { workspace: { select: { tenantId: true, plan: true, currentMonthEvents: true } } },
       });
       if (!api) return NextResponse.json({ error: "Invalid API key" }, { status: 401 });
       tenantId = api.workspace.tenantId;
-      apiCache.set(keyHash, { tenantId, expiresAt: Date.now() + CACHE_TTL });
+      plan = api.workspace.plan;
+      currentMonthEvents = api.workspace.currentMonthEvents;
+      apiCache.set(keyHash, { tenantId, plan, currentMonthEvents, expiresAt: Date.now() + CACHE_TTL });
     }
 
     // In-memory rate limit (per key, 1-minute window)
@@ -97,6 +116,14 @@ export async function POST(req: Request) {
 
     const rawBody = await req.json();
     const items = Array.isArray(rawBody) ? rawBody : [rawBody];
+
+    const { getEffectivePlan } = await import("@/lib/billing/plans");
+    const planConfig = getEffectivePlan(plan as any);
+    const maxEvents = planConfig.maxEventsPerMonth * 1.2; // 20% grace period
+
+    if (currentMonthEvents + items.length > maxEvents) {
+      return NextResponse.json({ error: "Monthly event limit exceeded. Please upgrade your plan." }, { status: 429 });
+    }
     
     let validCount = 0;
 
@@ -130,6 +157,13 @@ export async function POST(req: Request) {
 
     if (validCount === 0 && items.length > 0) {
       return NextResponse.json({ error: "Invalid payload: no valid events found" }, { status: 400 });
+    }
+
+    if (cached) {
+      cached.currentMonthEvents += validCount;
+    } else {
+      const updatedCache = apiCache.get(keyHash);
+      if (updatedCache) updatedCache.currentMonthEvents += validCount;
     }
 
     return NextResponse.json({ status: "accepted", ingested: validCount }, { status: 202 });

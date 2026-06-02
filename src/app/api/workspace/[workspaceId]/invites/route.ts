@@ -17,7 +17,12 @@ async function resolveAccess(workspaceId: string) {
     return { error: NextResponse.json({ error: "Forbidden" }, { status: 403 }) };
   }
 
-  return { session, membership };
+  const workspace = await prisma.workspace.findUnique({
+    where: { id: workspaceId },
+    select: { plan: true },
+  });
+
+  return { session, membership, workspace };
 }
 
 // ── GET — list pending invites ────────────────────────────────────────────────
@@ -52,6 +57,18 @@ export async function POST(req: NextRequest, { params }: Params) {
   }
 
   const normalizedEmail = email.trim().toLowerCase();
+
+  // Enforce Max Members Limit
+  const { getEffectivePlan } = await import("@/lib/billing/plans");
+  const planConfig = getEffectivePlan(result.workspace!.plan as any);
+  
+  const currentMembersCount = await prisma.workspaceMember.count({ where: { workspaceId } });
+  const pendingInvitesCount = await prisma.workspaceInvite.count({ where: { workspaceId, usedAt: null } });
+  const totalSlotsUsed = currentMembersCount + pendingInvitesCount;
+
+  if (totalSlotsUsed >= planConfig.maxMembers) {
+    return NextResponse.json({ error: `Member limit of ${planConfig.maxMembers} reached for your current plan.` }, { status: 403 });
+  }
 
   // Check if already a member
   const existingMember = await prisma.workspaceMember.findFirst({

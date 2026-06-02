@@ -4,7 +4,9 @@ import { useState } from "react";
 import {
   PlusIcon, KeyIcon, CopyIcon, CheckIcon, TrashIcon,
   ShareIcon, LinkIcon, MailIcon, UserPlusIcon, XIcon, UsersIcon,
+  SparklesIcon,
 } from "@/components/icons";
+import { Plan, getEffectivePlan, isCloudHosted } from "@/lib/billing/plans";
 
 // ─── types ────────────────────────────────────────────────────────────────────
 type ApiKey = { id: string; name: string; createdAt: string };
@@ -46,6 +48,8 @@ export default function SettingsClient({
   inviteLinkToken: initialToken,
   inviteLinkExpiry: initialExpiry,
   appUrl,
+  plan,
+  currentMonthEvents,
 }: {
   workspaceId: string;
   initialKeys: ApiKey[];
@@ -56,8 +60,12 @@ export default function SettingsClient({
   inviteLinkToken: string | null;
   inviteLinkExpiry: string | null;
   appUrl: string;
+  plan: Plan;
+  currentMonthEvents: number;
 }) {
   const isAdmin = myRole === "OWNER" || myRole === "ADMIN";
+  const planConfig = getEffectivePlan(plan);
+  const isCloud = isCloudHosted();
 
   // ── API Keys state ──────────────────────────────────────────────────────────
   const [keys, setKeys] = useState<ApiKey[]>(initialKeys);
@@ -77,6 +85,33 @@ export default function SettingsClient({
   const [inviteMsg, setInviteMsg] = useState<{ ok: boolean; text: string } | null>(null);
   const [removingId, setRemovingId] = useState<string | null>(null);
   const [revokingId, setRevokingId] = useState<string | null>(null);
+
+  const eventPercent = Math.min((currentMonthEvents / planConfig.maxEventsPerMonth) * 100, 100);
+  const totalWorkspaceMembers = members.length + invites.length;
+  const memberPercent = Math.min((totalWorkspaceMembers / planConfig.maxMembers) * 100, 100);
+
+  const [checkoutLoading, setCheckoutLoading] = useState<string | null>(null);
+
+  async function handleCheckout(targetPlan: "PRO" | "BUSINESS") {
+    setCheckoutLoading(targetPlan);
+    try {
+      const res = await fetch(`/workspace/${workspaceId}/checkout`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ plan: targetPlan }),
+      });
+      const data = await res.json();
+      if (res.ok && data.checkout_url) {
+        window.location.href = data.checkout_url;
+      } else {
+        alert(data.error || "Failed to start checkout. Please try again.");
+      }
+    } catch {
+      alert("An error occurred starting checkout.");
+    } finally {
+      setCheckoutLoading(null);
+    }
+  }
 
   // ── Public link state ───────────────────────────────────────────────────────
   const [linkEnabled, setLinkEnabled] = useState(initialLinkEnabled);
@@ -208,6 +243,154 @@ export default function SettingsClient({
 
   return (
     <div className="space-y-6">
+
+      {/* ═══════════════════════════════════════════════════════════════════════
+          BILLING & USAGE
+      ═══════════════════════════════════════════════════════════════════════ */}
+      <div className="rounded-2xl border border-white/10 bg-white/5 p-6 space-y-6">
+        {/* Header */}
+        <div className="flex items-center gap-3">
+          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-500/15 border border-emerald-500/20">
+            <SparklesIcon className="w-4 h-4 text-emerald-400" />
+          </div>
+          <div>
+            <h2 className="text-lg font-semibold text-white">Billing & Usage</h2>
+            <p className="text-sm text-white/40">Manage your subscription plan and monitor usage limits.</p>
+          </div>
+        </div>
+
+        {/* Plan status banner */}
+        <div className="flex flex-wrap items-center gap-3 rounded-xl border border-white/8 bg-white/3 px-4 py-3">
+          <div className="flex-1 min-w-0">
+            <div className="text-xs text-white/40 uppercase tracking-wider font-semibold">Active Plan</div>
+            <div className="flex items-center gap-2 mt-0.5">
+              <span className={`rounded-full px-2.5 py-0.5 text-xs font-bold border ${
+                plan === "FREE" 
+                  ? "bg-slate-500/10 text-slate-400 border-slate-500/20" 
+                  : plan === "PRO" 
+                  ? "bg-emerald-500/10 text-emerald-300 border-emerald-500/20 shadow-sm shadow-emerald-500/10" 
+                  : plan === "BUSINESS"
+                  ? "bg-indigo-500/10 text-indigo-300 border-indigo-500/20 shadow-sm shadow-indigo-500/10"
+                  : "bg-violet-500/10 text-violet-300 border-violet-500/20 shadow-sm shadow-violet-500/10"
+              }`}>
+                {planConfig.name}
+              </span>
+              {!isCloud && (
+                <span className="rounded-full px-2.5 py-0.5 text-xs font-semibold bg-blue-500/10 text-blue-300 border border-blue-500/20">
+                  Self-Hosted (Unlimited)
+                </span>
+              )}
+            </div>
+          </div>
+          {isCloud && planConfig.price !== "0" && (
+            <div className="text-right">
+              <div className="text-xs text-white/40 font-semibold uppercase tracking-wider">Price</div>
+              <div className="text-sm font-bold text-white mt-0.5">
+                {planConfig.price} <span className="text-xs font-normal text-white/50">/ month</span>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Meters Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {/* Events Volume */}
+          <div className="rounded-xl border border-white/8 bg-white/2 p-4 space-y-3">
+            <div className="flex items-center justify-between text-xs">
+              <span className="font-semibold text-white/50 uppercase tracking-wide">Monthly Ingestion</span>
+              <span className="font-mono text-white/70">
+                {currentMonthEvents.toLocaleString()} / {isCloud ? planConfig.maxEventsPerMonth.toLocaleString() : "∞"}
+              </span>
+            </div>
+            <div className="h-2 bg-white/5 rounded-full overflow-hidden">
+              <div
+                className={`h-full transition-all duration-500 ${
+                  eventPercent >= 100 ? "bg-rose-500" : eventPercent >= 80 ? "bg-amber-500" : "bg-emerald-400"
+                }`}
+                style={{ width: `${isCloud ? eventPercent : 0}%` }}
+              />
+            </div>
+            <div className="flex items-center justify-between text-[11px] text-white/30">
+              <span>Resets each billing cycle</span>
+              {isCloud && <span>{eventPercent.toFixed(1)}% used</span>}
+            </div>
+          </div>
+
+          {/* Members Quota */}
+          <div className="rounded-xl border border-white/8 bg-white/2 p-4 space-y-3">
+            <div className="flex items-center justify-between text-xs">
+              <span className="font-semibold text-white/50 uppercase tracking-wide">Team Members</span>
+              <span className="font-mono text-white/70">
+                {totalWorkspaceMembers} / {isCloud ? planConfig.maxMembers : "∞"}
+              </span>
+            </div>
+            <div className="h-2 bg-white/5 rounded-full overflow-hidden">
+              <div
+                className={`h-full transition-all duration-500 ${
+                  memberPercent >= 100 ? "bg-rose-500" : memberPercent >= 80 ? "bg-amber-500" : "bg-emerald-400"
+                }`}
+                style={{ width: `${isCloud ? memberPercent : 0}%` }}
+              />
+            </div>
+            <div className="flex items-center justify-between text-[11px] text-white/30">
+              <span>Active + pending invites</span>
+              {isCloud && <span>{memberPercent.toFixed(1)}% full</span>}
+            </div>
+          </div>
+        </div>
+
+        {/* Upgrade options (only show if not on highest plan, self-hosted, or if admin) */}
+        {isCloud && isAdmin && plan !== "ENTERPRISE" && (
+          <div className="pt-4 border-t border-white/5 space-y-4">
+            <h3 className="text-sm font-semibold text-white/70">Upgrade Options</h3>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {plan === "FREE" && (
+                <div className="rounded-xl border border-white/8 bg-white/3 p-4 flex flex-col justify-between space-y-4 hover:border-white/12 transition-all">
+                  <div>
+                    <h4 className="font-bold text-white text-sm">Pro Plan</h4>
+                    <p className="text-xs text-white/40 mt-1">250,000 events/month, up to 10 team members, and advanced features.</p>
+                    <div className="text-sm font-bold text-white mt-2">
+                      390,000 <span className="text-xs font-normal text-white/40">Toman / month</span>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => handleCheckout("PRO")}
+                    disabled={checkoutLoading !== null}
+                    className="w-full text-center rounded-xl bg-emerald-400 py-2.5 text-xs font-bold text-slate-900 hover:bg-emerald-300 transition-all disabled:opacity-50"
+                  >
+                    {checkoutLoading === "PRO" ? "Starting Checkout..." : "Upgrade to Pro"}
+                  </button>
+                </div>
+              )}
+
+              {(plan === "FREE" || plan === "PRO") && (
+                <div className="rounded-xl border border-white/8 bg-white/3 p-4 flex flex-col justify-between space-y-4 hover:border-white/12 transition-all">
+                  <div>
+                    <h4 className="font-bold text-white text-sm">Business Plan</h4>
+                    <p className="text-xs text-white/40 mt-1">2,000,000 events/month, up to 25 team members, and full access features.</p>
+                    <div className="text-sm font-bold text-white mt-2">
+                      1,190,000 <span className="text-xs font-normal text-white/40">Toman / month</span>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => handleCheckout("BUSINESS")}
+                    disabled={checkoutLoading !== null}
+                    className="w-full text-center rounded-xl bg-violet-500 py-2.5 text-xs font-bold text-white hover:bg-violet-400 transition-all disabled:opacity-50"
+                  >
+                    {checkoutLoading === "BUSINESS" ? "Starting Checkout..." : "Upgrade to Business"}
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {isCloud && plan !== "FREE" && (
+          <div className="pt-4 border-t border-white/5 flex items-center justify-between text-xs text-white/40">
+            <span>To cancel or manage your subscription, please contact support or visit your customer billing portal.</span>
+          </div>
+        )}
+      </div>
 
       {/* ═══════════════════════════════════════════════════════════════════════
           MEMBERS & SHARING

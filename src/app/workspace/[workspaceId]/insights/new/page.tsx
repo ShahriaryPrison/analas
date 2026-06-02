@@ -15,7 +15,7 @@ export default async function NewInsightPage({
 
   return (
     <div className="animate-in fade-in slide-in-from-top-4 duration-1000">
-      <InsightBuilder workspaceId={workspaceId} topEvents={topEvents} />
+      <InsightBuilder workspaceId={workspaceId} topEvents={topEvents} plan={workspace.plan} />
     </div>
   );
 }

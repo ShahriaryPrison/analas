@@ -1,0 +1,42 @@
+{
+  "FREE": {
+    "name": "Free",
+    "price": "0",
+    "description": "Perfect for hobby projects and small sites.",
+    "maxEventsPerMonth": 10000,
+    "maxDashboards": 1,
+    "maxMembers": 3,
+    "dataRetentionDays": 30,
+    "features": ["basic_insights"]
+  },
+  "PRO": {
+    "name": "Pro",
+    "price": "390,000",
+    "description": "For growing startups needing deeper analytics.",
+    "maxEventsPerMonth": 250000,
+    "maxDashboards": 10,
+    "maxMembers": 10,
+    "dataRetentionDays": 365,
+    "features": ["basic_insights", "cohort_retention", "funnels", "advanced_filters"]
+  },
+  "BUSINESS": {
+    "name": "Business",
+    "price": "1,190,000",
+    "description": "For active applications needing higher volume tracking.",
+    "maxEventsPerMonth": 2000000,
+    "maxDashboards": 25,
+    "maxMembers": 25,
+    "dataRetentionDays": 365,
+    "features": ["basic_insights", "cohort_retention", "funnels", "advanced_filters", "public_dashboards"]
+  },
+  "ENTERPRISE": {
+    "name": "Enterprise",
+    "price": "Custom",
+    "description": "Unlimited scale and custom SLAs.",
+    "maxEventsPerMonth": 100000000,
+    "maxDashboards": 100,
+    "maxMembers": 100,
+    "dataRetentionDays": 3650,
+    "features": ["basic_insights", "cohort_retention", "funnels", "advanced_filters", "public_dashboards"]
+  }
+}

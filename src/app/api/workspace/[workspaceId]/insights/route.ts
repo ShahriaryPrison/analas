@@ -33,6 +33,19 @@ export async function POST(
     return NextResponse.json({ error: "Name and configuration are required" }, { status: 400 });
   }
 
+  // Feature Enforcement
+  const { hasFeature } = await import("@/lib/billing/plans");
+  let requiredFeature: any = "basic_insights";
+  if (type === "retention") requiredFeature = "cohort_retention";
+  if (type === "funnel") requiredFeature = "funnels";
+  if (type === "metric") requiredFeature = "advanced_filters";
+
+  if (!hasFeature(workspace.plan, requiredFeature)) {
+    return NextResponse.json({ 
+      error: `Your current plan does not support ${type} insights. Please upgrade.` 
+    }, { status: 403 });
+  }
+
   let dashboard = workspace.dashboards[0];
   if (!dashboard) {
     dashboard = await prisma.dashboard.create({

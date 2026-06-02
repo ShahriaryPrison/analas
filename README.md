@@ -38,7 +38,7 @@ The fastest way to run ANALAS locally or on a VPS.
 
 ```bash
 # 1. Clone
-git clone https://github.com/YOUR_USERNAME/analas.git
+git clone https://github.com/ShahriaryPrison/analas.git
 cd analas
 
 # 2. Create your env file
@@ -117,7 +117,7 @@ Tested on Ubuntu 24.04. Minimum specs: **4 vCPU, 8 GB RAM** (ClickHouse needs he
 apt update && apt install -y docker.io docker-compose-plugin
 
 # Clone and configure
-git clone https://github.com/YOUR_USERNAME/analas.git && cd analas
+git clone https://github.com/ShahriaryPrison/analas.git && cd analas
 cp .env.example .env && nano .env   # fill AUTH_SECRET + NEXTAUTH_URL
 
 # Start

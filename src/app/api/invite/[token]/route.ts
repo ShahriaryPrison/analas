@@ -65,6 +65,18 @@ export async function GET(req: NextRequest, { params }: Params) {
   });
 
   if (!existing) {
+    // Check limit
+    const workspace = await prisma.workspace.findUnique({ where: { id: invite.workspaceId } });
+    if (workspace) {
+      const { getEffectivePlan } = await import("@/lib/billing/plans");
+      const planConfig = getEffectivePlan(workspace.plan as any);
+      
+      const currentMembersCount = await prisma.workspaceMember.count({ where: { workspaceId: invite.workspaceId } });
+      if (currentMembersCount >= planConfig.maxMembers) {
+        return NextResponse.json({ error: "This workspace has reached its maximum member limit." }, { status: 403 });
+      }
+    }
+
     await prisma.$transaction([
       prisma.workspaceMember.create({
         data: { workspaceId: invite.workspaceId, userId: user.id, role: invite.role },

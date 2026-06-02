@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { INSIGHT_TYPES } from "@/lib/insight-types";
 
-const GITHUB_URL = "https://github.com/MoShirv/analas";
+const GITHUB_URL = "https://github.com/ShahriaryPrison/analas";
 
 export default function InsightTypesDocsPage() {
   return (

@@ -137,7 +137,7 @@ const EVENTS = [
   { event: "feature_used", props: '{"feature":"insights","workspace":"acme"}', ts: "12s ago", dot: "violet" },
 ];
 
-const GITHUB_URL = "https://github.com/MoShirv/analas";
+const GITHUB_URL = "https://github.com/ShahriaryPrison/analas";
 
 // ─── page ─────────────────────────────────────────────────────────────────
 export default function LandingPage() {

@@ -12,6 +12,7 @@ datasource db {
 enum Plan {
   FREE
   PRO
+  BUSINESS
   ENTERPRISE
 }
 
@@ -28,6 +29,10 @@ model Workspace {
   name              String
   tenantId          String            @unique
   plan              Plan              @default(FREE)
+  internalBillingCustomerId  String?   @unique
+  internalSubscriptionId     String?   @unique
+  billingCycleStart          DateTime?
+  currentMonthEvents         Int       @default(0)
   members           WorkspaceMember[]
   apiKeys           ApiKey[]
   dashboards        Dashboard[]
@@ -84,4 +89,10 @@ model WorkspaceInvite {
   createdAt   DateTime  @default(now())
   expiresAt   DateTime?                 // optional expiry for public links
   usedAt      DateTime?                 // stamped when invite is accepted
+}
+
+model StriteSession {
+  token       String   @id
+  workspaceId String
+  createdAt   DateTime @default(now())
 }
