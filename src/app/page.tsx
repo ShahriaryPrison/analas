@@ -86,47 +86,68 @@ const PLANS = [
     period: "for now",
     description: "For indie devs and side projects.",
     features: [
-      "1 workspace",
-      "100 k events / month",
-      "3 API keys",
-      "7-day data retention",
+      "1 workspace limit",
+      "10,000 events / month",
+      "3 team members limit",
+      "30-day data retention",
       "Captures & Insights",
     ],
     cta: "Start for free",
-    highlight: true,
+    highlight: false,
     disabled: false,
+    ctaLink: "/register",
   },
   {
     name: "Pro",
-    price: "-",
-    period: "TBA",
-    description: "For production apps that need more.",
+    price: "390k",
+    period: "Toman / mo",
+    description: "For growing startups needing deeper analytics.",
     features: [
-      "5 workspaces",
-      "10 M events / month",
-      "Unlimited API keys",
-      "90-day data retention",
-      "Priority support",
+      "1 workspace limit",
+      "250,000 events / month",
+      "Up to 10 team members",
+      "365-day data retention",
+      "Funnels & Cohort Retention",
     ],
-    cta: "Coming Soon",
+    cta: "Upgrade to Pro",
+    highlight: true,
+    highlightLabel: "Most Popular",
+    disabled: false,
+    ctaLink: "/register",
+  },
+  {
+    name: "Business",
+    price: "1.19M",
+    period: "Toman / mo",
+    description: "For active apps needing high volume tracking.",
+    features: [
+      "1 workspace limit",
+      "2,000,000 events / month",
+      "Up to 25 team members",
+      "365-day data retention",
+      "Public Shared Dashboards",
+    ],
+    cta: "Upgrade to Business",
     highlight: false,
-    disabled: true,
+    disabled: false,
+    ctaLink: "/register",
   },
   {
     name: "Enterprise",
-    price: "-",
-    period: "TBA",
+    price: "Custom",
+    period: "",
     description: "For teams with serious scale.",
     features: [
       "Unlimited workspaces",
-      "Unlimited events",
-      "SSO / SAML",
-      "Custom retention",
-      "Dedicated support",
+      "Custom monthly events",
+      "SSO / SAML integration",
+      "10-year data retention",
+      "Dedicated support & SLAs",
     ],
-    cta: "Coming Soon",
+    cta: "Contact Support",
     highlight: false,
-    disabled: true,
+    disabled: false,
+    ctaLink: "mailto:support@analas.ir",
   },
 ];
 
@@ -501,11 +522,11 @@ export default function LandingPage() {
             <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-emerald-400">Pricing</p>
             <h2 className="text-3xl font-bold md:text-4xl">Simple, per-workspace pricing</h2>
             <p className="mx-auto mt-4 max-w-md text-white/55">
-              The basic usage is <strong className="font-bold text-white">free for now</strong>. Advanced tiers will be enabled later.
+              The basic usage is <strong className="font-bold text-white">free for now</strong>. Advanced tiers are now available.
             </p>
           </div>
 
-          <div className="grid gap-6 md:grid-cols-3">
+          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
             {PLANS.map((plan) => (
               <div
                 key={plan.name}
@@ -516,8 +537,8 @@ export default function LandingPage() {
                 } ${plan.disabled ? "opacity-50 grayscale-[50%]" : ""}`}
               >
                 {plan.highlight && (
-                  <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 rounded-full bg-emerald-400 px-3 py-0.5 text-xs font-bold text-slate-900">
-                    Free for now
+                  <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 rounded-full bg-emerald-400 px-3 py-0.5 text-xs font-bold text-slate-900 whitespace-nowrap animate-pulse">
+                    {plan.highlightLabel || "Free for now"}
                   </div>
                 )}
 
@@ -527,7 +548,7 @@ export default function LandingPage() {
                     <span className="text-4xl font-black tracking-tight">{plan.price}</span>
                     {plan.period && <span className="text-sm text-white/40">{plan.period}</span>}
                   </div>
-                  <p className="mt-2 text-sm text-white/45">{plan.description}</p>
+                  <p className="mt-2 text-sm text-white/45 min-h-[40px]">{plan.description}</p>
                 </div>
 
                 <ul className="mb-7 flex-1 space-y-3 text-sm text-white/65">
@@ -545,7 +566,7 @@ export default function LandingPage() {
                   </div>
                 ) : (
                   <Link
-                    href="/register"
+                    href={plan.ctaLink || "/register"}
                     className={`block w-full rounded-xl py-3 text-center text-sm font-semibold transition ${
                       plan.highlight
                         ? "bg-emerald-400 text-slate-900 hover:bg-emerald-300 shadow-lg shadow-emerald-500/20"
