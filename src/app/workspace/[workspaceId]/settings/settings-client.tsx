@@ -93,6 +93,16 @@ export default function SettingsClient({
 
   const [checkoutLoading, setCheckoutLoading] = useState<string | null>(null);
 
+  // ── Billing success/cancel banner state ──────────────────────────────────────
+  const [billingStatus, setBillingStatus] = useState<"success" | "cancelled" | null>(() => {
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get("billing_success") === "true") return "success";
+      if (params.get("billing_cancelled") === "true") return "cancelled";
+    }
+    return null;
+  });
+
   async function handleCheckout(targetPlan: "PRO" | "BUSINESS") {
     setCheckoutLoading(targetPlan);
     try {
@@ -244,6 +254,47 @@ export default function SettingsClient({
 
   return (
     <div className="space-y-6">
+
+      {/* Billing success/cancelled notifications */}
+      {billingStatus === "success" && (
+        <div className="rounded-2xl border border-emerald-500/20 bg-emerald-500/10 p-4 flex items-start gap-3">
+          <div className="mt-0.5 rounded-full bg-emerald-500/20 p-1 border border-emerald-500/30">
+            <CheckIcon className="w-4 h-4 text-emerald-400" />
+          </div>
+          <div className="flex-1 space-y-1">
+            <h4 className="text-sm font-semibold text-emerald-300">Upgrade request received!</h4>
+            <p className="text-xs text-emerald-400/80 leading-relaxed">
+              We received your subscription details. Because billing updates rely on a secure background webhook from Strite, it may take a few seconds to reflect. Please refresh this page shortly if your new plan is not active yet.
+            </p>
+          </div>
+          <button 
+            onClick={() => setBillingStatus(null)} 
+            className="text-emerald-400/50 hover:text-emerald-400 transition"
+          >
+            <XIcon className="w-4 h-4" />
+          </button>
+        </div>
+      )}
+
+      {billingStatus === "cancelled" && (
+        <div className="rounded-2xl border border-amber-500/20 bg-amber-500/10 p-4 flex items-start gap-3">
+          <div className="mt-0.5 rounded-full bg-amber-500/20 p-1 border border-amber-500/30">
+            <XIcon className="w-4 h-4 text-amber-400" />
+          </div>
+          <div className="flex-1 space-y-1">
+            <h4 className="text-sm font-semibold text-amber-300">Checkout Cancelled</h4>
+            <p className="text-xs text-amber-400/80 leading-relaxed">
+              Your checkout process was cancelled and you were not charged. You can retry upgrading whenever you are ready.
+            </p>
+          </div>
+          <button 
+            onClick={() => setBillingStatus(null)} 
+            className="text-amber-400/50 hover:text-amber-400 transition"
+          >
+            <XIcon className="w-4 h-4" />
+          </button>
+        </div>
+      )}
 
       {/* ═══════════════════════════════════════════════════════════════════════
           BILLING & USAGE
