@@ -142,6 +142,13 @@ export default function RegisterPage() {
               Sign in
             </Link>
           </p>
+
+          <p className="text-center text-slate-500 text-xs mt-6 border-t border-white/5 pt-4">
+            By signing up, you agree to our{" "}
+            <Link href="/terms" className="text-emerald-300 hover:text-emerald-200 font-medium transition-colors underline">
+              Terms & Privacy Policy
+            </Link>.
+          </p>
         </div>
       </div>
     </div>

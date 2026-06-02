@@ -337,6 +337,25 @@ export default function SettingsClient({
               {isCloud && <span>{memberPercent.toFixed(1)}% full</span>}
             </div>
           </div>
+
+          <div className="rounded-xl border border-white/8 bg-white/2 p-4 space-y-3 col-span-1 md:col-span-2">
+            <div className="flex items-center justify-between text-xs">
+              <span className="font-semibold text-white/50 uppercase tracking-wide">Data Retention</span>
+              <span className="font-mono text-white/70">
+                {isCloud ? `${planConfig.dataRetentionDays} Days` : "Lifetime (∞)"}
+              </span>
+            </div>
+            <div className="h-2 bg-white/5 rounded-full overflow-hidden">
+              <div
+                className="h-full bg-emerald-400"
+                style={{ width: `${isCloud ? Math.min((planConfig.dataRetentionDays / 365) * 100, 100) : 100}%` }}
+              />
+            </div>
+            <div className="flex items-center justify-between text-[11px] text-white/30">
+              <span>Events older than this are automatically deleted to save disk.</span>
+              {isCloud && <span>{planConfig.dataRetentionDays >= 365 ? "Extended retention" : "Standard retention"}</span>}
+            </div>
+          </div>
         </div>
 
         {/* Upgrade options (only show if not on highest plan, self-hosted, or if admin) */}

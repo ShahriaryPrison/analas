@@ -13,6 +13,8 @@ async function ensureMigration() {
   try {
     await clickhouse.exec({ query: `ALTER TABLE events ADD COLUMN IF NOT EXISTS user_id String DEFAULT ''` });
     await clickhouse.exec({ query: `ALTER TABLE events ADD COLUMN IF NOT EXISTS session_id String DEFAULT ''` });
+    await clickhouse.exec({ query: `ALTER TABLE events ADD COLUMN IF NOT EXISTS expires_at DateTime DEFAULT ts + INTERVAL 365 DAY` });
+    await clickhouse.exec({ query: `ALTER TABLE events MODIFY TTL expires_at` });
     migrationRun = true;
   } catch (e) {
     console.error("Failed to migrate ClickHouse schema:", e);

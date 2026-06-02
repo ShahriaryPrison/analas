@@ -1,4 +1,6 @@
 import { queryJson } from "./clickhouse";
+import { prisma } from "./prisma";
+import { getEffectivePlan } from "./billing/plans";
 
 export type DailyRow = { day: string; count: number };
 export type BreakdownRow = { val: string; count: number };
@@ -32,19 +34,41 @@ export function fillDays(rows: { day: string; count: string | number }[], length
   return result;
 }
 
+const planCache = new Map<string, { plan: any; expiresAt: number }>();
+const CACHE_TTL = 30 * 1000;
+
 export async function fetchInsightData(
   tenantId: string,
   type: string,
   config: Record<string, any>
 ): Promise<InsightData> {
-  const timeFrame = Number(config.timeFrame || "7");
+  let plan: any = "FREE";
+  const cached = planCache.get(tenantId);
+  if (cached && cached.expiresAt > Date.now()) {
+    plan = cached.plan;
+  } else {
+    const ws = await prisma.workspace.findUnique({
+      where: { tenantId },
+      select: { plan: true },
+    });
+    plan = ws?.plan ?? "FREE";
+    planCache.set(tenantId, { plan, expiresAt: Date.now() + CACHE_TTL });
+  }
+
+  const planConfig = getEffectivePlan(plan);
+  const retentionDays = planConfig.dataRetentionDays || 30;
+
+  const rawTimeFrame = Number(config.timeFrame || "7");
+  const timeFrame = Math.min(rawTimeFrame, retentionDays);
 
   if (type === "count") {
     const eventName = String(config.eventName || "");
     const rows = await queryJson<{ total: string | number }>(
       `SELECT count() AS total FROM events
-       WHERE tenant_id = {tenantId:String} AND event = {event:String}`,
-      { tenantId, event: eventName }
+       WHERE tenant_id = {tenantId:String}
+         AND event = {event:String}
+         AND ts >= now() - INTERVAL {retentionDays:Int32} DAY`,
+      { tenantId, event: eventName, retentionDays }
     ).catch(() => []);
     const total = Number(rows[0]?.total ?? 0);
     return { total, rows: [] };
@@ -71,6 +95,7 @@ export async function fetchInsightData(
     const eventName = String(config.eventName || "");
     // Sanitize: only allow word chars so we can safely inline in SQL
     const property = String(config.property || "").replace(/[^\w]/g, "");
+    const breakdownDays = Math.min(30, retentionDays);
     const rows = await queryJson<BreakdownRow>(
       `SELECT 
           JSONExtractString(properties, '${property}') AS val,
@@ -78,12 +103,12 @@ export async function fetchInsightData(
        FROM events
        WHERE tenant_id = {tenantId:String}
          AND event = {event:String}
-         AND ts >= now() - INTERVAL 30 DAY
+         AND ts >= now() - INTERVAL {breakdownDays:Int32} DAY
          AND JSONExtractString(properties, '${property}') != ''
        GROUP BY val
        ORDER BY count DESC
        LIMIT 10`,
-      { tenantId, event: eventName }
+      { tenantId, event: eventName, breakdownDays }
     ).catch((e) => {
       console.error("Breakdown query error:", e?.message ?? e);
       return [] as BreakdownRow[];
@@ -139,7 +164,8 @@ export async function fetchInsightData(
 
     const stepConditions = steps.map((_, i) => `event = {step${i}:String}`).join(", ");
 
-    const params: Record<string, any> = { tenantId, steps };
+    const funnelDays = Math.min(30, retentionDays);
+    const params: Record<string, any> = { tenantId, steps, funnelDays };
     steps.forEach((s, i) => params[`step${i}`] = s);
 
     const queryStr = `SELECT
@@ -154,7 +180,7 @@ export async function fetchInsightData(
           FROM events
           WHERE tenant_id = {tenantId:String}
             AND event IN {steps:Array(String)}
-            AND ts >= now() - INTERVAL 30 DAY
+            AND ts >= now() - INTERVAL {funnelDays:Int32} DAY
           GROUP BY ${groupByExpr}
        )
        GROUP BY level ORDER BY level ASC`;
@@ -269,7 +295,7 @@ export async function fetchInsightData(
     }).join(",\n          ");
 
     // No distinctId param needed anymore — it's inlined safely above
-    const params: Record<string, any> = { tenantId, startEvent, returnEvent, timeFrame };
+    const params: Record<string, any> = { tenantId, startEvent, returnEvent, timeFrame, retentionDays };
 
     const cohortQueryStr = `
       SELECT
@@ -306,6 +332,7 @@ export async function fetchInsightData(
           FROM events
           WHERE tenant_id = {tenantId:String}
             AND (event = {startEvent:String} OR event = {returnEvent:String})
+            AND ts >= now() - INTERVAL {retentionDays:Int32} DAY
             AND ${distinctId} != ''
           GROUP BY user_id
       )

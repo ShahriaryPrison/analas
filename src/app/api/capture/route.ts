@@ -26,6 +26,7 @@ type InsertEvent = {
   session_id: string;
   properties: string;
   ts: string;
+  expires_at: string;
 };
 
 const MAX_BUFFER_SIZE = 100;
@@ -144,6 +145,10 @@ export async function POST(req: Request) {
       delete properties.anonymousId;
       delete properties.sessionId;
 
+      const retentionDays = planConfig.dataRetentionDays || 30;
+      const expiresAtDate = new Date(timestamp.getTime() + retentionDays * 24 * 60 * 60 * 1000);
+      const expiresAtStr = expiresAtDate.toISOString().replace("T", " ").replace(/\.\d{3}Z$/, "");
+
       queueEvent({
         tenant_id: tenantId,
         event: item.event,
@@ -151,6 +156,7 @@ export async function POST(req: Request) {
         session_id: sessionId,
         properties: JSON.stringify(properties),
         ts: timestamp.toISOString().replace("T", " ").replace(/\.\d{3}Z$/, ""),
+        expires_at: expiresAtStr,
       });
       validCount++;
     }
