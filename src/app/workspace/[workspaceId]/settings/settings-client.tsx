@@ -95,7 +95,7 @@ export default function SettingsClient({
   async function handleCheckout(targetPlan: "PRO" | "BUSINESS") {
     setCheckoutLoading(targetPlan);
     try {
-      const res = await fetch(`/workspace/${workspaceId}/checkout`, {
+      const res = await fetch(`/api/workspace/${workspaceId}/checkout`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ plan: targetPlan }),
