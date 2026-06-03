@@ -36,13 +36,23 @@ export default async function InsightsPage({
   const activeDashboard = dashboards.find((d) => d.id === dashboardId) || dashboards[0];
   const insights = (activeDashboard?.insights || []).sort((a, b) => a.position - b.position);
 
-  const topEvents = await queryJson<EventCountRow>(
+  const archivedEvents = await prisma.eventSetting.findMany({
+    where: { workspaceId, isArchived: true },
+    select: { eventName: true },
+  });
+  const archivedNames = archivedEvents.map((ae) => ae.eventName);
+
+  const allTopEvents = await queryJson<EventCountRow>(
     `SELECT event, count() AS count
      FROM events
      WHERE tenant_id = {tenantId:String}
-     GROUP BY event ORDER BY count DESC LIMIT 8`,
+     GROUP BY event ORDER BY count DESC LIMIT 100`,
     { tenantId: workspace.tenantId }
   ).catch(() => [] as EventCountRow[]);
+
+  const topEvents = allTopEvents
+    .filter((r) => !archivedNames.includes(r.event))
+    .slice(0, 8);
 
   const maxTopCount = Math.max(...topEvents.map((r) => Number(r.count)), 0) || 1;
 

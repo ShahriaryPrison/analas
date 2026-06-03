@@ -44,6 +44,7 @@ model Workspace {
   dashboards        Dashboard[]
   invites           WorkspaceInvite[]
   inviteLinkEnabled Boolean           @default(false)
+  eventSettings     EventSetting[]
 }
 
 model WorkspaceMember {
@@ -101,4 +102,15 @@ model StriteSession {
   token       String   @id
   workspaceId String
   createdAt   DateTime @default(now())
+}
+
+model EventSetting {
+  id          String    @id @default(cuid())
+  workspaceId String
+  eventName   String
+  isArchived  Boolean   @default(false)
+  workspace   Workspace @relation(fields: [workspaceId], references: [id])
+  createdAt   DateTime  @default(now())
+
+  @@unique([workspaceId, eventName])
 }

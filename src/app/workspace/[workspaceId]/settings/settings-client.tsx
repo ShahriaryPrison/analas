@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import {
   PlusIcon, KeyIcon, CopyIcon, CheckIcon, TrashIcon,
   ShareIcon, LinkIcon, MailIcon, UserPlusIcon, XIcon, UsersIcon,
@@ -754,6 +755,49 @@ export default function SettingsClient({
               No API keys yet. Create one to start sending events.
             </div>
           )}
+        </div>
+      </div>
+
+      {/* ═══════════════════════════════════════════════════════════════════════
+          EVENT SCHEMA
+      ═══════════════════════════════════════════════════════════════════════ */}
+      <div className="rounded-2xl border border-white/10 bg-white/5 p-6 space-y-5">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h2 className="text-lg font-semibold text-white">Event Schema & Archiving</h2>
+            <p className="mt-0.5 text-sm text-white/50">Manage captured event names. Archive typos or test events to hide them from UI suggestions.</p>
+          </div>
+          <Link
+            href={`/workspace/${workspaceId}/settings/events`}
+            className="flex items-center justify-center gap-1.5 rounded-lg bg-white px-4 py-2.5 text-xs font-bold text-slate-900 transition hover:bg-emerald-300 sm:shrink-0 sm:py-2"
+          >
+            Manage Events
+          </Link>
+        </div>
+      </div>
+
+      {/* ═══════════════════════════════════════════════════════════════════════
+          DANGER ZONE
+      ═══════════════════════════════════════════════════════════════════════ */}
+      <div className="rounded-2xl border border-red-500/25 bg-red-500/5 p-6 space-y-4">
+        <div>
+          <h2 className="text-lg font-semibold text-red-400">Danger Zone</h2>
+          <p className="mt-0.5 text-sm text-white/40">Destructive actions for this workspace.</p>
+        </div>
+        
+        <div className="h-px bg-white/5" />
+        
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h3 className="font-bold text-white text-sm">Reset Workspace Data</h3>
+            <p className="text-xs text-white/40 mt-1">Wiping workspace captures is a permanent administrative action. To request a full data reset, contact support.</p>
+          </div>
+          <a
+            href={`mailto:support@analas.ir?subject=Reset Workspace Data Request - ${workspaceId}`}
+            className="flex items-center justify-center gap-1.5 rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-2 text-xs font-bold text-red-400 transition hover:bg-red-500/20 sm:shrink-0"
+          >
+            Contact Support
+          </a>
         </div>
       </div>
 
