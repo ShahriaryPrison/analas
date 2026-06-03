@@ -54,6 +54,11 @@ export default function InsightTypesDocsPage() {
     label: string;
     placeholder: string;
   }[];
+  docs?: Record<string, {
+    description: string;   // Simple, non-technical explanation
+    useCases: string[];    // Direct examples of when to use it
+    fields: Record<string, string>; // Description of each configField key
+  }>;
 }`}</pre>
           <p className="text-sm text-white/60">Example:</p>
           <pre className="rounded-xl bg-slate-950 border border-white/10 p-5 text-sm font-mono text-white/80 overflow-x-auto whitespace-pre">{`{
@@ -65,6 +70,24 @@ export default function InsightTypesDocsPage() {
     { key: "fromEvent", label: "From event", placeholder: "page_view" },
     { key: "toEvent",   label: "To event",   placeholder: "user_signup" },
   ],
+  docs: {
+    en: {
+      description: "Measures progression through sequence steps.",
+      useCases: ["Tracking user checkout signup flow"],
+      fields: {
+        fromEvent: "The initial step event name",
+        toEvent: "The target event name to reach"
+      }
+    },
+    fa: {
+      description: "سنجش میزان پیشرفت و تبدیل در مراحل مختلف.",
+      useCases: ["ردیابی مراحل پرداخت و خرید کاربر"],
+      fields: {
+        fromEvent: "نام رویداد برای مرحله اول",
+        toEvent: "نام رویداد هدف برای رسیدن به آن"
+      }
+    }
+  }
 }`}</pre>
           <div className="rounded-lg border border-emerald-500/20 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-200">
             <strong>Pro Tip:</strong> The insight creation modal is completely dynamic! Any fields you define in <code className="font-mono text-xs text-emerald-300 bg-emerald-400/10 px-1 rounded">configFields</code> will automatically generate input boxes in the UI, and their values will be saved to the database without any extra code.

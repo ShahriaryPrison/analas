@@ -4,6 +4,7 @@ import { useState, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { INSIGHT_TYPES, getInsightType } from "@/lib/insight-types";
 import { hasFeature } from "@/lib/billing/plans";
+import InsightDocsViewer from "../insight-docs-viewer";
 import { 
   CheckIcon, 
   ChevronRightIcon, 
@@ -77,6 +78,7 @@ export default function InsightBuilder({ workspaceId, topEvents, plan }: Props) 
   const [name, setName] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [rightPanelTab, setRightPanelTab] = useState<"preview" | "docs">("preview");
 
   const [previewData, setPreviewData] = useState<InsightData | null>(null);
   const [previewLoading, setPreviewLoading] = useState(false);
@@ -418,19 +420,51 @@ export default function InsightBuilder({ workspaceId, topEvents, plan }: Props) 
         </main>
 
         <aside className="sticky top-8 space-y-6">
-           <div className="glass-panel rounded-3xl p-6 min-h-[450px] flex flex-col border-emerald-500/10 shadow-2xl shadow-emerald-500/5">
-              <div className="flex items-center justify-between mb-8">
-                <div className="flex items-center gap-2">
-                   <div className={`w-2 h-2 rounded-full ${isDemo ? "bg-amber-400 animate-pulse" : "bg-emerald-400"}`} />
-                   <span className="text-[10px] font-bold uppercase tracking-widest text-white/30">
-                     {isDemo ? "Preview Sample" : "Live Preview"}
-                   </span>
+            <div className="glass-panel rounded-3xl p-6 min-h-[450px] flex flex-col border-emerald-500/10 shadow-2xl shadow-emerald-500/5">
+              <div className="flex items-center justify-between mb-6 border-b border-white/5 pb-3">
+                <div className="flex gap-1.5">
+                   <button
+                     type="button"
+                     onClick={() => setRightPanelTab("preview")}
+                     className={`px-3 py-1.5 rounded-lg text-xs font-bold transition ${
+                       rightPanelTab === "preview" 
+                         ? "bg-white/10 text-white" 
+                         : "text-white/40 hover:text-white/85 hover:bg-white/5"
+                     }`}
+                   >
+                     Live Preview
+                   </button>
+                   {selectedType && (
+                     <button
+                       type="button"
+                       onClick={() => setRightPanelTab("docs")}
+                       className={`px-3 py-1.5 rounded-lg text-xs font-bold transition ${
+                         rightPanelTab === "docs" 
+                           ? "bg-white/10 text-white animate-pulse" 
+                           : "text-white/40 hover:text-white/85 hover:bg-white/5"
+                       }`}
+                     >
+                       📖 Guide & Docs
+                     </button>
+                   )}
                 </div>
-                {previewLoading && <ActivityIcon className="w-4 h-4 text-emerald-400 animate-pulse" />}
+                {rightPanelTab === "preview" && (
+                  <div className="flex items-center gap-2">
+                     <div className={`w-2 h-2 rounded-full ${isDemo ? "bg-amber-400 animate-pulse" : "bg-emerald-400"}`} />
+                     <span className="text-[10px] font-bold uppercase tracking-widest text-white/30">
+                       {isDemo ? "Preview Sample" : "Live Preview"}
+                     </span>
+                  </div>
+                )}
+                {rightPanelTab === "preview" && previewLoading && <ActivityIcon className="w-4 h-4 text-emerald-400 animate-pulse" />}
               </div>
 
               <div className="flex-1 flex flex-col justify-center">
-                {activeData ? (
+                {rightPanelTab === "docs" && selectedType ? (
+                  <div className="overflow-y-auto max-h-[480px] scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent">
+                    <InsightDocsViewer typeDef={selectedType} />
+                  </div>
+                ) : activeData ? (
                   <div className="space-y-8 animate-in zoom-in-95 duration-500">
                     <div className="text-center">
                        <div className="text-6xl font-black text-white tabular-nums tracking-tighter">

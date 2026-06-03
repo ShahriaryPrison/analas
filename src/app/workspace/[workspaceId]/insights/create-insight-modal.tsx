@@ -6,6 +6,7 @@ import { INSIGHT_TYPES, getInsightType } from "@/lib/insight-types";
 import { XIcon, CheckIcon, ChevronRightIcon, ActivityIcon, BarChart2Icon } from "@/components/icons";
 import { TrendChart, TrendLineChart, BreakdownList, FunnelView, type InsightData } from "./insight-card";
 import Link from "next/link";
+import InsightDocsViewer from "./insight-docs-viewer";
 
 type Props = {
   workspaceId: string;
@@ -25,6 +26,7 @@ export default function CreateInsightModal({ workspaceId, topEvents, onClose }: 
   const [previewData, setPreviewData] = useState<InsightData | null>(null);
   const [previewLoading, setPreviewLoading] = useState(false);
   const [discoveredProperties, setDiscoveredProperties] = useState<string[]>([]);
+  const [rightPanelTab, setRightPanelTab] = useState<"preview" | "docs">("preview");
 
   const selectedType = getInsightType(type);
   const backdropRef = useRef<HTMLDivElement>(null);
@@ -297,11 +299,32 @@ export default function CreateInsightModal({ workspaceId, topEvents, onClose }: 
 
           {/* Right: Live Preview Panel */}
           <div className="bg-slate-950/50 p-6 flex flex-col min-h-[300px]">
-             <div className="flex items-center justify-between mb-6">
-                <span className="text-xs font-semibold uppercase tracking-wide text-white/50">
-                  Live Preview
-                </span>
-                {previewLoading && (
+             <div className="flex items-center justify-between mb-6 border-b border-white/5 pb-3">
+                <div className="flex gap-1.5">
+                   <button
+                     type="button"
+                     onClick={() => setRightPanelTab("preview")}
+                     className={`px-3 py-1.5 rounded-lg text-xs font-bold transition ${
+                       rightPanelTab === "preview" 
+                         ? "bg-white/10 text-white" 
+                         : "text-white/40 hover:text-white/85 hover:bg-white/5"
+                     }`}
+                   >
+                     Live Preview
+                   </button>
+                   <button
+                     type="button"
+                     onClick={() => setRightPanelTab("docs")}
+                     className={`px-3 py-1.5 rounded-lg text-xs font-bold transition ${
+                       rightPanelTab === "docs" 
+                         ? "bg-white/10 text-white animate-pulse" 
+                         : "text-white/40 hover:text-white/85 hover:bg-white/5"
+                     }`}
+                   >
+                     📖 Guide & Docs
+                   </button>
+                </div>
+                {rightPanelTab === "preview" && previewLoading && (
                   <div className="flex items-center gap-2 text-[10px] text-emerald-400 animate-pulse">
                      <ActivityIcon className="w-3 h-3" /> Fetching real-time data...
                   </div>
@@ -309,7 +332,11 @@ export default function CreateInsightModal({ workspaceId, topEvents, onClose }: 
              </div>
 
              <div className="flex-1 flex flex-col justify-center">
-                {!previewData && !previewLoading ? (
+                {rightPanelTab === "docs" ? (
+                  <div className="overflow-y-auto max-h-[480px] scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent">
+                    <InsightDocsViewer typeDef={selectedType} />
+                  </div>
+                ) : !previewData && !previewLoading ? (
                   <div className="text-center space-y-3 py-12">
                      <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-white/5">
                         <BarChart2Icon className="w-6 h-6 text-white/20" />

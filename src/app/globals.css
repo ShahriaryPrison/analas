@@ -31,6 +31,10 @@ body {
   .bento-grid {
     grid-template-columns: repeat(2, 1fr);
   }
+  .bento-item-sm { grid-column: span 1; }
+  .bento-item-md { grid-column: span 1; }
+  .bento-item-lg { grid-column: span 2; }
+  .bento-item-full { grid-column: span 2; }
 }
 
 @media (min-width: 1024px) {

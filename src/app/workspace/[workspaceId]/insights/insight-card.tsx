@@ -1,10 +1,11 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { getInsightType } from "@/lib/insight-types";
-import { BarChart2Icon, ActivityIcon } from "@/components/icons";
-import DeleteInsightButton from "./delete-insight-button";
+import { BarChart2Icon, ActivityIcon, TrashIcon } from "@/components/icons";
 import MoveInsightButton from "./move-insight-button";
+import InsightDocsViewer from "./insight-docs-viewer";
 
 export type Row = { day?: string; count?: number; label?: string; val?: string; counts?: Record<string, number>; cohort?: string; size?: number; days?: number[] };
 export type InsightData = { total: number; returning?: number; rows: Row[] };
@@ -23,6 +24,24 @@ export default function InsightCard({ workspaceId, insight }: Props) {
   const [data, setData] = useState<InsightData | null>(null);
   const [error, setError] = useState(false);
   const typeDef = getInsightType(insight.type);
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [showDocs, setShowDocs] = useState(false);
+  const router = useRouter();
+
+  async function handleDelete() {
+    setDeleting(true);
+    try {
+      const res = await fetch(`/api/workspace/${workspaceId}/insights/${insight.id}`, {
+        method: "DELETE",
+      });
+      if (res.ok) {
+        router.refresh();
+      }
+    } finally {
+      setDeleting(false);
+    }
+  }
 
   useEffect(() => {
     fetch(`/api/workspace/${workspaceId}/insights/${insight.id}/data`)
@@ -32,10 +51,10 @@ export default function InsightCard({ workspaceId, insight }: Props) {
   }, [workspaceId, insight.id]);
 
   return (
-    <article className="glass-panel rounded-3xl p-6 h-full flex flex-col space-y-6 group transition-all duration-300">
+    <article className="glass-panel rounded-3xl p-4 sm:p-6 h-full flex flex-col space-y-4 sm:space-y-6 group transition-all duration-300">
       {/* Header */}
-      <div className="flex items-start justify-between gap-4">
-        <div className="min-w-0">
+      <div className="flex flex-col sm:flex-row items-start sm:items-start justify-between gap-4">
+        <div className="min-w-0 w-full sm:w-auto">
           <div className="flex items-center gap-2 mb-2">
             <span className="flex h-6 w-6 items-center justify-center rounded-lg bg-white/5 text-[10px] font-black text-white/40 group-hover:text-emerald-400 transition-colors">
               {typeDef.icon}
@@ -43,6 +62,20 @@ export default function InsightCard({ workspaceId, insight }: Props) {
             <span className="text-[10px] font-black uppercase tracking-[0.15em] text-white/30">
               {typeDef.label}
             </span>
+            <button
+              onClick={() => setShowDocs(!showDocs)}
+              title="Show documentation"
+              className={`p-0.5 rounded transition ${
+                showDocs 
+                  ? "text-emerald-400 bg-emerald-500/10" 
+                  : "text-white/30 hover:text-emerald-400 hover:bg-white/5"
+              }`}
+            >
+              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                <circle cx="12" cy="12" r="10" />
+                <path strokeLinecap="round" d="M12 16v-4M12 8h.01" />
+              </svg>
+            </button>
           </div>
           <h3 className="text-xl font-black text-white tracking-tight truncate leading-tight">
             {insight.name}
@@ -52,9 +85,9 @@ export default function InsightCard({ workspaceId, insight }: Props) {
           </p>
         </div>
         
-        <div className="flex flex-col items-end gap-2 shrink-0">
+        <div className="flex sm:flex-col items-center sm:items-end justify-between sm:justify-start w-full sm:w-auto gap-4 sm:gap-2 shrink-0 border-t sm:border-t-0 border-white/5 pt-3 sm:pt-0">
            {data ? (
-            <div className="text-right">
+            <div className="text-left sm:text-right">
                <div className="text-2xl font-black text-white tracking-tighter tabular-nums leading-none">
                  {data.total.toLocaleString()}
                </div>
@@ -63,22 +96,61 @@ export default function InsightCard({ workspaceId, insight }: Props) {
                </div>
             </div>
           ) : (
-            <div className="h-8 w-16 animate-pulse rounded-lg bg-white/5" />
+             <div className="h-8 w-16 animate-pulse rounded-lg bg-white/5" />
           )}
-          <div className="flex items-center bg-white/5 border border-white/10 rounded-lg overflow-hidden mt-1 divide-x divide-white/10">
-            <MoveInsightButton workspaceId={workspaceId} insightId={insight.id} direction="up" />
-            <MoveInsightButton workspaceId={workspaceId} insightId={insight.id} direction="down" />
-            <div className="px-1.5 flex items-center justify-center">
-              <DeleteInsightButton workspaceId={workspaceId} insightId={insight.id} />
+
+          {confirmDelete ? (
+            <div className="flex items-center gap-2 bg-red-500/10 border border-red-500/20 rounded-lg px-2.5 py-1 z-10">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-red-400">Delete?</span>
+              <button
+                onClick={handleDelete}
+                disabled={deleting}
+                className="rounded px-2 py-0.5 text-[10px] font-bold bg-red-500/20 hover:bg-red-500/30 text-red-200 border border-red-500/30 transition disabled:opacity-50"
+              >
+                {deleting ? "..." : "Yes"}
+              </button>
+              <button
+                onClick={() => setConfirmDelete(false)}
+                disabled={deleting}
+                className="rounded px-2 py-0.5 text-[10px] text-white/40 hover:text-white/70 hover:bg-white/5 transition"
+              >
+                No
+              </button>
             </div>
-          </div>
+          ) : (
+            <div className="flex items-center bg-white/5 border border-white/10 rounded-lg overflow-hidden divide-x divide-white/10">
+              <MoveInsightButton workspaceId={workspaceId} insightId={insight.id} direction="up" />
+              <MoveInsightButton workspaceId={workspaceId} insightId={insight.id} direction="down" />
+              <button
+                onClick={() => setConfirmDelete(true)}
+                title="Delete insight"
+                className="p-1.5 text-white/20 hover:text-red-400 hover:bg-red-500/10 transition"
+              >
+                <TrashIcon className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          )}
         </div>
       </div>
 
       {/* Body */}
       <div className="flex-1 min-h-[160px] flex flex-col justify-end">
-      {/* Multi-Trend (Comparison) */}
-      {insight.type === "multi_trend" && (
+      {showDocs ? (
+        <div className="flex-1 flex flex-col justify-between space-y-3 h-full pt-2">
+          <div className="flex-1 overflow-y-auto max-h-[300px] scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent">
+            <InsightDocsViewer typeDef={typeDef} />
+          </div>
+          <button
+            onClick={() => setShowDocs(false)}
+            className="w-full py-2 rounded-xl text-xs font-bold bg-white/5 hover:bg-white/10 border border-white/5 text-white/70 hover:text-white transition"
+          >
+            ← Back to Chart
+          </button>
+        </div>
+      ) : (
+        <>
+          {/* Multi-Trend (Comparison) */}
+          {insight.type === "multi_trend" && (
         <div className="space-y-4">
           {error ? (
             <p className="text-sm text-red-400/70">Could not load data.</p>
@@ -182,7 +254,7 @@ export default function InsightCard({ workspaceId, insight }: Props) {
                </div>
                
                {/* Right: All-Time Stats Sidebar */}
-               <div className="flex flex-col gap-4 w-full lg:w-48 shrink-0 justify-end pb-2">
+               <div className="grid grid-cols-2 lg:flex lg:flex-col gap-4 w-full lg:w-48 shrink-0 justify-end pb-2">
                   <div className="glass-panel p-4 rounded-xl text-center bg-white/5 border-emerald-500/10 flex flex-col justify-center h-full">
                       <div className="text-2xl font-black text-white">{data.total.toLocaleString()}</div>
                       <div className="text-[9px] font-bold tracking-widest text-white/40 uppercase mt-2">All-Time Users</div>
@@ -236,6 +308,8 @@ export default function InsightCard({ workspaceId, insight }: Props) {
       {insight.type === "count" && error && (
         <p className="text-sm text-red-400/70">Could not load data.</p>
       )}
+        </>
+      )}
       </div>
     </article>
   );
@@ -255,7 +329,7 @@ export function TrendChart({ rows }: { rows: Row[] }) {
         >
           {/* Tooltip */}
           {hoveredBar === i && (
-            <div className="absolute -top-8 left-1/2 -translate-x-1/2 px-2 py-1 text-xs font-semibold text-white bg-zinc-900/90 border border-white/10 rounded-lg shadow-xl whitespace-nowrap z-20 backdrop-blur-sm">
+            <div className="absolute -top-2 -translate-y-full left-1/2 -translate-x-1/2 px-2 py-1 text-xs font-semibold text-white bg-zinc-900/90 border border-white/10 rounded-lg shadow-xl whitespace-nowrap z-20 backdrop-blur-sm pointer-events-none">
               {row.count?.toLocaleString()}
             </div>
           )}
@@ -265,7 +339,10 @@ export function TrendChart({ rows }: { rows: Row[] }) {
               style={{ height: `${((row.count || 0) / max) * 100}%`, minHeight: (row.count || 0) > 0 ? "4px" : "0" }}
             />
           </div>
-          <div className="text-[11px] text-white/50">{(row.day || "").slice(5)}</div>
+          <div className="text-[11px] text-white/50 font-medium">
+            <span className="hidden sm:inline">{(row.day || "").slice(5)}</span>
+            <span className="inline sm:hidden">{(row.day || "").slice(8)}</span>
+          </div>
         </div>
       ))}
     </div>
@@ -289,7 +366,7 @@ export function MultiTrendChart({ rows }: { rows: any[] }) {
           >
             {/* Tooltip for segment */}
             {hoveredSegment && hoveredSegment.dayIdx === i && (
-              <div className="absolute -top-8 left-1/2 -translate-x-1/2 px-2 py-1 text-xs font-semibold text-white bg-zinc-900/90 border border-white/10 rounded-lg shadow-xl whitespace-nowrap z-20 backdrop-blur-sm">
+              <div className="absolute -top-2 -translate-y-full left-1/2 -translate-x-1/2 px-2 py-1 text-xs font-semibold text-white bg-zinc-900/90 border border-white/10 rounded-lg shadow-xl whitespace-nowrap z-20 backdrop-blur-sm pointer-events-none">
                 {hoveredSegment.ev}: {dayRow.counts[hoveredSegment.ev]?.toLocaleString()}
               </div>
             )}
@@ -434,7 +511,7 @@ export function TrendLineChart({ rows }: { rows: Row[] }) {
        {/* Tooltip positioned above the hovered data point */}
        {hoveredPoint !== null && (
          <div
-           className="absolute -top-7 -translate-x-1/2 px-2 py-1 text-xs font-semibold text-white bg-zinc-900/90 border border-white/10 rounded-lg shadow-xl whitespace-nowrap z-20 backdrop-blur-sm pointer-events-none"
+           className="absolute -top-2 -translate-y-full -translate-x-1/2 px-2 py-1 text-xs font-semibold text-white bg-zinc-900/90 border border-white/10 rounded-lg shadow-xl whitespace-nowrap z-20 backdrop-blur-sm pointer-events-none"
            style={{ left: `${(pointCoords[hoveredPoint].x / width) * 100}%` }}
          >
            {rows[hoveredPoint].count?.toLocaleString()}
@@ -516,13 +593,30 @@ export function MultiTrendLineChart({ rows }: { rows: any[] }) {
         {hoveredPointIdx !== null && (() => {
           const xPct = (hoveredPointIdx / Math.max(rows.length - 1, 1)) / 1 * 100;
           const dayRow = rows[hoveredPointIdx];
-          const label = events.map(ev => `${ev}: ${(dayRow?.counts[ev] || 0).toLocaleString()}`).join(" · ");
           return (
             <div
-              className="absolute -top-7 -translate-x-1/2 px-2 py-1 text-xs font-semibold text-white bg-zinc-900/90 border border-white/10 rounded-lg shadow-xl whitespace-nowrap z-20 backdrop-blur-sm pointer-events-none"
+              className="absolute -top-2 -translate-y-full -translate-x-1/2 px-2 py-1.5 text-[11px] font-semibold text-white bg-zinc-900/95 border border-white/10 rounded-lg shadow-xl z-20 backdrop-blur-sm pointer-events-none flex flex-col gap-0.5 min-w-[120px]"
               style={{ left: `${xPct}%` }}
             >
-              {label}
+              <div className="text-[9px] text-white/40 border-b border-white/5 pb-0.5 mb-0.5">
+                {(dayRow?.day || "").slice(5)}
+              </div>
+              {events.map((ev, i) => {
+                const colorMap: Record<string, string> = {
+                  "bg-emerald-400": "text-emerald-400",
+                  "bg-indigo-400": "text-indigo-400",
+                  "bg-amber-400": "text-amber-400",
+                  "bg-rose-400": "text-rose-400",
+                  "bg-cyan-400": "text-cyan-400"
+                };
+                const textColor = colorMap[PALETTE[i % PALETTE.length]] || "text-emerald-400";
+                return (
+                  <div key={ev} className="flex items-center justify-between gap-3 text-[10px]">
+                    <span className="text-white/60 truncate max-w-[100px]">{ev}</span>
+                    <span className={`font-bold ${textColor}`}>{(dayRow?.counts[ev] || 0).toLocaleString()}</span>
+                  </div>
+                );
+              })}
             </div>
           );
         })()}
