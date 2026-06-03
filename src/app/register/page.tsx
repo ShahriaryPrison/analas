@@ -9,6 +9,7 @@ export default function RegisterPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
+  const [phone, setPhone] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const router = useRouter();
@@ -26,7 +27,7 @@ export default function RegisterPage() {
     try {
       const res = await fetch("/api/register", {
         method: "POST",
-        body: JSON.stringify({ email, password, name, inviteToken }),
+        body: JSON.stringify({ email, password, name, phone, inviteToken }),
         headers: { "Content-Type": "application/json" },
       });
 
@@ -42,8 +43,8 @@ export default function RegisterPage() {
         });
 
         if (signInResult?.ok) {
-          // Redirect to dashboard and pass the API key via query param
-          router.push(`/dashboard?newKey=${encodeURIComponent(apiKey)}`);
+          // Redirect to verify page with user details
+          router.push(`/verify?email=${encodeURIComponent(email)}&phone=${encodeURIComponent(phone || "")}&newKey=${encodeURIComponent(apiKey)}`);
         } else {
           setError("Account created but auto-login failed. Please sign in manually.");
         }
@@ -109,6 +110,24 @@ export default function RegisterPage() {
                 onChange={(e) => setEmail(e.target.value)}
                 className="w-full bg-slate-800/60 border border-white/10 rounded-lg px-4 py-2.5 text-white placeholder-slate-400 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400/70 focus:border-transparent transition"
               />
+            </div>
+
+            <div>
+              <div className="flex justify-between items-center mb-1.5">
+                <label htmlFor="phone" className="block text-sm font-medium text-slate-300">
+                  Phone Number
+                </label>
+                <span className="text-[10px] text-slate-500 font-medium">Optional</span>
+              </div>
+              <input
+                id="phone"
+                type="tel"
+                placeholder="09123456789"
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
+                className="w-full bg-slate-800/60 border border-white/10 rounded-lg px-4 py-2.5 text-white placeholder-slate-400 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400/70 focus:border-transparent transition"
+              />
+              <p className="text-[10px] text-slate-500 mt-1">Recommended for payment support and billing verification.</p>
             </div>
 
             <div>

@@ -17,11 +17,17 @@ enum Plan {
 }
 
 model User {
-  id            String    @id @default(cuid())
-  email         String    @unique
-  passwordHash  String
-  name          String?
-  workspaces    WorkspaceMember[] 
+  id                    String    @id @default(cuid())
+  email                 String    @unique
+  phone                 String?   @unique
+  passwordHash          String
+  name                  String?
+  emailVerified         DateTime?
+  phoneVerified         DateTime?
+  emailVerificationToken String?   @unique
+  verificationOtp       String?
+  otpExpiresAt          DateTime?
+  workspaces            WorkspaceMember[] 
 }
 
 model Workspace {

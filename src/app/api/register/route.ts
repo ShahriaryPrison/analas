@@ -5,7 +5,7 @@ import crypto from "node:crypto";
 
 export async function POST(req: Request) {
   try {
-    const { email, password, name, inviteToken } = await req.json();
+    const { email, password, name, phone, inviteToken } = await req.json();
 
     // 1. Hash the password
     const hashedPassword = await bcrypt.hash(password, 10);
@@ -14,12 +14,27 @@ export async function POST(req: Request) {
     const rawKey = `analas_pk_${crypto.randomUUID()}`;
     const keyHash = crypto.createHash("sha256").update(rawKey).digest("hex");
 
+    // Generate verification details
+    const emailToken = crypto.randomBytes(32).toString("hex");
+    let smsOtp: string | null = null;
+    let otpExpiresAt: Date | null = null;
+
+    if (phone && String(phone).trim().length > 0) {
+      smsOtp = String(100000 + Math.floor(Math.random() * 900000));
+      otpExpiresAt = new Date(Date.now() + 5 * 60 * 1000); // 5 minutes
+    }
+
     // 2. Create User and their first Workspace in a transaction
     const result = await prisma.$transaction(async (tx) => {
       const user = await tx.user.create({
         data: {
-          email,
+          email: email.trim().toLowerCase(),
           passwordHash: hashedPassword,
+          phone: phone && String(phone).trim().length > 0 ? String(phone).trim() : null,
+          emailVerificationToken: emailToken,
+          emailVerified: null,
+          verificationOtp: smsOtp,
+          otpExpiresAt: otpExpiresAt,
         },
       });
 
@@ -47,6 +62,18 @@ export async function POST(req: Request) {
 
       return { user, workspace };
     });
+
+    // Dispatch logging (simulation of email link and SMS OTP)
+    const appUrl = (process.env.NEXTAUTH_URL || process.env.NEXT_PUBLIC_APP_URL || "https://analas.ir").replace(/\/$/, "");
+    const verificationLink = `${appUrl}/api/verify-email?token=${emailToken}`;
+
+    console.log(`\n==========================================================`);
+    console.log(`[DISPATCH LOG] New User Registered: ${email}`);
+    console.log(`[DISPATCH LOG] Email Verification Link:\n  ${verificationLink}`);
+    if (phone && smsOtp) {
+      console.log(`[DISPATCH LOG] SMS Phone OTP Code for ${phone}:\n  ${smsOtp}`);
+    }
+    console.log(`==========================================================\n`);
 
     // 3. Auto-join any pending email invites for this email (outside main tx)
     const pendingEmailInvites = await prisma.workspaceInvite.findMany({
@@ -100,7 +127,10 @@ export async function POST(req: Request) {
     // Return the raw key to the client once so they can copy it (show-once)
     return NextResponse.json(
       {
-        message: "User created",
+        message: "User created, verification required",
+        requiresVerification: true,
+        email,
+        phone: phone || null,
         apiKey: rawKey,
         workspaceId: result.workspace.id,
         tenantId: result.workspace.tenantId,

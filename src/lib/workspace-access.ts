@@ -6,6 +6,16 @@ export async function getAuthorizedWorkspace(workspaceId: string) {
   const session = await getAppSession();
   if (!session) redirect("/login");
 
+  // Verification Gate: At least one of email or phone must be verified
+  const dbUser = await prisma.user.findUnique({
+    where: { email: session.user.email },
+    select: { emailVerified: true, phoneVerified: true, phone: true },
+  });
+
+  if (!dbUser || (!dbUser.emailVerified && !dbUser.phoneVerified)) {
+    redirect(`/verify?email=${encodeURIComponent(session.user.email)}&phone=${encodeURIComponent(dbUser?.phone || "")}`);
+  }
+
   const workspace = await prisma.workspace.findFirst({
     where: {
       id: workspaceId,

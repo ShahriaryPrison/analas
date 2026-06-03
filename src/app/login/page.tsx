@@ -18,6 +18,19 @@ function LoginContent() {
     if (searchParams.get("registered") === "true") {
       setSuccess("Account created! Sign in to continue.");
     }
+    if (searchParams.get("verified") === "true") {
+      setSuccess("Email verified successfully! You can now sign in.");
+    }
+    if (searchParams.get("verified") === "false") {
+      const errorMsg = searchParams.get("error");
+      if (errorMsg === "invalid_token") {
+        setError("The verification link is invalid or has expired.");
+      } else if (errorMsg === "missing_token") {
+        setError("Verification token is missing.");
+      } else {
+        setError("Email verification failed. Please try again.");
+      }
+    }
     if (searchParams.get("error") === "CredentialsSignin") {
       setError("Invalid email or password.");
     }
@@ -115,6 +128,18 @@ function LoginContent() {
               Create one
             </Link>
           </p>
+
+          <div className="text-center border-t border-white/5 pt-4 mt-6 text-xs text-slate-500">
+            Need billing or payment support?{" "}
+            <a
+              href="https://t.me/heysamadmin"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-emerald-400 hover:underline font-semibold"
+            >
+              Contact @heysamadmin
+            </a>
+          </div>
         </div>
       </div>
     </div>

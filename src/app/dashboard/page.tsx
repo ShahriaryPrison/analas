@@ -23,6 +23,11 @@ async function DashboardServer() {
 
   if (!user) redirect("/login");
 
+  // Verification Gate: At least one of email or phone must be verified
+  if (!user.emailVerified && !user.phoneVerified) {
+    redirect(`/verify?email=${encodeURIComponent(session.user.email)}&phone=${encodeURIComponent(user.phone || "")}`);
+  }
+
   const workspaces = user.workspaces.map((membership) => ({
     id: membership.workspace.id,
     name: membership.workspace.name,
