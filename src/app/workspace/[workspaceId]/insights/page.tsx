@@ -1,18 +1,40 @@
 import { getAuthorizedWorkspace } from "@/lib/workspace-access";
 import { queryJson } from "@/lib/clickhouse";
+import { prisma } from "@/lib/prisma";
 import InsightsHeader from "./insights-header";
 import InsightCard from "./insight-card";
 import CopyEventName from "./copy-event-name";
+import { BarChart2Icon } from "@/components/icons";
 
 type EventCountRow = { event: string; count: string | number };
 
 export default async function InsightsPage({
   params,
-}: Readonly<{ params: Promise<{ workspaceId: string }> }>) {
+  searchParams,
+}: Readonly<{
+  params: Promise<{ workspaceId: string }>;
+  searchParams: Promise<{ dashboardId?: string }>;
+}>) {
   const { workspaceId } = await params;
+  const { dashboardId } = await searchParams;
   const { workspace } = await getAuthorizedWorkspace(workspaceId);
 
-  const insights = workspace.dashboards.flatMap((d) => d.insights).sort((a, b) => a.position - b.position);
+  // Self-heal: ensure we have at least one dashboard
+  let dashboards = workspace.dashboards || [];
+  if (dashboards.length === 0) {
+    const defaultDb = await prisma.dashboard.create({
+      data: {
+        name: "Main dashboard",
+        workspaceId: workspace.id,
+      },
+      include: { insights: true },
+    });
+    dashboards = [defaultDb];
+  }
+
+  // Find active dashboard or fallback to the first one
+  const activeDashboard = dashboards.find((d) => d.id === dashboardId) || dashboards[0];
+  const insights = (activeDashboard?.insights || []).sort((a, b) => a.position - b.position);
 
   const topEvents = await queryJson<EventCountRow>(
     `SELECT event, count() AS count
@@ -22,7 +44,6 @@ export default async function InsightsPage({
     { tenantId: workspace.tenantId }
   ).catch(() => [] as EventCountRow[]);
 
-  const topEventNames = topEvents.map((r) => r.event);
   const maxTopCount = Math.max(...topEvents.map((r) => Number(r.count)), 0) || 1;
 
   const insightsMeta = insights.map((ins) => ({
@@ -34,7 +55,12 @@ export default async function InsightsPage({
 
   return (
     <div className="space-y-12">
-      <InsightsHeader workspaceId={workspace.id} />
+      <InsightsHeader
+        workspaceId={workspace.id}
+        dashboards={dashboards}
+        activeDashboard={activeDashboard}
+        plan={workspace.plan}
+      />
 
       <div className="space-y-6">
         <div className="flex items-center justify-between">
@@ -103,5 +129,3 @@ export default async function InsightsPage({
     </div>
   );
 }
-
-import { BarChart2Icon } from "@/components/icons";

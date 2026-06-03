@@ -28,6 +28,7 @@ export async function POST(
   const name = String(body?.name ?? "").trim();
   const type = String(body?.type ?? "count").trim();
   const queryConfig = body?.queryConfig && typeof body.queryConfig === "object" ? body.queryConfig : {};
+  const requestedDashboardId = body?.dashboardId ? String(body.dashboardId).trim() : null;
 
   if (!name || Object.keys(queryConfig).length === 0) {
     return NextResponse.json({ error: "Name and configuration are required" }, { status: 400 });
@@ -46,8 +47,14 @@ export async function POST(
     }, { status: 403 });
   }
 
-  let dashboard = workspace.dashboards[0];
+  let dashboard = requestedDashboardId
+    ? workspace.dashboards.find((d) => d.id === requestedDashboardId)
+    : workspace.dashboards[0];
+
   if (!dashboard) {
+    if (requestedDashboardId) {
+      return NextResponse.json({ error: "Dashboard not found in this workspace" }, { status: 404 });
+    }
     dashboard = await prisma.dashboard.create({
       data: {
         name: "Main dashboard",

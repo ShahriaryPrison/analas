@@ -30,6 +30,7 @@ type Props = {
   workspaceId: string;
   topEvents: string[];
   plan: any; // Using any to avoid importing prisma client into client boundary
+  dashboardId?: string | null;
 };
 
 const MOCK_DATA: Record<string, InsightData> = {
@@ -66,7 +67,7 @@ const MOCK_DATA: Record<string, InsightData> = {
   ]}
 };
 
-export default function InsightBuilder({ workspaceId, topEvents, plan }: Props) {
+export default function InsightBuilder({ workspaceId, topEvents, plan, dashboardId }: Props) {
   const router = useRouter();
   const [step, setStep] = useState(1);
   const [type, setType] = useState("");
@@ -115,11 +116,19 @@ export default function InsightBuilder({ workspaceId, topEvents, plan }: Props) 
     const res = await fetch(`/api/workspace/${workspaceId}/insights`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name: name || `${queryConfig.eventName || "New"} ${selectedType?.label}`, type, queryConfig }),
+      body: JSON.stringify({
+        name: name || `${queryConfig.eventName || "New"} ${selectedType?.label}`,
+        type,
+        queryConfig,
+        dashboardId,
+      }),
     });
 
     if (res.ok) {
-      router.push(`/workspace/${workspaceId}/insights`);
+      const redirectUrl = dashboardId
+        ? `/workspace/${workspaceId}/insights?dashboardId=${dashboardId}`
+        : `/workspace/${workspaceId}/insights`;
+      router.push(redirectUrl);
       router.refresh();
     } else {
       const d = await res.json();
