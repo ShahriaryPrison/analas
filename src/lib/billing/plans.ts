@@ -5,6 +5,7 @@ export type Feature = "basic_insights" | "cohort_retention" | "funnels" | "advan
 export interface PlanConfig {
   name: string;
   price: string;
+  priceId?: string | number;
   description: string;
   maxEventsPerMonth: number;
   maxDashboards: number;

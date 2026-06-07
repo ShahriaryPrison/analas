@@ -12,6 +12,7 @@
   "PRO": {
     "name": "Pro",
     "price": "390,000",
+    "priceId": "price_1",
     "description": "For growing startups needing deeper analytics.",
     "maxEventsPerMonth": 250000,
     "maxDashboards": 10,
@@ -22,6 +23,7 @@
   "BUSINESS": {
     "name": "Business",
     "price": "1,190,000",
+    "priceId": "price_2",
     "description": "For active applications needing higher volume tracking.",
     "maxEventsPerMonth": 2000000,
     "maxDashboards": 25,

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import crypto from "crypto";
+import { PLAN_LIMITS, Plan } from "@/lib/billing/plans";
 
 /**
  * POST /api/webhooks/billing
@@ -92,10 +93,18 @@ export async function POST(req: NextRequest) {
           return NextResponse.json({ error: "Invalid subscription details" }, { status: 400 });
         }
 
-        // Map price ID to Plan enum (handles both string e.g. "price_2" and integer e.g. 2 or "2")
-        let plan: "PRO" | "BUSINESS" = "PRO";
-        if (priceId === "price_2" || priceId === 2 || priceId === "2") {
-          plan = "BUSINESS";
+        // Map price ID to Plan enum dynamically
+        let plan: Plan = "FREE";
+        for (const [planKey, config] of Object.entries(PLAN_LIMITS)) {
+          if (config.priceId && String(config.priceId) === String(priceId)) {
+            plan = planKey as Plan;
+            break;
+          }
+        }
+
+        if (plan === "FREE") {
+          console.error("[Strite Webhook Error] Unrecognized price ID:", priceId);
+          return NextResponse.json({ error: "Unrecognized price ID" }, { status: 400 });
         }
 
         // Find all workspaces where this email belongs

@@ -1,11 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { getAppSession } from "@/lib/session";
 import { NextResponse } from "next/server";
-
-const PRICE_MAP = {
-  PRO: "price_1",
-  BUSINESS: "price_2",
-};
+import { PLAN_LIMITS } from "@/lib/billing/plans";
 
 export async function POST(
   req: Request,
@@ -31,11 +27,12 @@ export async function POST(
   const body = await req.json().catch(() => null);
   const plan = body?.plan as "PRO" | "BUSINESS";
 
-  if (!plan || !PRICE_MAP[plan]) {
+  const planConfig = PLAN_LIMITS[plan];
+  if (!planConfig || !planConfig.priceId) {
     return NextResponse.json({ error: "Invalid plan selected" }, { status: 400 });
   }
 
-  const priceId = PRICE_MAP[plan];
+  const priceId = planConfig.priceId;
   const striteApiUrl = process.env.STRITE_API_URL || "https://your-strite-domain.com";
   const striteApiKey = process.env.STRITE_API_KEY;
 
