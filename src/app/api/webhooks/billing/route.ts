@@ -93,12 +93,16 @@ export async function POST(req: NextRequest) {
           return NextResponse.json({ error: "Invalid subscription details" }, { status: 400 });
         }
 
-        // Map price ID to Plan enum dynamically
+        // Map price ID to Plan enum dynamically (supporting both "price_X" and raw integer X)
         let plan: Plan = "FREE";
+        const cleanIncomingId = String(priceId).replace(/^price_/, "");
         for (const [planKey, config] of Object.entries(PLAN_LIMITS)) {
-          if (config.priceId && String(config.priceId) === String(priceId)) {
-            plan = planKey as Plan;
-            break;
+          if (config.priceId) {
+            const cleanConfigId = String(config.priceId).replace(/^price_/, "");
+            if (cleanConfigId === cleanIncomingId) {
+              plan = planKey as Plan;
+              break;
+            }
           }
         }
 
