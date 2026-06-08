@@ -24,6 +24,11 @@ export async function POST(
     return NextResponse.json({ error: "Workspace not found" }, { status: 404 });
   }
 
+  const user = await prisma.user.findUnique({
+    where: { email: session.user.email },
+    select: { phone: true },
+  });
+
   const body = await req.json().catch(() => null);
   const plan = body?.plan as "PRO" | "BUSINESS";
 
@@ -52,7 +57,8 @@ export async function POST(
       body: JSON.stringify({
         price_id: priceId,
         customer_email: session.user.email,
-        customer_name: session.user.name || "Customer",
+        customer_name: workspace.name,
+        customer_phone: user?.phone || undefined,
         success_url: `${appUrl}/workspace/${workspaceId}/settings?billing_success=true`,
         cancel_url: `${appUrl}/workspace/${workspaceId}/settings?billing_cancelled=true`,
       }),

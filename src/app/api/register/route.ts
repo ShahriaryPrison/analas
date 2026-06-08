@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma";
 import bcrypt from "bcryptjs";
 import { NextResponse } from "next/server";
 import crypto from "node:crypto";
+import { validatePhoneNumber } from "@/lib/countries";
 
 export async function POST(req: Request) {
   try {
@@ -20,6 +21,11 @@ export async function POST(req: Request) {
     let otpExpiresAt: Date | null = null;
 
     if (phone && String(phone).trim().length > 0) {
+      const { isValid, error: validationError } = validatePhoneNumber(String(phone));
+      if (!isValid) {
+        return NextResponse.json({ error: validationError || "Invalid phone number format." }, { status: 400 });
+      }
+
       smsOtp = String(100000 + Math.floor(Math.random() * 900000));
       otpExpiresAt = new Date(Date.now() + 5 * 60 * 1000); // 5 minutes
     }

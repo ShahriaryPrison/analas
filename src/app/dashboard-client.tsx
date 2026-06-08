@@ -79,13 +79,22 @@ export default function DashboardClient({ workspaces: initialWorkspaces }: { wor
             </div>
             <span className="text-base font-bold tracking-tight">ANALAS</span>
           </Link>
-          <button
-            onClick={() => signOut({ callbackUrl: "/login" })}
-            className="flex items-center gap-2 rounded-xl border border-white/8 bg-white/4 px-3 py-1.5 text-sm text-white/60 hover:bg-white/8 hover:text-white/90 transition"
-          >
-            <LogOutIcon className="w-3.5 h-3.5" />
-            Sign out
-          </button>
+          <div className="flex items-center gap-2">
+            <Link
+              href="/settings"
+              className="flex items-center gap-1.5 rounded-xl border border-white/8 bg-white/4 px-3 py-1.5 text-sm text-white/60 hover:bg-white/8 hover:text-white/95 transition"
+            >
+              <SlidersIcon className="w-3.5 h-3.5 text-white/40" />
+              Settings
+            </Link>
+            <button
+              onClick={() => signOut({ callbackUrl: "/login" })}
+              className="flex items-center gap-1.5 rounded-xl border border-white/8 bg-white/4 px-3 py-1.5 text-sm text-white/60 hover:bg-white/8 hover:text-white/95 transition"
+            >
+              <LogOutIcon className="w-3.5 h-3.5" />
+              Sign out
+            </button>
+          </div>
         </div>
       </header>
 

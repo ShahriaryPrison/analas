@@ -4,12 +4,14 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { signIn } from "next-auth/react";
 import PineappleIcon from "@/components/PineappleIcon";
+import { ALLOWED_COUNTRIES } from "@/lib/countries";
 
 export default function RegisterClient() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
+  const [countryCode, setCountryCode] = useState(ALLOWED_COUNTRIES[0]);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const router = useRouter();
@@ -25,9 +27,24 @@ export default function RegisterClient() {
     setLoading(true);
 
     try {
+      let formattedPhone = "";
+      if (phone && phone.trim().length > 0) {
+        let sanitized = phone.trim().replace(/\D/g, "");
+        if (sanitized.startsWith("0")) {
+          sanitized = sanitized.slice(1);
+        }
+        const regex = new RegExp(countryCode.nationalRegexString);
+        if (!regex.test(sanitized)) {
+          setError(`Invalid phone number format. Please enter a valid mobile number for ${countryCode.name} (e.g. ${countryCode.placeholder}).`);
+          setLoading(false);
+          return;
+        }
+        formattedPhone = `${countryCode.dialCode}${sanitized}`;
+      }
+
       const res = await fetch("/api/register", {
         method: "POST",
-        body: JSON.stringify({ email, password, name, phone, inviteToken }),
+        body: JSON.stringify({ email, password, name, phone: formattedPhone || undefined, inviteToken }),
         headers: { "Content-Type": "application/json" },
       });
 
@@ -44,7 +61,8 @@ export default function RegisterClient() {
 
         if (signInResult?.ok) {
           // Redirect to verify page with user details
-          router.push(`/verify?email=${encodeURIComponent(email)}&phone=${encodeURIComponent(phone || "")}&newKey=${encodeURIComponent(apiKey)}`);
+          const searchParamsPhone = formattedPhone || "";
+          router.push(`/verify?email=${encodeURIComponent(email)}&phone=${encodeURIComponent(searchParamsPhone)}&newKey=${encodeURIComponent(apiKey)}`);
         } else {
           setError("Account created but auto-login failed. Please sign in manually.");
         }
@@ -119,14 +137,30 @@ export default function RegisterClient() {
                 </label>
                 <span className="text-[10px] text-slate-500 font-medium">Optional</span>
               </div>
-              <input
-                id="phone"
-                type="tel"
-                placeholder="09123456789"
-                value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-                className="w-full bg-slate-800/60 border border-white/10 rounded-lg px-4 py-2.5 text-white placeholder-slate-400 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400/70 focus:border-transparent transition"
-              />
+              <div className="flex gap-2">
+                <select
+                  value={countryCode.code}
+                  onChange={(e) => {
+                    const matched = ALLOWED_COUNTRIES.find((c) => c.code === e.target.value);
+                    if (matched) setCountryCode(matched);
+                  }}
+                  className="bg-slate-800/60 border border-white/10 rounded-lg px-3 py-2.5 text-white text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400/70 focus:border-transparent transition shrink-0 cursor-pointer"
+                >
+                  {ALLOWED_COUNTRIES.map((c) => (
+                    <option key={c.code} value={c.code} className="bg-slate-900 text-white">
+                      {c.flag} {c.dialCode}
+                    </option>
+                  ))}
+                </select>
+                <input
+                  id="phone"
+                  type="tel"
+                  placeholder={countryCode.placeholder}
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                  className="flex-1 bg-slate-800/60 border border-white/10 rounded-lg px-4 py-2.5 text-white placeholder-slate-400 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400/70 focus:border-transparent transition"
+                />
+              </div>
               <p className="text-[10px] text-slate-500 mt-1">Recommended for payment support and billing verification.</p>
             </div>
 
