@@ -76,6 +76,7 @@ export default function InsightBuilder({ workspaceId, topEvents, plan, dashboard
     displayType: "bar",
     aggregation: "uniq",
   });
+  const [eventLabels, setEventLabels] = useState<Record<string, string>>({});
   const [name, setName] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -119,7 +120,7 @@ export default function InsightBuilder({ workspaceId, topEvents, plan, dashboard
       body: JSON.stringify({
         name: name || `${queryConfig.eventName || "New"} ${selectedType?.label}`,
         type,
-        queryConfig,
+        queryConfig: { ...queryConfig, eventLabels },
         dashboardId,
       }),
     });
@@ -293,14 +294,14 @@ export default function InsightBuilder({ workspaceId, topEvents, plan, dashboard
                                     const isMulti = f.key === "eventNames" || f.key === "eventSteps";
                                     const currentVal = queryConfig[f.key] || "";
                                     let searchPart = isMulti ? currentVal.split(",").pop()?.trim() || "" : currentVal;
-                                    
+
                                     if (isMulti && searchPart) {
                                       const vals = currentVal.split(",").map(v => v.trim()).filter(Boolean);
                                       if (vals.includes(searchPart)) {
                                         searchPart = ""; // Reset search if the last part is already a selected value
                                       }
                                     }
-                                    
+
                                     return !searchPart || ev.toLowerCase().includes(searchPart.toLowerCase());
                                   })
                                   .slice(0, 12)
@@ -309,7 +310,7 @@ export default function InsightBuilder({ workspaceId, topEvents, plan, dashboard
                                     const currentVal = queryConfig[f.key] || "";
                                     const vals = currentVal.split(",").map(v => v.trim()).filter(Boolean);
                                     const isSelected = isMulti ? vals.includes(ev) : currentVal === ev;
-                                    
+
                                     return (
                                       <button
                                         key={ev}
@@ -322,8 +323,8 @@ export default function InsightBuilder({ workspaceId, topEvents, plan, dashboard
                                           }
                                         }}
                                         className={`px-3 py-1.5 rounded-lg text-xs border transition flex items-center gap-2 ${
-                                          isSelected 
-                                          ? "bg-emerald-500 text-slate-900 border-emerald-500 font-bold" 
+                                          isSelected
+                                          ? "bg-emerald-500 text-slate-900 border-emerald-500 font-bold"
                                           : "bg-white/5 border-white/5 text-white/50 hover:bg-white/10 hover:text-white"
                                         }`}
                                       >
@@ -335,6 +336,29 @@ export default function InsightBuilder({ workspaceId, topEvents, plan, dashboard
                               </div>
                             </div>
                           )}
+
+                          {/* Event Labels */}
+                          {(f.key === "eventNames" || f.key === "eventSteps") && (() => {
+                            const evList = (queryConfig[f.key] || "").split(",").map(e => e.trim()).filter(Boolean);
+                            if (evList.length === 0) return null;
+                            return (
+                              <div className="space-y-2 pt-1">
+                                <div className="text-[10px] font-black text-white/20 uppercase tracking-[0.2em]">Event Labels <span className="normal-case font-normal opacity-60">(optional)</span></div>
+                                {evList.map(ev => (
+                                  <div key={ev} className="flex items-center gap-3">
+                                    <span className="text-[11px] text-white/30 font-mono truncate flex-1 min-w-0">{ev}</span>
+                                    <span className="text-white/20 text-xs shrink-0">→</span>
+                                    <input
+                                      value={eventLabels[ev] || ""}
+                                      onChange={e => setEventLabels(prev => ({ ...prev, [ev]: e.target.value }))}
+                                      placeholder="Custom label..."
+                                      className="w-36 bg-white/5 border border-white/10 rounded-lg px-3 py-1.5 text-xs text-white outline-none focus:ring-1 focus:ring-emerald-400/40 transition placeholder:text-white/20 shrink-0"
+                                    />
+                                  </div>
+                                ))}
+                              </div>
+                            );
+                          })()}
 
                           {f.key === "distinctId" && (
                             <div className="space-y-3">
@@ -506,12 +530,12 @@ export default function InsightBuilder({ workspaceId, topEvents, plan, dashboard
                          )
                       )}
                       {type === "multi_trend" && (
-                         queryConfig.displayType === "line" 
-                         ? <MultiTrendLineChart rows={activeData.rows} /> 
-                         : <MultiTrendChart rows={activeData.rows} />
+                         queryConfig.displayType === "line"
+                         ? <MultiTrendLineChart rows={activeData.rows} labels={eventLabels} />
+                         : <MultiTrendChart rows={activeData.rows} labels={eventLabels} />
                       )}
                       {type === "breakdown" && <BreakdownList rows={activeData.rows} />}
-                      {type === "funnel" && <FunnelView rows={activeData.rows} />}
+                      {type === "funnel" && <FunnelView rows={activeData.rows} labels={eventLabels} />}
                       {type === "retention" && (
                          <div className="flex flex-col lg:flex-row gap-6">
                            <div className="flex-1 min-w-0">

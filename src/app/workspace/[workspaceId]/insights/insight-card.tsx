@@ -28,6 +28,7 @@ export default function InsightCard({ workspaceId, insight }: Props) {
   const [deleting, setDeleting] = useState(false);
   const [showDocs, setShowDocs] = useState(false);
   const router = useRouter();
+  const eventLabels = insight.queryConfig["eventLabels"] as Record<string, string> | undefined;
 
   async function handleDelete() {
     setDeleting(true);
@@ -162,9 +163,9 @@ export default function InsightCard({ workspaceId, insight }: Props) {
             </div>
           ) : (
             insight.queryConfig.displayType === "line" ? (
-              <MultiTrendLineChart rows={data.rows} />
+              <MultiTrendLineChart rows={data.rows} labels={eventLabels} />
             ) : (
-              <MultiTrendChart rows={data.rows} />
+              <MultiTrendChart rows={data.rows} labels={eventLabels} />
             )
           )}
         </div>
@@ -234,7 +235,7 @@ export default function InsightCard({ workspaceId, insight }: Props) {
               <div className="h-12 w-full animate-pulse rounded-lg bg-white/5" />
             </div>
           ) : (
-            <FunnelView rows={data.rows} />
+            <FunnelView rows={data.rows} labels={eventLabels} />
           )}
         </div>
       )}
@@ -351,7 +352,7 @@ export function TrendChart({ rows }: { rows: Row[] }) {
 
 const PALETTE = ["bg-emerald-400", "bg-indigo-400", "bg-amber-400", "bg-rose-400", "bg-cyan-400"];
 
-export function MultiTrendChart({ rows }: { rows: any[] }) {
+export function MultiTrendChart({ rows, labels }: { rows: any[]; labels?: Record<string, string> }) {
   const [hoveredSegment, setHoveredSegment] = useState<{ dayIdx: number; ev: string } | null>(null);
   const events = Object.keys(rows[0]?.counts || {});
   const max = Math.max(...rows.flatMap(r => Object.values(r.counts as Record<string, number>)), 1);
@@ -367,7 +368,7 @@ export function MultiTrendChart({ rows }: { rows: any[] }) {
             {/* Tooltip for segment */}
             {hoveredSegment && hoveredSegment.dayIdx === i && (
               <div className="absolute -top-2 -translate-y-full left-1/2 -translate-x-1/2 px-2 py-1 text-xs font-semibold text-white bg-zinc-900/90 border border-white/10 rounded-lg shadow-xl whitespace-nowrap z-20 backdrop-blur-sm pointer-events-none">
-                {hoveredSegment.ev}: {dayRow.counts[hoveredSegment.ev]?.toLocaleString()}
+                {labels?.[hoveredSegment.ev] || hoveredSegment.ev}: {dayRow.counts[hoveredSegment.ev]?.toLocaleString()}
               </div>
             )}
             <div className="flex h-32 w-full items-end justify-center gap-0.5 rounded-lg border border-white/5 bg-white/2 p-1">
@@ -388,13 +389,13 @@ export function MultiTrendChart({ rows }: { rows: any[] }) {
           </div>
         ))}
       </div>
-      
+
       {/* Legend */}
       <div className="flex flex-wrap gap-x-4 gap-y-2 pt-2 border-t border-white/5">
          {events.map((ev, i) => (
            <div key={ev} className="flex items-center gap-2">
               <div className={`w-2 h-2 rounded-full ${PALETTE[i % PALETTE.length]}`} />
-              <span className="text-[11px] font-medium text-white/60">{ev}</span>
+              <span className="text-[11px] font-medium text-white/60">{labels?.[ev] || ev}</span>
            </div>
          ))}
       </div>
@@ -424,7 +425,7 @@ export function BreakdownList({ rows }: { rows: Row[] }) {
   );
 }
 
-export function FunnelView({ rows }: { rows: Row[] }) {
+export function FunnelView({ rows, labels }: { rows: Row[]; labels?: Record<string, string> }) {
   const firstCount = rows[0]?.count || 1;
   return (
     <div className="space-y-4">
@@ -435,7 +436,7 @@ export function FunnelView({ rows }: { rows: Row[] }) {
               <span className="flex h-5 w-5 items-center justify-center rounded bg-white/10 text-[10px] font-bold text-white/60">
                 {i + 1}
               </span>
-              <span className="text-sm font-medium text-white">{row.label}</span>
+              <span className="text-sm font-medium text-white">{labels?.[row.label || ""] || row.label}</span>
             </div>
             <div className="text-right">
               <div className="text-sm font-bold text-white">{(row.count || 0).toLocaleString()}</div>
@@ -521,7 +522,7 @@ export function TrendLineChart({ rows }: { rows: Row[] }) {
   );
 }
 
-export function MultiTrendLineChart({ rows }: { rows: any[] }) {
+export function MultiTrendLineChart({ rows, labels }: { rows: any[]; labels?: Record<string, string> }) {
   const [hoveredPointIdx, setHoveredPointIdx] = useState<number | null>(null);
   const events = Object.keys(rows[0]?.counts || {});
   const max = Math.max(...rows.flatMap(r => Object.values(r.counts as Record<string, number>)), 1);
@@ -612,7 +613,7 @@ export function MultiTrendLineChart({ rows }: { rows: any[] }) {
                 const textColor = colorMap[PALETTE[i % PALETTE.length]] || "text-emerald-400";
                 return (
                   <div key={ev} className="flex items-center justify-between gap-3 text-[10px]">
-                    <span className="text-white/60 truncate max-w-[100px]">{ev}</span>
+                    <span className="text-white/60 truncate max-w-[100px]">{labels?.[ev] || ev}</span>
                     <span className={`font-bold ${textColor}`}>{(dayRow?.counts[ev] || 0).toLocaleString()}</span>
                   </div>
                 );
@@ -627,7 +628,7 @@ export function MultiTrendLineChart({ rows }: { rows: any[] }) {
          {events.map((ev, i) => (
            <div key={ev} className="flex items-center gap-2">
               <div className={`w-2 h-2 rounded-full ${PALETTE[i % PALETTE.length]}`} />
-              <span className="text-[11px] font-medium text-white/60">{ev}</span>
+              <span className="text-[11px] font-medium text-white/60">{labels?.[ev] || ev}</span>
            </div>
          ))}
       </div>
