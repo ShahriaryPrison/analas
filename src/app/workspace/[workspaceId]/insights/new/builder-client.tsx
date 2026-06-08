@@ -31,6 +31,13 @@ type Props = {
   topEvents: string[];
   plan: any; // Using any to avoid importing prisma client into client boundary
   dashboardId?: string | null;
+  initialInsight?: {
+    id: string;
+    name: string;
+    type: string;
+    queryConfig: Record<string, unknown>;
+    dashboardId: string;
+  } | null;
 };
 
 const MOCK_DATA: Record<string, InsightData> = {
@@ -67,17 +74,28 @@ const MOCK_DATA: Record<string, InsightData> = {
   ]}
 };
 
-export default function InsightBuilder({ workspaceId, topEvents, plan, dashboardId }: Props) {
+export default function InsightBuilder({ workspaceId, topEvents, plan, dashboardId, initialInsight }: Props) {
   const router = useRouter();
-  const [step, setStep] = useState(1);
-  const [type, setType] = useState("");
-  const [queryConfig, setQueryConfig] = useState<Record<string, string>>({
-    timeFrame: "7",
-    displayType: "bar",
-    aggregation: "uniq",
+  const [step, setStep] = useState(initialInsight ? 2 : 1);
+  const [type, setType] = useState(initialInsight?.type ?? "");
+  const [queryConfig, setQueryConfig] = useState<Record<string, string>>(() => {
+    if (initialInsight) {
+      return Object.fromEntries(
+        Object.entries(initialInsight.queryConfig)
+          .filter(([, v]) => typeof v === "string")
+          .map(([k, v]) => [k, v as string])
+      );
+    }
+    return {
+      timeFrame: "7",
+      displayType: "bar",
+      aggregation: "uniq",
+    };
   });
-  const [eventLabels, setEventLabels] = useState<Record<string, string>>({});
-  const [name, setName] = useState("");
+  const [eventLabels, setEventLabels] = useState<Record<string, string>>(() => {
+    return (initialInsight?.queryConfig?.eventLabels as Record<string, string>) ?? {};
+  });
+  const [name, setName] = useState(initialInsight?.name ?? "");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [rightPanelTab, setRightPanelTab] = useState<"preview" | "docs">("preview");
@@ -114,8 +132,14 @@ export default function InsightBuilder({ workspaceId, topEvents, plan, dashboard
 
   async function handleSave() {
     setLoading(true);
-    const res = await fetch(`/api/workspace/${workspaceId}/insights`, {
-      method: "POST",
+    const isEdit = !!initialInsight;
+    const url = isEdit
+      ? `/api/workspace/${workspaceId}/insights/${initialInsight.id}`
+      : `/api/workspace/${workspaceId}/insights`;
+    const method = isEdit ? "PATCH" : "POST";
+
+    const res = await fetch(url, {
+      method,
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         name: name || `${queryConfig.eventName || "New"} ${selectedType?.label}`,
@@ -149,7 +173,7 @@ export default function InsightBuilder({ workspaceId, topEvents, plan, dashboard
             <ArrowLeftIcon className="w-5 h-5" />
           </Link>
           <div>
-            <h1 className="text-2xl font-bold text-white tracking-tight">Create Insight</h1>
+            <h1 className="text-2xl font-bold text-white tracking-tight">{initialInsight ? "Edit Insight" : "Create Insight"}</h1>
             <p className="text-sm text-white/40">Step {step} of 3</p>
           </div>
         </div>
@@ -444,7 +468,7 @@ export default function InsightBuilder({ workspaceId, topEvents, plan, dashboard
                       disabled={loading}
                       className="flex-[2] py-4 bg-emerald-400 text-slate-900 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-emerald-300 transition"
                     >
-                      {loading ? "Saving..." : "Save to Dashboard"} <CheckIcon className="w-4 h-4" />
+                      {loading ? "Saving..." : initialInsight ? "Save Changes" : "Save to Dashboard"} <CheckIcon className="w-4 h-4" />
                     </button>
                   </div>
                 </div>
