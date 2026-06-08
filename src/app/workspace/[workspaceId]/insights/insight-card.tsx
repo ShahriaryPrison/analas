@@ -3,9 +3,10 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { getInsightType } from "@/lib/insight-types";
-import { BarChart2Icon, ActivityIcon, TrashIcon } from "@/components/icons";
+import { BarChart2Icon, ActivityIcon, TrashIcon, PencilIcon } from "@/components/icons";
 import MoveInsightButton from "./move-insight-button";
 import InsightDocsViewer from "./insight-docs-viewer";
+import EditInsightModal from "./edit-insight-modal";
 
 export type Row = { day?: string; count?: number; label?: string; val?: string; counts?: Record<string, number>; cohort?: string; size?: number; days?: number[] };
 export type InsightData = { total: number; returning?: number; rows: Row[] };
@@ -27,6 +28,7 @@ export default function InsightCard({ workspaceId, insight }: Props) {
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [showDocs, setShowDocs] = useState(false);
+  const [showEdit, setShowEdit] = useState(false);
   const router = useRouter();
   const eventLabels = insight.queryConfig["eventLabels"] as Record<string, string> | undefined;
 
@@ -52,6 +54,7 @@ export default function InsightCard({ workspaceId, insight }: Props) {
   }, [workspaceId, insight.id]);
 
   return (
+    <>
     <article className="glass-panel rounded-3xl p-4 sm:p-6 h-full flex flex-col space-y-4 sm:space-y-6 group transition-all duration-300">
       {/* Header */}
       <div className="flex flex-col sm:flex-row items-start sm:items-start justify-between gap-4">
@@ -122,6 +125,13 @@ export default function InsightCard({ workspaceId, insight }: Props) {
             <div className="flex items-center bg-white/5 border border-white/10 rounded-lg overflow-hidden divide-x divide-white/10">
               <MoveInsightButton workspaceId={workspaceId} insightId={insight.id} direction="up" />
               <MoveInsightButton workspaceId={workspaceId} insightId={insight.id} direction="down" />
+              <button
+                onClick={() => setShowEdit(true)}
+                title="Edit insight"
+                className="p-1.5 text-white/20 hover:text-emerald-400 hover:bg-emerald-500/10 transition"
+              >
+                <PencilIcon className="w-3.5 h-3.5" />
+              </button>
               <button
                 onClick={() => setConfirmDelete(true)}
                 title="Delete insight"
@@ -313,6 +323,15 @@ export default function InsightCard({ workspaceId, insight }: Props) {
       )}
       </div>
     </article>
+
+    {showEdit && (
+      <EditInsightModal
+        workspaceId={workspaceId}
+        insight={insight}
+        onClose={() => setShowEdit(false)}
+      />
+    )}
+    </>
   );
 }
 
