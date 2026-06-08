@@ -28,7 +28,7 @@ export default function InsightCard({ workspaceId, insight }: Props) {
   const [deleting, setDeleting] = useState(false);
   const [showDocs, setShowDocs] = useState(false);
   const router = useRouter();
-  const eventLabels = (insight.queryConfig as any)?.eventLabels as Record<string, string> | undefined;
+  const eventLabels = insight.queryConfig["eventLabels"] as Record<string, string> | undefined;
 
   async function handleDelete() {
     setDeleting(true);
