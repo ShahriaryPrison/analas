@@ -3,6 +3,7 @@ import bcrypt from "bcryptjs";
 import { NextResponse } from "next/server";
 import crypto from "node:crypto";
 import { validatePhoneNumber } from "@/lib/countries";
+import { sendOtpSms } from "@/lib/sms";
 
 export async function POST(req: Request) {
   try {
@@ -76,10 +77,11 @@ export async function POST(req: Request) {
     console.log(`\n==========================================================`);
     console.log(`[DISPATCH LOG] New User Registered: ${email}`);
     console.log(`[DISPATCH LOG] Email Verification Link:\n  ${verificationLink}`);
-    if (phone && smsOtp) {
-      console.log(`[DISPATCH LOG] SMS Phone OTP Code for ${phone}:\n  ${smsOtp}`);
-    }
     console.log(`==========================================================\n`);
+
+    if (phone && smsOtp) {
+      await sendOtpSms(phone, smsOtp);
+    }
 
     // 3. Auto-join any pending email invites for this email (outside main tx)
     const pendingEmailInvites = await prisma.workspaceInvite.findMany({

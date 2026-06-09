@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { getAppSession } from "@/lib/session";
 import { NextResponse } from "next/server";
 import { validatePhoneNumber } from "@/lib/countries";
+import { sendOtpSms } from "@/lib/sms";
 
 export async function POST(req: Request) {
   try {
@@ -49,9 +50,7 @@ export async function POST(req: Request) {
       },
     });
 
-    console.log(`\n==========================================================`);
-    console.log(`[DISPATCH LOG - SETTINGS] SMS Phone OTP Code for ${phone}:\n  ${smsOtp}`);
-    console.log(`==========================================================\n`);
+    await sendOtpSms(phone, smsOtp);
 
     return NextResponse.json({ ok: true, message: "Verification code sent successfully" });
   } catch (error) {

@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
 import crypto from "node:crypto";
+import { sendOtpSms } from "@/lib/sms";
 
 export async function POST(req: Request) {
   try {
@@ -46,10 +47,11 @@ export async function POST(req: Request) {
     console.log(`\n==========================================================`);
     console.log(`[DISPATCH LOG - RESEND] Token request for: ${email}`);
     console.log(`[DISPATCH LOG - RESEND] Email Verification Link:\n  ${verificationLink}`);
-    if (user.phone && smsOtp) {
-      console.log(`[DISPATCH LOG - RESEND] SMS Phone OTP Code for ${user.phone}:\n  ${smsOtp}`);
-    }
     console.log(`==========================================================\n`);
+
+    if (user.phone && smsOtp) {
+      await sendOtpSms(user.phone, smsOtp);
+    }
 
     return NextResponse.json({ ok: true, message: "Verification link resent successfully" });
   } catch (error) {

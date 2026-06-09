@@ -437,6 +437,9 @@ export default function AccountSettingsClient({
                       required
                       value={otp}
                       onChange={(e) => setOtp(e.target.value)}
+                      autoComplete="one-time-code"
+                      inputMode="numeric"
+                      pattern="[0-9]*"
                       className="w-full bg-slate-950/60 border border-white/10 rounded-lg px-4 py-2 text-white placeholder-slate-600 text-center font-mono text-sm tracking-widest focus:outline-none focus:ring-2 focus:ring-emerald-400/70 focus:border-transparent transition"
                     />
                   </div>
