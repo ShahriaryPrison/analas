@@ -4,13 +4,14 @@ import { useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import PineappleIcon from "@/components/PineappleIcon";
+import { ALLOWED_COUNTRIES } from "@/lib/countries";
 
 function VerifyContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
 
   const email = searchParams.get("email") ?? "";
-  const phone = searchParams.get("phone") ?? "";
+  const initialPhone = searchParams.get("phone") ?? "";
   const newKey = searchParams.get("newKey") ?? "";
 
   const [otp, setOtp] = useState("");
@@ -19,6 +20,14 @@ function VerifyContent() {
   
   const [resendingEmail, setResendingEmail] = useState(false);
   const [emailStatus, setEmailStatus] = useState<{ ok: boolean; msg: string } | null>(null);
+
+  // States for "Add & Verify Phone" on the fly
+  const [phoneInput, setPhoneInput] = useState("");
+  const [selectedCountry, setSelectedCountry] = useState(ALLOWED_COUNTRIES[0]);
+  const [isPhoneCodeSent, setIsPhoneCodeSent] = useState(false);
+  const [phoneLoading, setPhoneLoading] = useState(false);
+
+  const displayPhone = initialPhone || (isPhoneCodeSent ? `${selectedCountry.dialCode}${phoneInput.trim().replace(/\D/g, "").replace(/^0/, "")}` : "");
 
   const handleOtpSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -74,6 +83,46 @@ function VerifyContent() {
     }
   };
 
+  // Add Phone & Send OTP on the fly
+  const handleAddPhone = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError("");
+    setPhoneLoading(true);
+
+    let sanitized = phoneInput.trim().replace(/\D/g, "");
+    if (sanitized.startsWith("0")) {
+      sanitized = sanitized.slice(1);
+    }
+
+    const regex = new RegExp(selectedCountry.nationalRegexString);
+    if (!regex.test(sanitized)) {
+      setError(`Invalid phone number format. Enter a valid mobile number for ${selectedCountry.name} (e.g. ${selectedCountry.placeholder}).`);
+      setPhoneLoading(false);
+      return;
+    }
+
+    const fullPhone = `${selectedCountry.dialCode}${sanitized}`;
+
+    try {
+      const res = await fetch("/api/user/phone", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ phone: fullPhone }),
+      });
+
+      const data = await res.json();
+      if (res.ok) {
+        setIsPhoneCodeSent(true);
+      } else {
+        setError(data.error ?? "Failed to register phone number.");
+      }
+    } catch {
+      setError("An error occurred. Please try again.");
+    } finally {
+      setPhoneLoading(false);
+    }
+  };
+
   return (
     <div className="relative w-full max-w-md">
       {/* Brand */}
@@ -122,17 +171,15 @@ function VerifyContent() {
           </div>
         </div>
 
-        {/* Divider if phone is present */}
-        {phone && (
-          <div className="relative flex py-2 items-center">
-            <div className="flex-grow border-t border-white/5"></div>
-            <span className="flex-shrink mx-4 text-xs font-bold tracking-wider text-slate-600 uppercase">OR</span>
-            <div className="flex-grow border-t border-white/5"></div>
-          </div>
-        )}
+        <div className="relative flex py-2 items-center">
+          <div className="flex-grow border-t border-white/5"></div>
+          <span className="flex-shrink mx-4 text-xs font-bold tracking-wider text-slate-600 uppercase">OR</span>
+          <div className="flex-grow border-t border-white/5"></div>
+        </div>
 
-        {/* Option B: SMS verification instructions (only if phone is registered) */}
-        {phone && (
+        {/* Option B: SMS verification / Add phone flow */}
+        {displayPhone ? (
+          /* ENTER AND VERIFY OTP */
           <div className="space-y-3">
             <div className="flex items-center gap-2">
               <span className="flex h-6 w-6 items-center justify-center rounded-full bg-teal-500/10 border border-teal-500/20 text-xs font-bold text-teal-400">
@@ -144,7 +191,7 @@ function VerifyContent() {
               <p className="text-xs text-slate-400 leading-relaxed">
                 We sent a 6-digit code to your phone:
                 <br />
-                <strong className="text-white font-mono">{phone}</strong>
+                <strong className="text-white font-mono">{displayPhone}</strong>
               </p>
               <div>
                 <input
@@ -166,6 +213,52 @@ function VerifyContent() {
                 className="w-full bg-emerald-400 hover:bg-emerald-300 disabled:opacity-60 disabled:cursor-not-allowed text-slate-900 font-semibold rounded-lg py-2 text-xs transition"
               >
                 {loading ? "Verifying OTP..." : "Verify OTP Code"}
+              </button>
+            </form>
+          </div>
+        ) : (
+          /* ADD PHONE ON THE FLY */
+          <div className="space-y-3">
+            <div className="flex items-center gap-2">
+              <span className="flex h-6 w-6 items-center justify-center rounded-full bg-teal-500/10 border border-teal-500/20 text-xs font-bold text-teal-400">
+                B
+              </span>
+              <h3 className="text-sm font-semibold text-slate-200 uppercase tracking-wide">Add & Verify Phone</h3>
+            </div>
+            <form onSubmit={handleAddPhone} className="rounded-xl border border-white/5 bg-white/2 p-4 space-y-3">
+              <p className="text-xs text-slate-400 leading-relaxed">
+                Don&apos;t want to use email? Verify your account using a mobile number instead.
+              </p>
+              <div className="flex gap-2">
+                <select
+                  value={selectedCountry.code}
+                  onChange={(e) => {
+                    const matched = ALLOWED_COUNTRIES.find((c) => c.code === e.target.value);
+                    if (matched) setSelectedCountry(matched);
+                  }}
+                  className="bg-slate-800/60 border border-white/10 rounded-lg px-2 py-2 text-white text-xs focus:outline-none focus:ring-2 focus:ring-emerald-400/70 focus:border-transparent transition shrink-0 cursor-pointer"
+                >
+                  {ALLOWED_COUNTRIES.map((c) => (
+                    <option key={c.code} value={c.code} className="bg-slate-900 text-white">
+                      {c.flag} {c.dialCode}
+                    </option>
+                  ))}
+                </select>
+                <input
+                  type="tel"
+                  placeholder={selectedCountry.placeholder}
+                  required
+                  value={phoneInput}
+                  onChange={(e) => setPhoneInput(e.target.value)}
+                  className="flex-1 bg-slate-800/60 border border-white/10 rounded-lg px-3 py-2 text-white placeholder-slate-500 text-xs focus:outline-none focus:ring-2 focus:ring-emerald-400/70 focus:border-transparent transition"
+                />
+              </div>
+              <button
+                type="submit"
+                disabled={phoneLoading}
+                className="w-full bg-emerald-400 hover:bg-emerald-300 disabled:opacity-60 disabled:cursor-not-allowed text-slate-900 font-semibold rounded-lg py-2 text-xs transition"
+              >
+                {phoneLoading ? "Sending Code..." : "Send Verification Code"}
               </button>
             </form>
           </div>

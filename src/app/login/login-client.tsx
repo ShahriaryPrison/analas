@@ -1,16 +1,32 @@
 "use client";
+
 import { signIn } from "next-auth/react";
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import PineappleIcon from "@/components/PineappleIcon";
+import { ALLOWED_COUNTRIES } from "@/lib/countries";
+import { CheckIcon } from "@/components/icons";
 
 function LoginContent() {
+  const [activeTab, setActiveTab] = useState<"email" | "phone">("email");
+
+  // Email login states
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+
+  // Phone login states
+  const [phone, setPhone] = useState("");
+  const [selectedCountry, setSelectedCountry] = useState(ALLOWED_COUNTRIES[0]);
+  const [otp, setOtp] = useState("");
+  const [isOtpSent, setIsOtpSent] = useState(false);
+  const [sendingCode, setSendingCode] = useState(false);
+
+  // Status & loading states
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [loading, setLoading] = useState(false);
+
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -32,23 +48,98 @@ function LoginContent() {
       }
     }
     if (searchParams.get("error") === "CredentialsSignin") {
-      setError("Invalid email or password.");
+      setError("Invalid credentials.");
     }
   }, [searchParams]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  // Handle email/password submit
+  const handleEmailSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
+    setSuccess("");
     setLoading(true);
 
     const result = await signIn("credentials", {
       email,
       password,
+      loginType: "password",
       redirect: false,
     });
 
     if (result?.error) {
       setError("Invalid email or password.");
+      setLoading(false);
+    } else {
+      router.push("/dashboard");
+    }
+  };
+
+  // Handle send OTP code
+  const handleSendCode = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError("");
+    setSuccess("");
+    setSendingCode(true);
+
+    // Sanitize phone
+    let sanitized = phone.trim().replace(/\D/g, "");
+    if (sanitized.startsWith("0")) {
+      sanitized = sanitized.slice(1);
+    }
+
+    const regex = new RegExp(selectedCountry.nationalRegexString);
+    if (!regex.test(sanitized)) {
+      setError(`Invalid phone number format. Enter a valid number (e.g. ${selectedCountry.placeholder}).`);
+      setSendingCode(false);
+      return;
+    }
+
+    const fullPhone = `${selectedCountry.dialCode}${sanitized}`;
+
+    try {
+      const res = await fetch("/api/auth/otp/send", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ phone: fullPhone }),
+      });
+
+      const data = await res.json();
+      if (res.ok) {
+        setIsOtpSent(true);
+        setSuccess("Verification code sent successfully. Check console logs.");
+      } else {
+        setError(data.error ?? "Failed to send verification code.");
+      }
+    } catch {
+      setError("An error occurred sending code. Please try again.");
+    } finally {
+      setSendingCode(false);
+    }
+  };
+
+  // Handle phone OTP verify submit
+  const handlePhoneSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError("");
+    setSuccess("");
+    setLoading(true);
+
+    // Sanitize phone
+    let sanitized = phone.trim().replace(/\D/g, "");
+    if (sanitized.startsWith("0")) {
+      sanitized = sanitized.slice(1);
+    }
+    const fullPhone = `${selectedCountry.dialCode}${sanitized}`;
+
+    const result = await signIn("credentials", {
+      phone: fullPhone,
+      otp,
+      loginType: "otp",
+      redirect: false,
+    });
+
+    if (result?.error) {
+      setError("Invalid or expired verification code.");
       setLoading(false);
     } else {
       router.push("/dashboard");
@@ -71,56 +162,182 @@ function LoginContent() {
 
         {/* Card */}
         <div className="bg-slate-900/70 backdrop-blur-xl border border-white/10 rounded-2xl p-8 shadow-[0_25px_80px_-30px_rgba(16,185,129,0.45)]">
-          <form onSubmit={handleSubmit} className="space-y-5">
-            {success && (
-              <div className="bg-emerald-500/10 border border-emerald-500/30 rounded-lg px-4 py-3 text-emerald-300 text-sm">
-                {success}
-              </div>
-            )}
-            {error && (
-              <div className="bg-red-500/10 border border-red-500/30 rounded-lg px-4 py-3 text-red-300 text-sm">
-                {error}
-              </div>
-            )}
-
-            <div>
-              <label htmlFor="email" className="block text-sm font-medium text-slate-300 mb-1.5">
-                Email address
-              </label>
-              <input
-                id="email"
-                type="email"
-                placeholder="you@example.com"
-                required
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="w-full bg-slate-800/60 border border-white/10 rounded-lg px-4 py-2.5 text-white placeholder-slate-400 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400/70 focus:border-transparent transition"
-              />
-            </div>
-
-            <div>
-              <label htmlFor="password" className="block text-sm font-medium text-slate-300 mb-1.5">
-                Password
-              </label>
-              <input
-                id="password"
-                type="password"
-                placeholder="••••••••"
-                required
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="w-full bg-slate-800/60 border border-white/10 rounded-lg px-4 py-2.5 text-white placeholder-slate-400 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400/70 focus:border-transparent transition"
-              />
-            </div>
-
+          {/* Tabs */}
+          <div className="flex border-b border-white/5 mb-6">
             <button
-              type="submit"
-              disabled={loading}
-              className="w-full bg-gradient-to-r from-emerald-400 via-teal-400 to-cyan-400 hover:from-emerald-300 hover:via-teal-300 hover:to-cyan-300 disabled:opacity-60 disabled:cursor-not-allowed text-slate-900 font-semibold rounded-lg py-2.5 text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-emerald-300 focus:ring-offset-2 focus:ring-offset-slate-900"
+              onClick={() => {
+                setActiveTab("email");
+                setError("");
+                setSuccess("");
+              }}
+              className={`flex-1 pb-3 text-sm font-semibold border-b-2 transition-all ${
+                activeTab === "email"
+                  ? "border-emerald-400 text-emerald-300 font-bold"
+                  : "border-transparent text-slate-400 hover:text-slate-200"
+              }`}
             >
-              {loading ? "Signing in…" : "Sign in"}
+              Email Sign In
             </button>
-          </form>
+            <button
+              onClick={() => {
+                setActiveTab("phone");
+                setError("");
+                setSuccess("");
+              }}
+              className={`flex-1 pb-3 text-sm font-semibold border-b-2 transition-all ${
+                activeTab === "phone"
+                  ? "border-emerald-400 text-emerald-300 font-bold"
+                  : "border-transparent text-slate-400 hover:text-slate-200"
+              }`}
+            >
+              Phone OTP Sign In
+            </button>
+          </div>
+
+          {success && (
+            <div className="bg-emerald-500/10 border border-emerald-500/30 rounded-lg px-4 py-3 text-emerald-300 text-sm mb-5">
+              {success}
+            </div>
+          )}
+          {error && (
+            <div className="bg-red-500/10 border border-red-500/30 rounded-lg px-4 py-3 text-red-300 text-sm mb-5">
+              {error}
+            </div>
+          )}
+
+          {activeTab === "email" ? (
+            /* EMAIL & PASSWORD LOGIN FORM */
+            <form onSubmit={handleEmailSubmit} className="space-y-5">
+              <div>
+                <label htmlFor="email" className="block text-sm font-medium text-slate-300 mb-1.5">
+                  Email address
+                </label>
+                <input
+                  id="email"
+                  type="email"
+                  placeholder="you@example.com"
+                  required
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="w-full bg-slate-800/60 border border-white/10 rounded-lg px-4 py-2.5 text-white placeholder-slate-400 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400/70 focus:border-transparent transition"
+                />
+              </div>
+
+              <div>
+                <label htmlFor="password" className="block text-sm font-medium text-slate-300 mb-1.5">
+                  Password
+                </label>
+                <input
+                  id="password"
+                  type="password"
+                  placeholder="••••••••"
+                  required
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className="w-full bg-slate-800/60 border border-white/10 rounded-lg px-4 py-2.5 text-white placeholder-slate-400 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400/70 focus:border-transparent transition"
+                />
+              </div>
+
+              <button
+                type="submit"
+                disabled={loading}
+                className="w-full bg-gradient-to-r from-emerald-400 via-teal-400 to-cyan-400 hover:from-emerald-300 hover:via-teal-300 hover:to-cyan-300 disabled:opacity-60 disabled:cursor-not-allowed text-slate-900 font-semibold rounded-lg py-2.5 text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-emerald-300 focus:ring-offset-2 focus:ring-offset-slate-900"
+              >
+                {loading ? "Signing in…" : "Sign in"}
+              </button>
+            </form>
+          ) : (
+            /* PHONE OTP LOGIN FORM */
+            <div className="space-y-5">
+              {!isOtpSent ? (
+                /* STEP 1: ENTER PHONE NUMBER */
+                <form onSubmit={handleSendCode} className="space-y-5">
+                  <div>
+                    <label htmlFor="phone" className="block text-sm font-medium text-slate-300 mb-1.5">
+                      Phone Number
+                    </label>
+                    <div className="flex gap-2">
+                      <select
+                        value={selectedCountry.code}
+                        onChange={(e) => {
+                          const matched = ALLOWED_COUNTRIES.find((c) => c.code === e.target.value);
+                          if (matched) setSelectedCountry(matched);
+                        }}
+                        className="bg-slate-800/60 border border-white/10 rounded-lg px-3 py-2.5 text-white text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400/70 focus:border-transparent transition shrink-0 cursor-pointer"
+                      >
+                        {ALLOWED_COUNTRIES.map((c) => (
+                          <option key={c.code} value={c.code} className="bg-slate-900 text-white">
+                            {c.flag} {c.dialCode}
+                          </option>
+                        ))}
+                      </select>
+                      <input
+                        id="phone"
+                        type="tel"
+                        placeholder={selectedCountry.placeholder}
+                        required
+                        value={phone}
+                        onChange={(e) => setPhone(e.target.value)}
+                        className="flex-1 bg-slate-800/60 border border-white/10 rounded-lg px-4 py-2.5 text-white placeholder-slate-500 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400/70 focus:border-transparent transition"
+                      />
+                    </div>
+                  </div>
+
+                  <button
+                    type="submit"
+                    disabled={sendingCode}
+                    className="w-full bg-gradient-to-r from-emerald-400 via-teal-400 to-cyan-400 hover:from-emerald-300 hover:via-teal-300 hover:to-cyan-300 disabled:opacity-60 disabled:cursor-not-allowed text-slate-900 font-semibold rounded-lg py-2.5 text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-emerald-300 focus:ring-offset-2 focus:ring-offset-slate-900"
+                  >
+                    {sendingCode ? "Sending Code..." : "Send Verification Code"}
+                  </button>
+                </form>
+              ) : (
+                /* STEP 2: ENTER OTP CODE */
+                <form onSubmit={handlePhoneSubmit} className="space-y-5">
+                  <div className="flex justify-between items-center p-3 rounded-lg border border-white/5 bg-white/2">
+                    <div>
+                      <div className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">Sending OTP to</div>
+                      <div className="text-sm font-semibold text-white font-mono mt-0.5">{selectedCountry.dialCode} {phone}</div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setIsOtpSent(false)}
+                      className="text-xs text-emerald-400 hover:text-emerald-300 underline"
+                    >
+                      Change
+                    </button>
+                  </div>
+
+                  <div>
+                    <label htmlFor="otp" className="block text-sm font-medium text-slate-300 mb-1.5">
+                      Verification Code
+                    </label>
+                    <input
+                      id="otp"
+                      type="text"
+                      maxLength={6}
+                      placeholder="Enter 6-digit OTP"
+                      required
+                      value={otp}
+                      onChange={(e) => setOtp(e.target.value)}
+                      autoComplete="one-time-code"
+                      inputMode="numeric"
+                      pattern="[0-9]*"
+                      className="w-full bg-slate-800/60 border border-white/10 rounded-lg px-4 py-2.5 text-white placeholder-slate-400 text-center font-mono text-sm tracking-widest focus:outline-none focus:ring-2 focus:ring-emerald-400/70 focus:border-transparent transition"
+                    />
+                  </div>
+
+                  <button
+                    type="submit"
+                    disabled={loading}
+                    className="w-full bg-gradient-to-r from-emerald-400 via-teal-400 to-cyan-400 hover:from-emerald-300 hover:via-teal-300 hover:to-cyan-300 disabled:opacity-60 disabled:cursor-not-allowed text-slate-900 font-semibold rounded-lg py-2.5 text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-emerald-300 focus:ring-offset-2 focus:ring-offset-slate-900"
+                  >
+                    {loading ? "Verifying..." : "Verify & Sign In"}
+                  </button>
+                </form>
+              )}
+            </div>
+          )}
 
           <p className="text-center text-slate-300 text-sm mt-6">
             Don&apos;t have an account?{" "}
@@ -145,8 +362,6 @@ function LoginContent() {
     </div>
   );
 }
-
-import { Suspense } from "react";
 
 export default function LoginClient() {
   return (
