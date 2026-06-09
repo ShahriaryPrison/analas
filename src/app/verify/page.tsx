@@ -105,7 +105,7 @@ function VerifyContent() {
       });
       const data = await res.json();
       if (res.ok) {
-        setEmailStatus({ ok: true, msg: "Verification link resent successfully! Please check your logs." });
+        setEmailStatus({ ok: true, msg: data.message ?? "Verification link resent successfully!" });
       } else {
         setEmailStatus({ ok: false, msg: data.error ?? "Failed to resend. Please try again." });
       }

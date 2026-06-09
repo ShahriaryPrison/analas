@@ -104,7 +104,7 @@ export default function AccountSettingsClient({
       });
       const data = await res.json();
       if (res.ok) {
-        setEmailStatus({ ok: true, text: "Verification link sent. Check your server/email logs." });
+        setEmailStatus({ ok: true, text: data.message ?? "Verification link sent successfully." });
       } else {
         setEmailStatus({ ok: false, text: data.error ?? "Failed to resend link." });
       }
@@ -151,7 +151,7 @@ export default function AccountSettingsClient({
         setIsOtpPending(true);
         setHasPhoneRegistered(true);
         setPhoneVerified(false);
-        setPhoneMsg({ ok: true, text: "A 6-digit verification code has been sent. Check console logs." });
+        setPhoneMsg({ ok: true, text: data.message ?? "A 6-digit verification code has been sent." });
       } else {
         setPhoneMsg({ ok: false, text: data.error ?? "Failed to update phone number." });
       }

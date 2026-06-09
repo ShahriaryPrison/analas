@@ -108,7 +108,7 @@ function LoginContent() {
       const data = await res.json();
       if (res.ok) {
         setIsOtpSent(true);
-        setSuccess("Verification code sent successfully. Check console logs.");
+        setSuccess(data.message ?? "Verification code sent successfully.");
       } else {
         setError(data.error ?? "Failed to send verification code.");
       }
