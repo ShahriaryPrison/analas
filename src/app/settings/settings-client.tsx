@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { signOut } from "next-auth/react";
 import PineappleIcon from "@/components/PineappleIcon";
@@ -53,6 +53,8 @@ export default function AccountSettingsClient({
   // OTP/Verification state
   const [otp, setOtp] = useState("");
   const [isOtpPending, setIsOtpPending] = useState(false);
+  const fromAutofill = useRef(false);
+
 
   // Status & loading states
   const [profileLoading, setProfileLoading] = useState(false);
@@ -161,8 +163,8 @@ export default function AccountSettingsClient({
   };
 
   // Verify Phone OTP
-  const handleVerifyOtp = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleVerifyOtp = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
     if (otp.length !== 6 || !/^\d+$/.test(otp)) {
       setPhoneMsg({ ok: false, text: "Please enter a valid 6-digit numeric code." });
       return;
@@ -192,6 +194,38 @@ export default function AccountSettingsClient({
       setPhoneLoading(false);
     }
   };
+
+  // WebOTP API listener
+  useEffect(() => {
+    if (!isOtpPending || phoneVerified) return;
+    if (!("OTPCredential" in window)) return;
+
+    const ac = new AbortController();
+
+    (navigator.credentials.get as unknown as (options: unknown) => Promise<unknown>)({
+      otp: { transport: ["sms"] },
+      signal: ac.signal,
+    })
+      .then((credential: unknown) => {
+        const cred = credential as { code?: string } | null;
+        if (cred?.code) {
+          fromAutofill.current = true;
+          setOtp(cred.code);
+        }
+      })
+      .catch(() => {});
+
+    return () => ac.abort();
+  }, [isOtpPending, phoneVerified]);
+
+  // Autofill auto-submit handler
+  useEffect(() => {
+    if (fromAutofill.current && otp.length === 6) {
+      fromAutofill.current = false;
+      handleVerifyOtp();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [otp]);
 
   // Remove Phone Number
   const handleRemovePhone = async () => {

@@ -1,12 +1,11 @@
 "use client";
 
 import { signIn } from "next-auth/react";
-import { useState, useEffect, Suspense } from "react";
+import { useState, useEffect, useRef, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import PineappleIcon from "@/components/PineappleIcon";
 import { ALLOWED_COUNTRIES } from "@/lib/countries";
-import { CheckIcon } from "@/components/icons";
 
 function LoginContent() {
   const [activeTab, setActiveTab] = useState<"email" | "phone">("email");
@@ -21,6 +20,7 @@ function LoginContent() {
   const [otp, setOtp] = useState("");
   const [isOtpSent, setIsOtpSent] = useState(false);
   const [sendingCode, setSendingCode] = useState(false);
+  const fromAutofill = useRef(false);
 
   // Status & loading states
   const [error, setError] = useState("");
@@ -30,6 +30,8 @@ function LoginContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
 
+
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => {
     if (searchParams.get("registered") === "true") {
       setSuccess("Account created! Sign in to continue.");
@@ -118,8 +120,8 @@ function LoginContent() {
   };
 
   // Handle phone OTP verify submit
-  const handlePhoneSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handlePhoneSubmit = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
     setError("");
     setSuccess("");
     setLoading(true);
@@ -145,6 +147,38 @@ function LoginContent() {
       router.push("/dashboard");
     }
   };
+
+  // WebOTP API listener
+  useEffect(() => {
+    if (!isOtpSent) return;
+    if (!("OTPCredential" in window)) return;
+
+    const ac = new AbortController();
+
+    (navigator.credentials.get as unknown as (options: unknown) => Promise<unknown>)({
+      otp: { transport: ["sms"] },
+      signal: ac.signal,
+    })
+      .then((credential: unknown) => {
+        const cred = credential as { code?: string } | null;
+        if (cred?.code) {
+          fromAutofill.current = true;
+          setOtp(cred.code);
+        }
+      })
+      .catch(() => {});
+
+    return () => ac.abort();
+  }, [isOtpSent]);
+
+  // Autofill auto-submit handler
+  useEffect(() => {
+    if (fromAutofill.current && otp.length === 6) {
+      fromAutofill.current = false;
+      handlePhoneSubmit();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [otp]);
 
   return (
     <div className="relative min-h-screen overflow-hidden bg-linear-to-br from-emerald-950 via-slate-900 to-amber-950 flex items-center justify-center p-4">

@@ -1,8 +1,7 @@
 "use client";
 
-import { useState, Suspense } from "react";
+import { useState, useEffect, useRef, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import Link from "next/link";
 import PineappleIcon from "@/components/PineappleIcon";
 import { ALLOWED_COUNTRIES } from "@/lib/countries";
 
@@ -28,9 +27,11 @@ function VerifyContent() {
   const [phoneLoading, setPhoneLoading] = useState(false);
 
   const displayPhone = initialPhone || (isPhoneCodeSent ? `${selectedCountry.dialCode}${phoneInput.trim().replace(/\D/g, "").replace(/^0/, "")}` : "");
+  const fromAutofill = useRef(false);
 
-  const handleOtpSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+
+  const handleOtpSubmit = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
     if (otp.length !== 6 || !/^\d+$/.test(otp)) {
       setError("Please enter a valid 6-digit verification code.");
       return;
@@ -60,6 +61,38 @@ function VerifyContent() {
       setLoading(false);
     }
   };
+
+  // WebOTP API listener
+  useEffect(() => {
+    if (!displayPhone) return;
+    if (!("OTPCredential" in window)) return;
+
+    const ac = new AbortController();
+
+    (navigator.credentials.get as unknown as (options: unknown) => Promise<unknown>)({
+      otp: { transport: ["sms"] },
+      signal: ac.signal,
+    })
+      .then((credential: unknown) => {
+        const cred = credential as { code?: string } | null;
+        if (cred?.code) {
+          fromAutofill.current = true;
+          setOtp(cred.code);
+        }
+      })
+      .catch(() => {});
+
+    return () => ac.abort();
+  }, [displayPhone]);
+
+  // Autofill auto-submit handler
+  useEffect(() => {
+    if (fromAutofill.current && otp.length === 6) {
+      fromAutofill.current = false;
+      handleOtpSubmit();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [otp]);
 
   const handleResendEmail = async () => {
     setResendingEmail(true);
