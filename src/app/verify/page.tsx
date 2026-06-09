@@ -135,7 +135,7 @@ function VerifyContent() {
       </div>
 
       {/* Card */}
-      <div className="bg-slate-900/70 backdrop-blur-xl border border-white/10 rounded-2xl p-8 shadow-[0_25px_80px_-30px_rgba(16,185,129,0.45)] space-y-6">
+      <div className="bg-slate-900/70 backdrop-blur-xl border border-white/10 rounded-2xl p-6 sm:p-8 shadow-[0_25px_80px_-30px_rgba(16,185,129,0.45)] space-y-6">
         {error && (
           <div className="bg-red-500/10 border border-red-500/30 rounded-lg px-4 py-3 text-red-300 text-sm">
             {error}
@@ -195,6 +195,8 @@ function VerifyContent() {
               </p>
               <div>
                 <input
+                  id="otp"
+                  name="otp"
                   type="text"
                   maxLength={6}
                   placeholder="Enter 6-digit OTP code"
@@ -236,7 +238,7 @@ function VerifyContent() {
                     const matched = ALLOWED_COUNTRIES.find((c) => c.code === e.target.value);
                     if (matched) setSelectedCountry(matched);
                   }}
-                  className="bg-slate-800/60 border border-white/10 rounded-lg px-2 py-2 text-white text-xs focus:outline-none focus:ring-2 focus:ring-emerald-400/70 focus:border-transparent transition shrink-0 cursor-pointer"
+                  className="w-[84px] sm:w-[92px] bg-slate-800/60 border border-white/10 rounded-lg px-2 sm:px-3 py-2 text-white text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400/70 focus:border-transparent transition shrink-0 cursor-pointer"
                 >
                   {ALLOWED_COUNTRIES.map((c) => (
                     <option key={c.code} value={c.code} className="bg-slate-900 text-white">
@@ -250,7 +252,7 @@ function VerifyContent() {
                   required
                   value={phoneInput}
                   onChange={(e) => setPhoneInput(e.target.value)}
-                  className="flex-1 bg-slate-800/60 border border-white/10 rounded-lg px-3 py-2 text-white placeholder-slate-500 text-xs focus:outline-none focus:ring-2 focus:ring-emerald-400/70 focus:border-transparent transition"
+                  className="flex-1 min-w-0 bg-slate-800/60 border border-white/10 rounded-lg px-3 py-2 text-white placeholder-slate-500 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400/70 focus:border-transparent transition"
                 />
               </div>
               <button

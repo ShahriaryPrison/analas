@@ -161,7 +161,7 @@ function LoginContent() {
         </div>
 
         {/* Card */}
-        <div className="bg-slate-900/70 backdrop-blur-xl border border-white/10 rounded-2xl p-8 shadow-[0_25px_80px_-30px_rgba(16,185,129,0.45)]">
+        <div className="bg-slate-900/70 backdrop-blur-xl border border-white/10 rounded-2xl p-6 sm:p-8 shadow-[0_25px_80px_-30px_rgba(16,185,129,0.45)]">
           {/* Tabs */}
           <div className="flex border-b border-white/5 mb-6">
             <button
@@ -170,7 +170,7 @@ function LoginContent() {
                 setError("");
                 setSuccess("");
               }}
-              className={`flex-1 pb-3 text-sm font-semibold border-b-2 transition-all ${
+              className={`flex-1 pb-3 text-xs sm:text-sm font-semibold border-b-2 transition-all ${
                 activeTab === "email"
                   ? "border-emerald-400 text-emerald-300 font-bold"
                   : "border-transparent text-slate-400 hover:text-slate-200"
@@ -184,7 +184,7 @@ function LoginContent() {
                 setError("");
                 setSuccess("");
               }}
-              className={`flex-1 pb-3 text-sm font-semibold border-b-2 transition-all ${
+              className={`flex-1 pb-3 text-xs sm:text-sm font-semibold border-b-2 transition-all ${
                 activeTab === "phone"
                   ? "border-emerald-400 text-emerald-300 font-bold"
                   : "border-transparent text-slate-400 hover:text-slate-200"
@@ -263,7 +263,7 @@ function LoginContent() {
                           const matched = ALLOWED_COUNTRIES.find((c) => c.code === e.target.value);
                           if (matched) setSelectedCountry(matched);
                         }}
-                        className="bg-slate-800/60 border border-white/10 rounded-lg px-3 py-2.5 text-white text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400/70 focus:border-transparent transition shrink-0 cursor-pointer"
+                        className="w-[84px] sm:w-[92px] bg-slate-800/60 border border-white/10 rounded-lg px-2 sm:px-3 py-2.5 text-white text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400/70 focus:border-transparent transition shrink-0 cursor-pointer"
                       >
                         {ALLOWED_COUNTRIES.map((c) => (
                           <option key={c.code} value={c.code} className="bg-slate-900 text-white">
@@ -278,7 +278,7 @@ function LoginContent() {
                         required
                         value={phone}
                         onChange={(e) => setPhone(e.target.value)}
-                        className="flex-1 bg-slate-800/60 border border-white/10 rounded-lg px-4 py-2.5 text-white placeholder-slate-500 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400/70 focus:border-transparent transition"
+                        className="flex-1 min-w-0 bg-slate-800/60 border border-white/10 rounded-lg px-3 sm:px-4 py-2.5 text-white placeholder-slate-500 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400/70 focus:border-transparent transition"
                       />
                     </div>
                   </div>
@@ -294,15 +294,15 @@ function LoginContent() {
               ) : (
                 /* STEP 2: ENTER OTP CODE */
                 <form onSubmit={handlePhoneSubmit} className="space-y-5">
-                  <div className="flex justify-between items-center p-3 rounded-lg border border-white/5 bg-white/2">
+                  <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center p-3 rounded-lg border border-white/5 bg-white/2 gap-2">
                     <div>
                       <div className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">Sending OTP to</div>
-                      <div className="text-sm font-semibold text-white font-mono mt-0.5">{selectedCountry.dialCode} {phone}</div>
+                      <div className="text-xs sm:text-sm font-semibold text-white font-mono mt-0.5 truncate max-w-[240px] sm:max-w-xs">{selectedCountry.dialCode} {phone}</div>
                     </div>
                     <button
                       type="button"
                       onClick={() => setIsOtpSent(false)}
-                      className="text-xs text-emerald-400 hover:text-emerald-300 underline"
+                      className="text-xs text-emerald-400 hover:text-emerald-300 underline shrink-0 self-end sm:self-auto"
                     >
                       Change
                     </button>
@@ -314,6 +314,7 @@ function LoginContent() {
                     </label>
                     <input
                       id="otp"
+                      name="otp"
                       type="text"
                       maxLength={6}
                       placeholder="Enter 6-digit OTP"

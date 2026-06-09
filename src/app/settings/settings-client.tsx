@@ -377,7 +377,7 @@ export default function AccountSettingsClient({
                       const matched = ALLOWED_COUNTRIES.find((c) => c.code === e.target.value);
                       if (matched) setSelectedCountry(matched);
                     }}
-                    className="bg-slate-800/60 border border-white/10 rounded-lg px-3 py-2.5 text-white text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400/70 focus:border-transparent transition cursor-pointer"
+                    className="w-[84px] sm:w-[92px] bg-slate-800/60 border border-white/10 rounded-lg px-2 sm:px-3 py-2.5 text-white text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400/70 focus:border-transparent transition shrink-0 cursor-pointer"
                   >
                     {ALLOWED_COUNTRIES.map((c) => (
                       <option key={c.code} value={c.code} className="bg-slate-900 text-white">
@@ -392,7 +392,7 @@ export default function AccountSettingsClient({
                     required
                     value={phone}
                     onChange={(e) => setPhone(e.target.value)}
-                    className="flex-1 bg-slate-800/60 border border-white/10 rounded-lg px-4 py-2.5 text-white placeholder-slate-500 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400/70 focus:border-transparent transition"
+                    className="flex-1 min-w-0 bg-slate-800/60 border border-white/10 rounded-lg px-3 sm:px-4 py-2.5 text-white placeholder-slate-500 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400/70 focus:border-transparent transition"
                   />
                 </div>
               </div>
@@ -426,11 +426,12 @@ export default function AccountSettingsClient({
               {isOtpPending && !phoneVerified && (
                 <form onSubmit={handleVerifyOtp} className="p-4 rounded-xl border border-white/5 bg-white/2 space-y-3">
                   <div>
-                    <label htmlFor="otp-input" className="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1.5">
+                    <label htmlFor="otp" className="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1.5">
                       Enter Verification Code
                     </label>
                     <input
-                      id="otp-input"
+                      id="otp"
+                      name="otp"
                       type="text"
                       maxLength={6}
                       placeholder="Enter 6-digit OTP"
