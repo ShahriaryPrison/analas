@@ -6,10 +6,17 @@ import { getInsightType } from "@/lib/insight-types";
 import { BarChart2Icon, ActivityIcon, TrashIcon, PencilIcon } from "@/components/icons";
 import MoveInsightButton from "./move-insight-button";
 import InsightDocsViewer from "./insight-docs-viewer";
+import SessionRecordingRenderer from "./session-recording-renderer";
 import Link from "next/link";
 
-export type Row = { day?: string; count?: number; label?: string; val?: string; counts?: Record<string, number>; cohort?: string; size?: number; days?: number[] };
-export type InsightData = { total: number; returning?: number; rows: Row[] };
+export type Row = {
+  day?: string; count?: number; label?: string; val?: string;
+  counts?: Record<string, number>; cohort?: string; size?: number; days?: number[];
+  // session_recording fields
+  id?: string; distinctId?: string; duration?: number; browser?: string;
+  os?: string; pagePath?: string; createdAt?: string; chunkCount?: number;
+};
+export type InsightData = { total: number; returning?: number; rows: Row[]; nextCursor?: string | null };
 
 type Props = {
   workspaceId: string;
@@ -94,7 +101,7 @@ export default function InsightCard({ workspaceId, insight }: Props) {
                  {data.total.toLocaleString()}
                </div>
                <div className="text-[9px] font-bold text-emerald-400/70 uppercase tracking-widest mt-1">
-                 Total
+                 {insight.type === "session_recording" ? "Sessions" : "Total"}
                </div>
             </div>
           ) : (
@@ -312,6 +319,17 @@ export default function InsightCard({ workspaceId, insight }: Props) {
             <TrendChart rows={data.rows} />
           )}
         </div>
+      )}
+
+      {/* Session Recording */}
+      {insight.type === "session_recording" && (
+        <SessionRecordingRenderer
+          rows={data?.rows ?? null}
+          nextCursor={data?.nextCursor ?? null}
+          error={error}
+          workspaceId={workspaceId}
+          insightId={insight.id}
+        />
       )}
 
       {insight.type === "count" && error && (

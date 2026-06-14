@@ -307,6 +307,48 @@ export const INSIGHT_TYPES: InsightTypeDef[] = [
     }
   },
   {
+    id: "session_recording",
+    label: "Session Replay",
+    description: "Record and replay real user sessions to understand behavior and find UX issues.",
+    icon: "⏺",
+    configFields: [
+      { key: "pagePath", label: "Page Path Filter", placeholder: "/dashboard" },
+      { key: "distinctId", label: "User ID Filter", placeholder: "user_123" },
+    ],
+    docs: {
+      en: {
+        description:
+          "Records user sessions as they interact with your app and lets you replay them frame-by-frame to understand real behavior, find friction points, and debug issues. Form inputs are masked by default; enable full-text masking for stricter privacy.",
+        useCases: [
+          "Understanding why users drop off on the checkout or onboarding page",
+          "Reproducing a hard-to-debug UI issue by watching what a specific user did",
+          "Auditing real navigation paths through a critical flow",
+        ],
+        fields: {
+          pagePath:
+            "Only show recordings from sessions whose first page matched this path (e.g. /checkout). Leave blank to capture all paths.",
+          distinctId:
+            "Filter the list to recordings from a single user ID. Useful for support or debugging a specific account.",
+        },
+      },
+      fa: {
+        description:
+          "جلسات کاربران را هنگام تعامل با برنامه ضبط می‌کند و امکان پخش مجدد فریم به فریم را فراهم می‌کند تا رفتار واقعی درک شود، نقاط اصطکاک پیدا شوند و مشکلات دیباگ شوند. فیلدهای ورودی به‌صورت پیش‌فرض پوشانده می‌شوند و برای حریم خصوصی سخت‌گیرانه‌تر می‌توان پوشاندن کل متن را فعال کرد.",
+        useCases: [
+          "درک اینکه چرا کاربران در صفحه پرداخت یا آنبوردینگ منصرف می‌شوند",
+          "بازتولید یک باگ رابط کاربری سخت با تماشای اتفاقات دقیق یک کاربر خاص",
+          "بررسی مسیرهای واقعی کاربران در یک جریان مهم",
+        ],
+        fields: {
+          pagePath:
+            "فقط ضبط‌هایی که اولین صفحه جلسه با این مسیر مطابقت داشته نمایش داده می‌شود (مثلاً /checkout). خالی بگذارید تا همه مسیرها ضبط شود.",
+          distinctId:
+            "لیست را به ضبط‌های یک کاربر خاص فیلتر کن. برای پشتیبانی یا دیباگ یک حساب کاربری خاص مفید است.",
+        },
+      },
+    },
+  },
+  {
     id: "retention",
     label: "Retention",
     description: "Measure how often users return over time after a specific event.",
