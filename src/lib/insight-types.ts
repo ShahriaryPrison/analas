@@ -14,6 +14,7 @@ export interface InsightTypeDef {
     label: string;
     placeholder: string;
     options?: { label: string; value: string }[];
+    optional?: boolean;
   }[];
   docs?: Record<string, InsightDoc>;
 }
@@ -313,7 +314,11 @@ export const INSIGHT_TYPES: InsightTypeDef[] = [
     icon: "⟳",
     configFields: [
       { key: "startEvent", label: "Start event", placeholder: "page_loaded" },
+      { key: "startEventProperty", label: "Start event property (optional)", placeholder: "path", optional: true },
+      { key: "startEventValue", label: "Start property value (optional)", placeholder: "/map/v3", optional: true },
       { key: "returnEvent", label: "Return event", placeholder: "page_loaded" },
+      { key: "returnEventProperty", label: "Return event property (optional)", placeholder: "path", optional: true },
+      { key: "returnEventValue", label: "Return property value (optional)", placeholder: "/map/v3", optional: true },
       { key: "distinctId", label: "Identity property (user_id/session_id)", placeholder: "session_id" },
     ],
     docs: {
@@ -325,7 +330,11 @@ export const INSIGHT_TYPES: InsightTypeDef[] = [
         ],
         fields: {
           startEvent: "The initial action the user takes (e.g., signup or download)",
+          startEventProperty: "Optional. Property of the starting event to filter by (e.g. 'path').",
+          startEventValue: "Optional. The specific value of the start event property to match (e.g. '/map/v3').",
           returnEvent: "The follow-up action they take to show they came back (e.g., login or page_view)",
+          returnEventProperty: "Optional. Property of the return event to filter by (e.g. 'path').",
+          returnEventValue: "Optional. The specific value of the return event property to match (e.g. '/map/v3').",
           distinctId: "The unique identifier (like user_id or session_id) to match the same user returning"
         }
       },
@@ -337,7 +346,11 @@ export const INSIGHT_TYPES: InsightTypeDef[] = [
         ],
         fields: {
           startEvent: "رویداد اولیه یا شروع (مانند ثبت‌نام یا دانلود اپلیکیشن)",
+          startEventProperty: "اختیاری. ویژگی (Property) رویداد شروع برای فیلتر کردن (مانند 'path').",
+          startEventValue: "اختیاری. مقدار مشخصی که فیلد رویداد شروع باید داشته باشد (مانند '/map/v3').",
           returnEvent: "رویداد ثانویه یا بازگشت برای سنجش اینکه کاربر مجدد آمده است (مانند ورود مجدد یا بازدید صفحه)",
+          returnEventProperty: "اختیاری. ویژگی (Property) رویداد بازگشت برای فیلتر کردن (مانند 'path').",
+          returnEventValue: "اختیاری. مقدار مشخصی که فیلد رویداد بازگشت باید داشته باشد (مانند '/map/v3').",
           distinctId: "شناسه یکتای کاربر (مثل user_id یا session_id) برای تطبیق اینکه همان کاربر قبلی بازگشته است"
         }
       }

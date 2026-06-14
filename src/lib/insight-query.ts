@@ -278,6 +278,10 @@ export async function fetchInsightData(
     const startEvent = String(config.startEvent || "");
     const returnEvent = String(config.returnEvent || "");
     const distinctIdRaw = String(config.distinctId || "session_id");
+    const startEventProperty = String(config.startEventProperty || "").replace(/[^\w]/g, "");
+    const startEventValue = String(config.startEventValue || "");
+    const returnEventProperty = String(config.returnEventProperty || "").replace(/[^\w]/g, "");
+    const returnEventValue = String(config.returnEventValue || "");
     const timeFrame = 7;
     
     if (!startEvent || !returnEvent) return { total: 0, rows: [] };
@@ -294,8 +298,19 @@ export async function fetchInsightData(
       return `count(DISTINCT IF(dateDiff('day', cohort_date, action_date) = ${day}, user_id, NULL)) AS day_${day}`;
     }).join(",\n          ");
 
-    // No distinctId param needed anymore — it's inlined safely above
     const params: Record<string, any> = { tenantId, startEvent, returnEvent, timeFrame, retentionDays };
+
+    let startCond = "event = {startEvent:String}";
+    if (startEventProperty && startEventValue) {
+      startCond += ` AND JSONExtractString(properties, '${startEventProperty}') = {startEventValue:String}`;
+      params.startEventValue = startEventValue;
+    }
+
+    let returnCond = "event = {returnEvent:String}";
+    if (returnEventProperty && returnEventValue) {
+      returnCond += ` AND JSONExtractString(properties, '${returnEventProperty}') = {returnEventValue:String}`;
+      params.returnEventValue = returnEventValue;
+    }
 
     const cohortQueryStr = `
       SELECT
@@ -305,11 +320,11 @@ export async function fetchInsightData(
       FROM (
           SELECT
               ${distinctId} AS user_id,
-              minIf(toDate(ts, '${APP_TIMEZONE}'), event = {startEvent:String}) AS cohort_date,
-              groupArrayIf(toDate(ts, '${APP_TIMEZONE}'), event = {returnEvent:String}) AS return_dates
+              minIf(toDate(ts, '${APP_TIMEZONE}'), ${startCond}) AS cohort_date,
+              groupArrayIf(toDate(ts, '${APP_TIMEZONE}'), ${returnCond}) AS return_dates
           FROM events
           WHERE tenant_id = {tenantId:String}
-            AND (event = {startEvent:String} OR event = {returnEvent:String})
+            AND ((${startCond}) OR (${returnCond}))
             AND ts >= now() - INTERVAL {timeFrame:Int32} DAY
             AND ${distinctId} != ''
           GROUP BY user_id
@@ -327,11 +342,11 @@ export async function fetchInsightData(
       FROM (
           SELECT
               ${distinctId} AS user_id,
-              minIf(toDate(ts, '${APP_TIMEZONE}'), event = {startEvent:String}) AS cohort_date,
-              maxIf(toDate(ts, '${APP_TIMEZONE}'), event = {returnEvent:String}) AS last_return
+              minIf(toDate(ts, '${APP_TIMEZONE}'), ${startCond}) AS cohort_date,
+              maxIf(toDate(ts, '${APP_TIMEZONE}'), ${returnCond}) AS last_return
           FROM events
           WHERE tenant_id = {tenantId:String}
-            AND (event = {startEvent:String} OR event = {returnEvent:String})
+            AND ((${startCond}) OR (${returnCond}))
             AND ts >= now() - INTERVAL {retentionDays:Int32} DAY
             AND ${distinctId} != ''
           GROUP BY user_id

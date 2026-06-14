@@ -112,7 +112,7 @@ export default function InsightBuilder({ workspaceId, topEvents, plan, dashboard
     if (!type || !selectedType) return;
     
     const timeout = setTimeout(async () => {
-      const hasRequired = selectedType.configFields.every(f => queryConfig[f.key]);
+      const hasRequired = selectedType.configFields.every(f => f.optional || queryConfig[f.key]);
       if (!hasRequired) return;
 
       setPreviewLoading(true);
@@ -426,7 +426,7 @@ export default function InsightBuilder({ workspaceId, topEvents, plan, dashboard
                     </button>
                     <button 
                       onClick={() => setStep(3)}
-                      disabled={!selectedType?.configFields.every(f => queryConfig[f.key])}
+                      disabled={!selectedType?.configFields.every(f => f.optional || queryConfig[f.key])}
                       className="flex-[2] py-4 bg-white text-slate-900 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-emerald-300 transition disabled:opacity-30"
                     >
                       Continue <ChevronRightIcon className="w-4 h-4" />
