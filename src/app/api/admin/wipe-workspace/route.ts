@@ -11,6 +11,13 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
+    const dbAdmin = await prisma.user.findUnique({
+      where: { email: session.user.email },
+    });
+    if (!dbAdmin || !dbAdmin.emailVerified) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
     const body = await req.json().catch(() => null);
     const workspaceId = String(body?.workspaceId ?? "").trim();
 
