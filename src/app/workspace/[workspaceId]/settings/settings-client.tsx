@@ -52,6 +52,7 @@ export default function SettingsClient({
   plan,
   currentMonthEvents,
   currentMonthRecordings,
+  dashboardsCount,
   publicToken,
   allowedDomains,
 }: {
@@ -67,6 +68,7 @@ export default function SettingsClient({
   plan: Plan;
   currentMonthEvents: number;
   currentMonthRecordings: number;
+  dashboardsCount: number;
   publicToken: string | null;
   allowedDomains: string[];
 }) {
@@ -98,6 +100,7 @@ export default function SettingsClient({
   const recordingPercent = Math.min((currentMonthRecordings / planConfig.maxRecordingsPerMonth) * 100, 100);
   const totalWorkspaceMembers = members.length + invites.length;
   const memberPercent = Math.min((totalWorkspaceMembers / planConfig.maxMembers) * 100, 100);
+  const dashboardsPercent = Math.min((dashboardsCount / planConfig.maxDashboards) * 100, 100);
 
   const [checkoutLoading, setCheckoutLoading] = useState<string | null>(null);
 
@@ -479,6 +482,28 @@ export default function SettingsClient({
             <div className="flex items-center justify-between text-[11px] text-white/30">
               <span>Active + pending invites</span>
               {isCloud && <span>{memberPercent.toFixed(1)}% full</span>}
+            </div>
+          </div>
+
+          {/* Dashboards Quota */}
+          <div className="rounded-xl border border-white/8 bg-white/2 p-4 space-y-3">
+            <div className="flex items-center justify-between text-xs">
+              <span className="font-semibold text-white/50 uppercase tracking-wide">Dashboards</span>
+              <span className="font-mono text-white/70">
+                {dashboardsCount} / {isCloud ? planConfig.maxDashboards : "∞"}
+              </span>
+            </div>
+            <div className="h-2 bg-white/5 rounded-full overflow-hidden">
+              <div
+                className={`h-full transition-all duration-500 ${
+                  dashboardsPercent >= 100 ? "bg-rose-500" : dashboardsPercent >= 80 ? "bg-amber-500" : "bg-emerald-400"
+                }`}
+                style={{ width: `${isCloud ? dashboardsPercent : 0}%` }}
+              />
+            </div>
+            <div className="flex items-center justify-between text-[11px] text-white/30">
+              <span>Custom tracking dashboards</span>
+              {isCloud && <span>{dashboardsPercent.toFixed(1)}% full</span>}
             </div>
           </div>
 
