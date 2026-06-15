@@ -39,17 +39,47 @@ export default function RrwebPlayerClient({ events, height = 430 }: RrwebPlayerC
     import("rrweb-player").then(({ default: Replayer }) => {
       if (cancelled) return;
       mount.innerHTML = "";
-      player = new (Replayer as unknown as new (cfg: unknown) => { pause?: () => void })({
-        target: mount,
-        props: {
-          events,
-          width,
-          height,
-          skipInactive: true,
-          showController: true,
-          speedOption: [1, 2, 4],
-        },
-      });
+      try {
+        const meta = (events as Array<{ type?: number; data?: unknown }>).find((e) => e?.type === 4);
+        console.log("[player] mounting", { width, height, metaData: meta?.data });
+        player = new (Replayer as unknown as new (cfg: unknown) => {
+          pause?: () => void;
+          getReplayer?: () => { iframe?: HTMLIFrameElement };
+        })({
+          target: mount,
+          props: {
+            events,
+            width,
+            height,
+            skipInactive: true,
+            showController: true,
+            speedOption: [1, 2, 4],
+          },
+        });
+        // Inspect the rebuilt iframe shortly after mount.
+        setTimeout(() => {
+          try {
+            const rp = (player as { getReplayer?: () => { iframe?: HTMLIFrameElement } } | null)
+              ?.getReplayer?.();
+            const doc = rp?.iframe?.contentDocument;
+            const body = doc?.body;
+            console.log("[player] post-mount", {
+              hasIframe: !!rp?.iframe,
+              iframeSize: rp?.iframe ? `${rp.iframe.width}x${rp.iframe.height}` : null,
+              iframeTransform: rp?.iframe?.style.transform,
+              bodyChildren: body?.childElementCount,
+              bodyTextLen: body?.innerText?.length,
+              htmlStyle: doc?.documentElement?.getAttribute("style"),
+              bodyStyle: body?.getAttribute("style"),
+              bodyBg: body ? getComputedStyle(body).backgroundColor : null,
+            });
+          } catch (e) {
+            console.error("[player] inspect failed", e);
+          }
+        }, 600);
+      } catch (e) {
+        console.error("[player] construct failed", e);
+      }
     });
 
     return () => {
