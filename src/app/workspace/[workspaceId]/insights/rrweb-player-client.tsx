@@ -1,25 +1,44 @@
 "use client";
 
 // Leaf component loaded via next/dynamic ssr:false — safe to reference DOM APIs.
-// Peer deps: rrweb-player, @rrweb/types.
+// Uses rrweb's CORE Replayer directly. The rrweb-player Svelte wrapper silently
+// fails to build its iframe in this Next/prod environment (renders only an empty
+// `.rr-player` shell), so we mount the Replayer ourselves, scale its iframe to
+// fit, and drive a small control bar. Peer dep: rrweb, @rrweb/types.
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { eventWithTime } from "@rrweb/types";
-import "rrweb-player/dist/style.css";
+import "rrweb/dist/style.css";
 
 interface RrwebPlayerClientProps {
   events: eventWithTime[];
   height?: number;
 }
 
+type CoreReplayer = {
+  play: (timeOffset?: number) => void;
+  pause: (timeOffset?: number) => void;
+  getCurrentTime: () => number;
+  getMetaData: () => { startTime: number; endTime: number; totalTime: number };
+  on: (event: string, cb: (...args: unknown[]) => void) => void;
+};
+
+function fmt(ms: number): string {
+  const s = Math.max(0, Math.floor(ms / 1000));
+  return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
+}
+
 export default function RrwebPlayerClient({ events, height = 430 }: RrwebPlayerClientProps) {
   const wrapperRef = useRef<HTMLDivElement>(null);
   const mountRef = useRef<HTMLDivElement>(null);
-  // Lock the width to the FIRST positive measurement. The player injects/removes
-  // DOM as it builds, which transiently collapses the modal width; observing that
-  // churn and rebuilding the player on every change creates a remount loop that
-  // never lets the replay iframe finish mounting. One measurement, one build.
+  const replayerRef = useRef<CoreReplayer | null>(null);
+
+  // Lock the width to the first positive measurement (see notes in prior versions:
+  // observing width churn caused a remount loop).
   const [width, setWidth] = useState(0);
+  const [playing, setPlaying] = useState(false);
+  const [currentTime, setCurrentTime] = useState(0);
+  const [totalTime, setTotalTime] = useState(0);
 
   useEffect(() => {
     const el = wrapperRef.current;
@@ -39,71 +58,123 @@ export default function RrwebPlayerClient({ events, height = 430 }: RrwebPlayerC
     const mount = mountRef.current;
     if (!mount || events.length === 0 || width === 0) return;
 
-    let player: { pause?: () => void } | null = null;
     let cancelled = false;
+    let raf = 0;
 
-    const onErr = (e: ErrorEvent | PromiseRejectionEvent) => {
-      const err = "error" in e ? e.error : (e as PromiseRejectionEvent).reason;
-      console.error("[player] captured error:", err?.message || err, err);
-    };
-    window.addEventListener("error", onErr);
-    window.addEventListener("unhandledrejection", onErr);
-
-    import("rrweb-player").then(({ default: Replayer }) => {
+    import("rrweb").then(({ Replayer }) => {
       if (cancelled) return;
       mount.innerHTML = "";
-      try {
-        player = new (Replayer as unknown as new (cfg: unknown) => { pause?: () => void })({
-          target: mount,
-          props: {
-            events,
-            width,
-            height,
-            skipInactive: true,
-            showController: true,
-            speedOption: [1, 2, 4],
-          },
-        });
-      } catch (err) {
-        console.error("[player] Replayer construction threw", err);
+
+      const replayer = new (Replayer as unknown as new (
+        e: eventWithTime[],
+        cfg: unknown
+      ) => CoreReplayer)(events, {
+        root: mount,
+        skipInactive: true,
+        showWarning: false,
+        mouseTail: false,
+      });
+      replayerRef.current = replayer;
+
+      // Scale the recorded viewport to fit the player box (contain), centered.
+      const meta = (events.find((e) => (e as { type?: number }).type === 4) as
+        | { data?: { width?: number; height?: number } }
+        | undefined)?.data;
+      const recW = meta?.width || 1024;
+      const recH = meta?.height || 768;
+      const scale = Math.min(width / recW, height / recH);
+      const wrap = mount.querySelector<HTMLElement>(".replayer-wrapper");
+      if (wrap) {
+        wrap.style.transform = `scale(${scale})`;
+        wrap.style.transformOrigin = "top left";
+        wrap.style.position = "absolute";
+        wrap.style.left = `${(width - recW * scale) / 2}px`;
+        wrap.style.top = `${(height - recH * scale) / 2}px`;
       }
-      setTimeout(() => {
+
+      const md = replayer.getMetaData();
+      setTotalTime(md.totalTime);
+
+      replayer.play();
+      setPlaying(true);
+
+      const tick = () => {
         if (cancelled) return;
-        const iframe = mount.querySelector("iframe");
-        const doc = iframe?.contentDocument;
-        console.log("[player] post-mount", {
-          mountHtmlLen: mount.innerHTML.length,
-          hasRrPlayer: !!mount.querySelector(".rr-player"),
-          hasIframe: !!iframe,
-          iframeWH: iframe ? `${iframe.clientWidth}x${iframe.clientHeight}` : null,
-          frameWH: iframe ? `${iframe.getAttribute("width")}x${iframe.getAttribute("height")}` : null,
-          bodyChildren: doc?.body?.childElementCount,
-          bodyTextLen: doc?.body?.innerText?.length,
-        });
-      }, 800);
+        setCurrentTime(replayer.getCurrentTime());
+        raf = requestAnimationFrame(tick);
+      };
+      raf = requestAnimationFrame(tick);
+
+      replayer.on("finish", () => {
+        if (!cancelled) setPlaying(false);
+      });
     });
 
     return () => {
       cancelled = true;
-      window.removeEventListener("error", onErr);
-      window.removeEventListener("unhandledrejection", onErr);
+      cancelAnimationFrame(raf);
       try {
-        player?.pause?.();
+        replayerRef.current?.pause();
       } catch {
-        /* rrweb-player exposes no destroy(); innerHTML reset below is the teardown */
+        /* no destroy() on core Replayer; innerHTML reset is the teardown */
       }
+      replayerRef.current = null;
       mount.innerHTML = "";
     };
-    // `width` is locked after the first measurement, so this builds the player once.
   }, [events, width, height]);
+
+  const togglePlay = useCallback(() => {
+    const r = replayerRef.current;
+    if (!r) return;
+    if (playing) {
+      r.pause();
+      setPlaying(false);
+    } else {
+      r.play(currentTime >= totalTime ? 0 : currentTime);
+      setPlaying(true);
+    }
+  }, [playing, currentTime, totalTime]);
+
+  const onSeek = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      const r = replayerRef.current;
+      if (!r) return;
+      const t = Number(e.target.value);
+      setCurrentTime(t);
+      if (playing) r.play(t);
+      else r.pause(t);
+    },
+    [playing]
+  );
 
   return (
     <div ref={wrapperRef} className="w-full">
-      <div
-        ref={mountRef}
-        className="flex items-center justify-center overflow-hidden rounded-xl bg-black/40"
-        style={{ minHeight: height }}
-      />
+      <div className="rounded-xl overflow-hidden bg-black/40">
+        <div
+          ref={mountRef}
+          className="relative overflow-hidden bg-white"
+          style={{ width: width || "100%", height }}
+        />
+        <div className="flex items-center gap-3 px-3 py-2 bg-black/70 border-t border-white/10">
+          <button
+            onClick={togglePlay}
+            className="shrink-0 rounded-md px-2.5 py-1 text-xs font-semibold bg-emerald-500/15 text-emerald-300 border border-emerald-500/25 hover:bg-emerald-500/25 transition"
+          >
+            {playing ? "Pause" : "Play"}
+          </button>
+          <input
+            type="range"
+            min={0}
+            max={totalTime || 0}
+            value={Math.min(currentTime, totalTime || 0)}
+            onChange={onSeek}
+            className="flex-1 accent-emerald-400 cursor-pointer"
+          />
+          <span className="shrink-0 text-[11px] tabular-nums text-white/50">
+            {fmt(currentTime)} / {fmt(totalTime)}
+          </span>
+        </div>
+      </div>
     </div>
   );
 }
