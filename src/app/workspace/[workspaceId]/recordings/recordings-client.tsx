@@ -270,6 +270,17 @@ function PlayerModal({ session, workspaceId, onClose }: PlayerModalProps) {
             `parse failed (${text.length} bytes, starts: ${JSON.stringify(text.slice(0, 40))})`
           );
         }
+        // TEMP diagnostic: rrweb event types — 2 = FullSnapshot (DOM), 4 = Meta,
+        // 3 = IncrementalSnapshot. A missing type-2 explains a blank replay.
+        const typeCounts: Record<string, number> = {};
+        for (const ev of parsed as Array<{ type?: number }>) {
+          const t = String(ev?.type);
+          typeCounts[t] = (typeCounts[t] ?? 0) + 1;
+        }
+        console.log(
+          `[replay] ${session.id} loaded ${parsed.length} events (${text.length} bytes); types:`,
+          typeCounts
+        );
         setEvents(parsed as eventWithTime[]);
       } catch (e) {
         if (!ac.signal.aborted) {
