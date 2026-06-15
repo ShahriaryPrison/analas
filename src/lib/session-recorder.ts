@@ -94,6 +94,32 @@ async function gzipBase64(data: string): Promise<string | null> {
   }
 }
 
+// Detect the absolute URL origin of the script itself to default the endpoint correctly
+let scriptOrigin = "";
+if (typeof document !== "undefined") {
+  const currentScript = document.currentScript as HTMLScriptElement | null;
+  let scriptUrl = currentScript?.src;
+
+  if (!scriptUrl) {
+    const scripts = document.getElementsByTagName("script");
+    for (let i = 0; i < scripts.length; i++) {
+      const src = scripts[i].src;
+      if (src && src.includes("/session-recorder.js")) {
+        scriptUrl = src;
+        break;
+      }
+    }
+  }
+
+  if (scriptUrl) {
+    try {
+      scriptOrigin = new URL(scriptUrl).origin;
+    } catch {
+      // ignore
+    }
+  }
+}
+
 // ── Main initializer ──────────────────────────────────────────────────────────
 
 /**
@@ -101,9 +127,10 @@ async function gzipBase64(data: string): Promise<string | null> {
  * Call cleanup() on component unmount or router navigation if needed.
  */
 export function initSessionRecorder(opts: SessionRecorderOptions): () => void {
+  const defaultEndpoint = scriptOrigin ? `${scriptOrigin}/api/record` : "/api/record";
   const {
     apiKey,
-    endpoint = "/api/record",
+    endpoint = defaultEndpoint,
     sampleRate = 0.2,
     excludePaths = [],
     flushIntervalMs = 5000,
