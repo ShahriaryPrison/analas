@@ -13,21 +13,27 @@ interface RrwebPlayerClientProps {
 }
 
 export default function RrwebPlayerClient({ events, height = 430 }: RrwebPlayerClientProps) {
-  // Measure on the wrapper (stable, full-width) and mount the player into a child,
-  // so the player's own injected DOM never feeds back into the width measurement.
   const wrapperRef = useRef<HTMLDivElement>(null);
   const mountRef = useRef<HTMLDivElement>(null);
+  // Lock the width to the FIRST positive measurement. The player injects/removes
+  // DOM as it builds, which transiently collapses the modal width; observing that
+  // churn and rebuilding the player on every change creates a remount loop that
+  // never lets the replay iframe finish mounting. One measurement, one build.
   const [width, setWidth] = useState(0);
 
   useEffect(() => {
     const el = wrapperRef.current;
-    if (!el) return;
-    const update = () => setWidth(el.clientWidth);
-    update();
-    const ro = new ResizeObserver(update);
+    if (!el || width > 0) return;
+    const measure = () => {
+      const w = el.clientWidth;
+      if (w > 0) setWidth(w);
+    };
+    measure();
+    if (el.clientWidth > 0) return;
+    const ro = new ResizeObserver(measure);
     ro.observe(el);
     return () => ro.disconnect();
-  }, []);
+  }, [width]);
 
   useEffect(() => {
     const mount = mountRef.current;
@@ -39,47 +45,37 @@ export default function RrwebPlayerClient({ events, height = 430 }: RrwebPlayerC
     import("rrweb-player").then(({ default: Replayer }) => {
       if (cancelled) return;
       mount.innerHTML = "";
-      try {
-        const meta = (events as Array<{ type?: number; data?: unknown }>).find((e) => e?.type === 4);
-        console.log("[player] mounting", { width, height, metaData: meta?.data });
-        player = new (Replayer as unknown as new (cfg: unknown) => {
-          pause?: () => void;
-          getReplayer?: () => { iframe?: HTMLIFrameElement };
-        })({
-          target: mount,
-          props: {
-            events,
-            width,
-            height,
-            skipInactive: true,
-            showController: true,
-            speedOption: [1, 2, 4],
-          },
-        });
-        // Inspect the rebuilt iframe shortly after mount.
-        setTimeout(() => {
-          try {
-            const rp = (player as { getReplayer?: () => { iframe?: HTMLIFrameElement } } | null)
-              ?.getReplayer?.();
-            const doc = rp?.iframe?.contentDocument;
-            const body = doc?.body;
-            console.log("[player] post-mount", {
-              hasIframe: !!rp?.iframe,
-              iframeSize: rp?.iframe ? `${rp.iframe.width}x${rp.iframe.height}` : null,
-              iframeTransform: rp?.iframe?.style.transform,
-              bodyChildren: body?.childElementCount,
-              bodyTextLen: body?.innerText?.length,
-              htmlStyle: doc?.documentElement?.getAttribute("style"),
-              bodyStyle: body?.getAttribute("style"),
-              bodyBg: body ? getComputedStyle(body).backgroundColor : null,
-            });
-          } catch (e) {
-            console.error("[player] inspect failed", e);
-          }
-        }, 600);
-      } catch (e) {
-        console.error("[player] construct failed", e);
-      }
+      player = new (Replayer as unknown as new (cfg: unknown) => {
+        pause?: () => void;
+        getReplayer?: () => { iframe?: HTMLIFrameElement };
+      })({
+        target: mount,
+        props: {
+          events,
+          width,
+          height,
+          skipInactive: true,
+          showController: true,
+          speedOption: [1, 2, 4],
+        },
+      });
+      setTimeout(() => {
+        if (cancelled) return;
+        try {
+          const doc = (player as { getReplayer?: () => { iframe?: HTMLIFrameElement } } | null)
+            ?.getReplayer?.()?.iframe?.contentDocument;
+          const body = doc?.body;
+          console.log("[player] post-mount", {
+            bodyChildren: body?.childElementCount,
+            bodyTextLen: body?.innerText?.length,
+            htmlStyle: doc?.documentElement?.getAttribute("style"),
+            bodyOpacity: body ? getComputedStyle(body).opacity : null,
+            bodyVisibility: body ? getComputedStyle(body).visibility : null,
+          });
+        } catch {
+          /* diagnostic only */
+        }
+      }, 800);
     });
 
     return () => {
@@ -91,6 +87,7 @@ export default function RrwebPlayerClient({ events, height = 430 }: RrwebPlayerC
       }
       mount.innerHTML = "";
     };
+    // `width` is locked after the first measurement, so this builds the player once.
   }, [events, width, height]);
 
   return (
