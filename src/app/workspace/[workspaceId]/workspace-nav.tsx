@@ -2,15 +2,18 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { ZapIcon, BarChart2Icon, SlidersIcon } from "@/components/icons";
+import { ZapIcon, BarChart2Icon, SlidersIcon, PlayIcon } from "@/components/icons";
+
 
 type Props = { workspaceId: string };
 
 const NAV = [
   { label: "Captures", segment: "captures", Icon: ZapIcon },
   { label: "Insights", segment: "insights", Icon: BarChart2Icon },
+  { label: "Replays", segment: "recordings", Icon: PlayIcon },
   { label: "Settings", segment: "settings", Icon: SlidersIcon },
 ];
+
 
 export default function WorkspaceNav({ workspaceId }: Props) {
   const pathname = usePathname();
