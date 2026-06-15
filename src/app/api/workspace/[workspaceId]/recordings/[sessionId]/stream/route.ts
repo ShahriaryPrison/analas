@@ -53,15 +53,18 @@ export async function GET(
     });
   }
 
-  // The store concatenates one immutable gzip member per flush. That is a valid
-  // multi-member gzip stream, but a browser's transparent `Content-Encoding: gzip`
-  // decoder only reliably inflates the FIRST member, so multi-chunk sessions broke
-  // in the client. Decode the whole thing here (Node handles multi-member gzip) and
-  // return plain NDJSON — no Content-Encoding, no streaming-error -> 502 surface.
+  // Chunks are stored as gzip, but some S3-compatible endpoints transparently
+  // inflate objects that carry `Content-Encoding: gzip` metadata on GET, so the
+  // bytes here may be either raw gzip (one concatenated member per flush) or
+  // already-decompressed NDJSON. Detect the gzip magic (1f 8b) and only gunzip
+  // when the bytes are actually compressed; `gunzipSync` handles the multi-member
+  // case. Either way we return plain NDJSON with no `Content-Encoding`, so the
+  // browser never has to inflate anything itself.
   let ndjson: Buffer;
   try {
-    const compressed = await streamToBuffer(stream);
-    ndjson = gunzipSync(compressed);
+    const raw = await streamToBuffer(stream);
+    const isGzip = raw.length >= 2 && raw[0] === 0x1f && raw[1] === 0x8b;
+    ndjson = isGzip ? gunzipSync(raw) : raw;
   } catch (err) {
     console.error(
       "[recordings:stream] decode failed sessionId=%s storageKey=%s",
