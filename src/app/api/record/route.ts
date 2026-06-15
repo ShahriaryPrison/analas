@@ -8,6 +8,16 @@
 export const runtime = "nodejs";
 
 import { NextResponse } from "next/server";
+
+const CORS_HEADERS = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
+  "Access-Control-Allow-Headers": "Authorization, Content-Type",
+};
+
+export async function OPTIONS() {
+  return new Response(null, { status: 204, headers: CORS_HEADERS });
+}
 import { prisma } from "@/lib/prisma";
 import { getRecordingStore } from "@/lib/recordings/store";
 import { isCloudHosted, getEffectivePlan } from "@/lib/billing/plans";
@@ -53,6 +63,12 @@ type RecordBody = {
 };
 
 export async function POST(req: Request) {
+  const res = await handlePost(req);
+  Object.entries(CORS_HEADERS).forEach(([k, v]) => res.headers.set(k, v));
+  return res;
+}
+
+async function handlePost(req: Request) {
   try {
     // ── Early size guard (before buffering the body) ──────────────────────────
     const declaredLen = Number(req.headers.get("content-length") ?? 0);
