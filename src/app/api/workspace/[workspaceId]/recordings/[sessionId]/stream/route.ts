@@ -5,6 +5,8 @@
 export const runtime = "nodejs";
 
 import { NextResponse } from "next/server";
+import { Readable } from "node:stream";
+import { createGunzip, createGzip } from "node:zlib";
 import { prisma } from "@/lib/prisma";
 import { getAppSession } from "@/lib/session";
 import { getRecordingStore } from "@/lib/recordings/store";
@@ -51,8 +53,23 @@ export async function GET(
     });
   }
 
-  // Body is already gzip — the browser inflates it transparently on fetch.
-  return new Response(stream, {
+  // The store concatenates one immutable gzip member per flush. That is a valid
+  // multi-member gzip stream, but a browser's transparent `Content-Encoding: gzip`
+  // decoder only inflates the FIRST member — so any session with more than one
+  // flushed chunk would fail to load in the client. Re-encode here as a single
+  // member: gunzip the concatenated stream (Node handles multi-member correctly)
+  // and re-gzip it, so the browser always receives exactly one gzip member.
+  const source = Readable.fromWeb(stream as Parameters<typeof Readable.fromWeb>[0]);
+  const gunzip = createGunzip();
+  const gzip = createGzip();
+  source.on("error", (err) => gunzip.destroy(err));
+  gunzip.on("error", (err) => {
+    console.error("[recordings:stream] gunzip failed sessionId=%s", sessionId, err);
+    gzip.destroy(err);
+  });
+  source.pipe(gunzip).pipe(gzip);
+
+  return new Response(Readable.toWeb(gzip) as ReadableStream, {
     headers: {
       "Content-Type": "application/x-ndjson",
       "Content-Encoding": "gzip",
