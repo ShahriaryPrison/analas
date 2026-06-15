@@ -52,6 +52,8 @@ export default function SettingsClient({
   plan,
   currentMonthEvents,
   currentMonthRecordings,
+  publicToken,
+  allowedDomains,
 }: {
   workspaceId: string;
   initialKeys: ApiKey[];
@@ -65,6 +67,8 @@ export default function SettingsClient({
   plan: Plan;
   currentMonthEvents: number;
   currentMonthRecordings: number;
+  publicToken: string | null;
+  allowedDomains: string[];
 }) {
   const isAdmin = myRole === "OWNER" || myRole === "ADMIN";
   const planConfig = getEffectivePlan(plan);
@@ -96,6 +100,68 @@ export default function SettingsClient({
   const memberPercent = Math.min((totalWorkspaceMembers / planConfig.maxMembers) * 100, 100);
 
   const [checkoutLoading, setCheckoutLoading] = useState<string | null>(null);
+
+  // ── Allowed Domains state ───────────────────────────────────────────────────
+  const [domains, setDomains] = useState<string[]>(allowedDomains || []);
+  const [newDomain, setNewDomain] = useState("");
+  const [updatingDomains, setUpdatingDomains] = useState(false);
+  const [domainError, setDomainError] = useState<string | null>(null);
+  const [tokenCopied, setTokenCopied] = useState(false);
+
+  async function handleCopyToken() {
+    if (!publicToken) return;
+    await navigator.clipboard.writeText(publicToken);
+    setTokenCopied(true);
+    setTimeout(() => setTokenCopied(false), 2000);
+  }
+
+  async function addDomain(e: React.FormEvent) {
+    e.preventDefault();
+    const clean = newDomain.trim().toLowerCase().replace(/^(https?:\/\/)?(www\.)?/, "").split("/")[0];
+    if (!clean) return;
+    if (domains.includes(clean)) {
+      setDomainError("Domain already added.");
+      return;
+    }
+    setUpdatingDomains(true);
+    setDomainError(null);
+    try {
+      const next = [...domains, clean];
+      const res = await fetch(`/api/workspace/${workspaceId}/allowed-domains`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ allowedDomains: next }),
+      });
+      if (!res.ok) throw new Error();
+      const data = await res.json();
+      setDomains(data.allowedDomains);
+      setNewDomain("");
+    } catch {
+      setDomainError("Failed to add domain.");
+    } finally {
+      setUpdatingDomains(false);
+    }
+  }
+
+  async function removeDomain(domain: string) {
+    setUpdatingDomains(true);
+    setDomainError(null);
+    try {
+      const next = domains.filter((d) => d !== domain);
+      const res = await fetch(`/api/workspace/${workspaceId}/allowed-domains`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ allowedDomains: next }),
+      });
+      if (!res.ok) throw new Error();
+      const data = await res.json();
+      setDomains(data.allowedDomains);
+    } catch {
+      setDomainError("Failed to remove domain.");
+    } finally {
+      setUpdatingDomains(false);
+    }
+  }
 
   // ── Billing success/cancel banner state ──────────────────────────────────────
   const [billingStatus, setBillingStatus] = useState<"success" | "cancelled" | null>(() => {
@@ -798,6 +864,106 @@ export default function SettingsClient({
           >
             Manage Events
           </Link>
+        </div>
+      </div>
+
+      {/* ═══════════════════════════════════════════════════════════════════════
+          ALLOWED DOMAINS & PUBLIC TOKEN
+      ═══════════════════════════════════════════════════════════════════════ */}
+      <div className="rounded-2xl border border-white/10 bg-white/5 p-6 space-y-6">
+        <div>
+          <h2 className="text-lg font-semibold text-white font-medium">Domain Protection & Public Token</h2>
+          <p className="mt-0.5 text-sm text-white/50">
+            Control which websites are allowed to upload event captures and session recordings.
+          </p>
+        </div>
+
+        {/* Public Token Display */}
+        <div className="rounded-xl border border-white/5 bg-slate-950/40 p-4 space-y-2">
+          <div className="flex items-center justify-between">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-white/40">
+              Public Client Token
+            </span>
+            <span className="rounded bg-emerald-500/10 px-2 py-0.5 text-[10px] font-bold text-emerald-400">
+              Safe for Frontend
+            </span>
+          </div>
+          <p className="text-xs text-white/50 leading-relaxed">
+            This token is write-only. It is safe to expose in your frontend script tags as it cannot read your workspace data.
+          </p>
+          <div className="flex items-center gap-2 mt-2">
+            <code className="flex-1 truncate rounded-lg bg-slate-900 border border-white/10 px-3 py-2 text-xs font-mono text-white/80">
+              {publicToken || "Generating..."}
+            </code>
+            <button
+              onClick={handleCopyToken}
+              disabled={!publicToken}
+              className="flex items-center justify-center p-2 rounded-lg border border-white/10 bg-white/5 text-white/50 hover:text-white hover:bg-white/10 transition disabled:opacity-40"
+              title="Copy public token"
+            >
+              {tokenCopied ? (
+                <CheckIcon className="w-4 h-4 text-emerald-400" />
+              ) : (
+                <CopyIcon className="w-4 h-4" />
+              )}
+            </button>
+          </div>
+        </div>
+
+        {/* Allowed Domains */}
+        <div className="space-y-4">
+          <h3 className="text-xs font-bold uppercase tracking-wider text-white/40">Allowed Domains</h3>
+          
+          {/* Domain Pills */}
+          <div className="flex flex-wrap gap-2">
+            {domains.length === 0 ? (
+              <p className="text-xs text-white/30 italic">
+                No domain restrictions. Anyone with your public token can send events. Add domains below to restrict ingestion.
+              </p>
+            ) : (
+              domains.map((domain) => (
+                <span
+                  key={domain}
+                  className="inline-flex items-center gap-1.5 rounded-lg border border-emerald-500/10 bg-emerald-500/5 px-2.5 py-1 text-xs font-semibold text-emerald-300 h-7"
+                >
+                  {domain}
+                  <button
+                    onClick={() => removeDomain(domain)}
+                    disabled={updatingDomains || !isAdmin}
+                    className="text-emerald-500/40 hover:text-emerald-300 transition disabled:opacity-30"
+                    title="Remove domain"
+                  >
+                    <XIcon className="w-3.5 h-3.5" />
+                  </button>
+                </span>
+              ))
+            )}
+          </div>
+
+          {/* Add Domain Form */}
+          {isAdmin && (
+            <form onSubmit={addDomain} className="flex gap-2">
+              <input
+                type="text"
+                placeholder="e.g. example.com or localhost"
+                value={newDomain}
+                onChange={(e) => setNewDomain(e.target.value)}
+                disabled={updatingDomains}
+                className="flex-1 bg-slate-950 border border-white/10 focus:border-emerald-500/50 rounded-lg px-3.5 py-2 text-xs text-white placeholder-white/30 outline-none transition disabled:opacity-50"
+              />
+              <button
+                type="submit"
+                disabled={updatingDomains || !newDomain.trim()}
+                className="rounded-lg bg-white/5 hover:bg-white/10 px-4 py-2 text-xs font-bold text-white border border-white/10 transition disabled:opacity-40 shrink-0"
+              >
+                {updatingDomains ? "Saving..." : "Add Domain"}
+              </button>
+            </form>
+          )}
+
+          {domainError && (
+            <p className="text-xs text-red-400">{domainError}</p>
+          )}
         </div>
       </div>
 

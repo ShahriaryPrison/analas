@@ -46,7 +46,10 @@ model Workspace {
   inviteLinkEnabled Boolean           @default(false)
   eventSettings     EventSetting[]
   sessionRecordings SessionRecording[]
+  publicToken       String?           @unique
+  allowedDomains    String[]          @default([])
 }
+
 
 model WorkspaceMember {
   id          String    @id @default(cuid())

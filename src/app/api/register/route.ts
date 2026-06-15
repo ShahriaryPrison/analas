@@ -49,6 +49,7 @@ export async function POST(req: Request) {
         data: {
           name: `${name}'s Workspace`,
           tenantId: crypto.randomUUID(), // This is your ClickHouse ID!
+          publicToken: `analas_pub_${crypto.randomBytes(16).toString("hex")}`,
           members: {
             create: {
               userId: user.id,

@@ -103,6 +103,8 @@ export default async function SettingsPage({
         plan={workspace.plan}
         currentMonthEvents={workspace.currentMonthEvents}
         currentMonthRecordings={currentMonthRecordings}
+        publicToken={workspace.publicToken}
+        allowedDomains={workspace.allowedDomains}
       />
     </section>
   );

@@ -17,7 +17,10 @@ const RATE_LIMIT = 600;
 const rateMap = new Map<string, { ts: number; count: number }>();
 
 const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
-const apiCache = new Map<string, { tenantId: string; plan: string; currentMonthEvents: number; expiresAt: number }>();
+const apiCache = new Map<
+  string,
+  { tenantId: string; plan: string; currentMonthEvents: number; allowedDomains: string[]; expiresAt: number }
+>();
 
 type InsertEvent = {
   tenant_id: string;
@@ -85,22 +88,76 @@ export async function POST(req: Request) {
     let tenantId = "";
     let plan = "";
     let currentMonthEvents = 0;
+    let allowedDomains: string[] = [];
 
     const cached = apiCache.get(keyHash);
     if (cached && cached.expiresAt > Date.now()) {
       tenantId = cached.tenantId;
       plan = cached.plan;
       currentMonthEvents = cached.currentMonthEvents;
+      allowedDomains = cached.allowedDomains;
     } else {
-      const api = await prisma.apiKey.findUnique({
-        where: { keyHash },
-        include: { workspace: { select: { tenantId: true, plan: true, currentMonthEvents: true } } },
+      if (key.startsWith("analas_pub_")) {
+        const ws = await prisma.workspace.findUnique({
+          where: { publicToken: key },
+          select: { tenantId: true, plan: true, currentMonthEvents: true, allowedDomains: true },
+        });
+        if (!ws) {
+          return NextResponse.json({ error: "Invalid client token" }, { status: 401 });
+        }
+        tenantId = ws.tenantId;
+        plan = ws.plan;
+        currentMonthEvents = ws.currentMonthEvents;
+        allowedDomains = ws.allowedDomains;
+      } else {
+        const api = await prisma.apiKey.findUnique({
+          where: { keyHash },
+          include: { workspace: { select: { tenantId: true, plan: true, currentMonthEvents: true, allowedDomains: true } } },
+        });
+        if (!api) return NextResponse.json({ error: "Invalid API key" }, { status: 401 });
+        tenantId = api.workspace.tenantId;
+        plan = api.workspace.plan;
+        currentMonthEvents = api.workspace.currentMonthEvents;
+        allowedDomains = api.workspace.allowedDomains;
+      }
+      apiCache.set(keyHash, {
+        tenantId,
+        plan,
+        currentMonthEvents,
+        allowedDomains,
+        expiresAt: Date.now() + CACHE_TTL,
       });
-      if (!api) return NextResponse.json({ error: "Invalid API key" }, { status: 401 });
-      tenantId = api.workspace.tenantId;
-      plan = api.workspace.plan;
-      currentMonthEvents = api.workspace.currentMonthEvents;
-      apiCache.set(keyHash, { tenantId, plan, currentMonthEvents, expiresAt: Date.now() + CACHE_TTL });
+    }
+
+    // ── Origin/Domain Verification ────────────────────────────────────────────
+    if (allowedDomains.length > 0) {
+      const originHeader = req.headers.get("origin") || req.headers.get("referer") || "";
+      if (!originHeader) {
+        return NextResponse.json({ error: "Unauthorized: Missing Origin header" }, { status: 403 });
+      }
+
+      const cleanOrigin = (urlStr: string): string => {
+        try {
+          const u = new URL(urlStr);
+          return u.hostname.toLowerCase();
+        } catch {
+          return urlStr
+            .trim()
+            .toLowerCase()
+            .replace(/^(https?:\/\/)?(www\.)?/, "")
+            .split("/")[0]
+            .split(":")[0];
+        }
+      };
+
+      const clientDomain = cleanOrigin(originHeader);
+      const isAllowed = allowedDomains.some(
+        (domain) => clientDomain === domain || clientDomain.endsWith("." + domain)
+      );
+
+      if (!isAllowed) {
+        return NextResponse.json({ error: `Forbidden: Unauthorized origin '${clientDomain}'` }, { status: 403 });
+      }
     }
 
     // In-memory rate limit (per key, 1-minute window)

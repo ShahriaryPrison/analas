@@ -33,6 +33,7 @@ export default async function RecordingsPage({ params }: Props) {
         workspaceId={workspaceId}
         initialCount={initialCount}
         activeKeyName={activeKeyName}
+        publicToken={workspace.publicToken}
       />
     </div>
   );

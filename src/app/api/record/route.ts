@@ -24,7 +24,10 @@ const UUID_V4_RE =
 
 // API key → workspaceId/plan cache (5 min TTL, same pattern as /api/capture).
 const CACHE_TTL = 5 * 60 * 1000;
-const apiCache = new Map<string, { workspaceId: string; plan: string; expiresAt: number }>();
+const apiCache = new Map<
+  string,
+  { workspaceId: string; plan: string; allowedDomains: string[]; expiresAt: number }
+>();
 
 // Per-key ingest velocity backstop (1-minute window) — caps disk-fill rate.
 const RATE_LIMIT = 60;
@@ -83,21 +86,69 @@ export async function POST(req: Request) {
     // ── Resolve workspace (cached) ────────────────────────────────────────────
     let workspaceId: string;
     let plan: string;
+    let allowedDomains: string[] = [];
+
     const cached = apiCache.get(keyHash);
     if (cached && cached.expiresAt > now) {
       workspaceId = cached.workspaceId;
       plan = cached.plan;
+      allowedDomains = cached.allowedDomains;
     } else {
-      const apiKey = await prisma.apiKey.findUnique({
-        where: { keyHash },
-        include: { workspace: { select: { plan: true } } },
-      });
-      if (!apiKey) {
-        return NextResponse.json({ error: "Invalid API key" }, { status: 401 });
+      if (rawKey.startsWith("analas_pub_")) {
+        const ws = await prisma.workspace.findUnique({
+          where: { publicToken: rawKey },
+          select: { id: true, plan: true, allowedDomains: true },
+        });
+        if (!ws) {
+          return NextResponse.json({ error: "Invalid client token" }, { status: 401 });
+        }
+        workspaceId = ws.id;
+        plan = ws.plan;
+        allowedDomains = ws.allowedDomains;
+      } else {
+        const apiKey = await prisma.apiKey.findUnique({
+          where: { keyHash },
+          include: { workspace: { select: { plan: true, allowedDomains: true } } },
+        });
+        if (!apiKey) {
+          return NextResponse.json({ error: "Invalid API key" }, { status: 401 });
+        }
+        workspaceId = apiKey.workspaceId;
+        plan = apiKey.workspace.plan;
+        allowedDomains = apiKey.workspace.allowedDomains;
       }
-      workspaceId = apiKey.workspaceId;
-      plan = apiKey.workspace.plan;
-      apiCache.set(keyHash, { workspaceId, plan, expiresAt: now + CACHE_TTL });
+      apiCache.set(keyHash, { workspaceId, plan, allowedDomains, expiresAt: now + CACHE_TTL });
+    }
+
+    // ── Origin/Domain Verification ────────────────────────────────────────────
+    if (allowedDomains.length > 0) {
+      const originHeader = req.headers.get("origin") || req.headers.get("referer") || "";
+      if (!originHeader) {
+        return NextResponse.json({ error: "Unauthorized: Missing Origin header" }, { status: 403 });
+      }
+
+      const cleanOrigin = (urlStr: string): string => {
+        try {
+          const u = new URL(urlStr);
+          return u.hostname.toLowerCase();
+        } catch {
+          return urlStr
+            .trim()
+            .toLowerCase()
+            .replace(/^(https?:\/\/)?(www\.)?/, "")
+            .split("/")[0]
+            .split(":")[0];
+        }
+      };
+
+      const clientDomain = cleanOrigin(originHeader);
+      const isAllowed = allowedDomains.some(
+        (domain) => clientDomain === domain || clientDomain.endsWith("." + domain)
+      );
+
+      if (!isAllowed) {
+        return NextResponse.json({ error: `Forbidden: Unauthorized origin '${clientDomain}'` }, { status: 403 });
+      }
     }
 
     // ── Parse body ────────────────────────────────────────────────────────────

@@ -49,6 +49,7 @@ interface Props {
   workspaceId: string;
   initialCount: number;
   activeKeyName: string | null;
+  publicToken: string | null;
 }
 
 function formatDuration(seconds: number): string {
@@ -135,17 +136,19 @@ function SetupInstructions({
   workspaceId,
   activeKeyName,
   hostUrl,
+  publicToken,
 }: {
   workspaceId: string;
   activeKeyName: string | null;
   hostUrl: string;
+  publicToken: string | null;
 }) {
   const code = `<!-- Load the ANALAS Session Recorder -->
 <script src="${hostUrl}/session-recorder.js"></script>
 
 <script>
   AnalasRecorder.init({
-    apiKey: "YOUR_WORKSPACE_API_KEY", // Get yours from Settings > API Keys
+    apiKey: "${publicToken || "YOUR_WORKSPACE_PUBLIC_TOKEN"}",
     sampleRate: 1.0                  // Record 100% of sessions for testing (0-1)
   });
 </script>`;
@@ -193,10 +196,11 @@ interface SetupModalProps {
   workspaceId: string;
   activeKeyName: string | null;
   hostUrl: string;
+  publicToken: string | null;
   onClose: () => void;
 }
 
-function SetupModal({ workspaceId, activeKeyName, hostUrl, onClose }: SetupModalProps) {
+function SetupModal({ workspaceId, activeKeyName, hostUrl, publicToken, onClose }: SetupModalProps) {
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
       if (e.key === "Escape") onClose();
@@ -221,7 +225,12 @@ function SetupModal({ workspaceId, activeKeyName, hostUrl, onClose }: SetupModal
             <XIcon className="w-4.5 h-4.5" />
           </button>
         </div>
-        <SetupInstructions workspaceId={workspaceId} activeKeyName={activeKeyName} hostUrl={hostUrl} />
+        <SetupInstructions
+          workspaceId={workspaceId}
+          activeKeyName={activeKeyName}
+          hostUrl={hostUrl}
+          publicToken={publicToken}
+        />
       </div>
     </div>,
     document.body
@@ -477,6 +486,7 @@ export default function RecordingsClient({
   workspaceId,
   initialCount,
   activeKeyName,
+  publicToken,
 }: Props) {
   const [rows, setRows] = useState<SessionRow[] | null>(null);
   const [nextCursor, setNextCursor] = useState<string | null>(null);
@@ -580,7 +590,12 @@ export default function RecordingsClient({
           </p>
         </div>
 
-        <SetupInstructions workspaceId={workspaceId} activeKeyName={activeKeyName} hostUrl={hostUrl} />
+        <SetupInstructions
+          workspaceId={workspaceId}
+          activeKeyName={activeKeyName}
+          hostUrl={hostUrl}
+          publicToken={publicToken}
+        />
       </div>
     );
   }
@@ -686,6 +701,7 @@ export default function RecordingsClient({
           workspaceId={workspaceId}
           activeKeyName={activeKeyName}
           hostUrl={hostUrl}
+          publicToken={publicToken}
           onClose={() => setShowSetup(false)}
         />
       )}
