@@ -175,15 +175,23 @@ class S3Store implements RecordingStore {
     const name = `${Date.now().toString().padStart(15, "0")}-${crypto
       .randomBytes(4)
       .toString("hex")}${CHUNK_SUFFIX}`;
-    await this.client.send(
-      new PutObjectCommand({
-        Bucket: this.bucket,
-        Key: `${storageKey}/${name}`,
-        Body: gzip,
-        ContentType: "application/x-ndjson",
-        ContentEncoding: "gzip",
-      })
-    );
+    const key = `${storageKey}/${name}`;
+    console.log("[store:s3] putChunk bucket=%s key=%s bytes=%d", this.bucket, key, gzip.length);
+    try {
+      await this.client.send(
+        new PutObjectCommand({
+          Bucket: this.bucket,
+          Key: key,
+          Body: gzip,
+          ContentType: "application/x-ndjson",
+          ContentEncoding: "gzip",
+        })
+      );
+      console.log("[store:s3] putChunk OK key=%s", key);
+    } catch (err) {
+      console.error("[store:s3] putChunk FAILED key=%s", key, err);
+      throw err;
+    }
     return storageKey;
   }
 
@@ -207,7 +215,15 @@ class S3Store implements RecordingStore {
   }
 
   async openSession(storageKey: string): Promise<ReadableStream | null> {
-    const keys = await this.listChunkKeys(storageKey);
+    console.log("[store:s3] openSession storageKey=%s", storageKey);
+    let keys: string[];
+    try {
+      keys = await this.listChunkKeys(storageKey);
+    } catch (err) {
+      console.error("[store:s3] openSession listChunkKeys FAILED storageKey=%s", storageKey, err);
+      throw err;
+    }
+    console.log("[store:s3] openSession found %d chunks for storageKey=%s", keys.length, storageKey);
     if (keys.length === 0) return null;
 
     const { client, bucket } = this;
@@ -304,6 +320,11 @@ export function getRecordingStore(): RecordingStore {
           "RECORDINGS_STORAGE=s3 requires S3_BUCKET, S3_ACCESS_KEY_ID, and S3_SECRET_ACCESS_KEY"
         );
       }
+      console.log("[store] driver=s3 endpoint=%s bucket=%s forcePathStyle=%s",
+        process.env.S3_ENDPOINT ?? "(aws default)",
+        bucket,
+        process.env.S3_FORCE_PATH_STYLE,
+      );
       singleton = new S3Store({
         bucket,
         endpoint: process.env.S3_ENDPOINT,
@@ -313,10 +334,10 @@ export function getRecordingStore(): RecordingStore {
         forcePathStyle: process.env.S3_FORCE_PATH_STYLE === "true",
       });
     } else {
-      // Default: local disk. Lazy process.cwd() avoids Turbopack over-tracing.
       const root = path.resolve(
         process.env.RECORDINGS_DIR || path.join(process.cwd(), ".recordings")
       );
+      console.log("[store] driver=disk root=%s", root);
       singleton = new LocalDiskStore(root);
     }
   }
