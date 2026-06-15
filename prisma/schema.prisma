@@ -45,6 +45,7 @@ model Workspace {
   invites           WorkspaceInvite[]
   inviteLinkEnabled Boolean           @default(false)
   eventSettings     EventSetting[]
+  sessionRecordings SessionRecording[]
 }
 
 model WorkspaceMember {
@@ -113,4 +114,25 @@ model EventSetting {
   createdAt   DateTime  @default(now())
 
   @@unique([workspaceId, eventName])
+}
+
+// Session Recording — metadata in Postgres, event chunks as gzipped NDJSON via RecordingStore.
+model SessionRecording {
+  id          String    @id @default(uuid())
+  workspaceId String
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  distinctId  String    @default("")
+  duration    Int       @default(0)  // seconds, updated with each chunk
+  browser     String?
+  os          String?
+  pagePath    String?                // first path of the session
+  storageKey  String                 // relative session key "<workspaceId>/<sessionId>"
+  chunkCount  Int       @default(0)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([workspaceId])
+  @@index([distinctId])
+  @@index([createdAt])
+  @@index([workspaceId, createdAt])
 }

@@ -46,6 +46,7 @@ next-env.d.ts
 # local data volumes (docker)
 /postgres_data/
 /clickhouse_data/
+/.recordings/
 
 # claude memory
 /.claude/
