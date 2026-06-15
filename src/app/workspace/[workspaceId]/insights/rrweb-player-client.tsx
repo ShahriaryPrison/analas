@@ -45,36 +45,34 @@ export default function RrwebPlayerClient({ events, height = 430 }: RrwebPlayerC
     import("rrweb-player").then(({ default: Replayer }) => {
       if (cancelled) return;
       mount.innerHTML = "";
-      player = new (Replayer as unknown as new (cfg: unknown) => {
-        pause?: () => void;
-        getReplayer?: () => { iframe?: HTMLIFrameElement };
-      })({
-        target: mount,
-        props: {
-          events,
-          width,
-          height,
-          skipInactive: true,
-          showController: true,
-          speedOption: [1, 2, 4],
-        },
-      });
+      try {
+        player = new (Replayer as unknown as new (cfg: unknown) => { pause?: () => void })({
+          target: mount,
+          props: {
+            events,
+            width,
+            height,
+            skipInactive: true,
+            showController: true,
+            speedOption: [1, 2, 4],
+          },
+        });
+      } catch (err) {
+        console.error("[player] Replayer construction threw", err);
+      }
       setTimeout(() => {
         if (cancelled) return;
-        try {
-          const doc = (player as { getReplayer?: () => { iframe?: HTMLIFrameElement } } | null)
-            ?.getReplayer?.()?.iframe?.contentDocument;
-          const body = doc?.body;
-          console.log("[player] post-mount", {
-            bodyChildren: body?.childElementCount,
-            bodyTextLen: body?.innerText?.length,
-            htmlStyle: doc?.documentElement?.getAttribute("style"),
-            bodyOpacity: body ? getComputedStyle(body).opacity : null,
-            bodyVisibility: body ? getComputedStyle(body).visibility : null,
-          });
-        } catch {
-          /* diagnostic only */
-        }
+        const iframe = mount.querySelector("iframe");
+        const doc = iframe?.contentDocument;
+        console.log("[player] post-mount", {
+          mountHtmlLen: mount.innerHTML.length,
+          hasRrPlayer: !!mount.querySelector(".rr-player"),
+          hasIframe: !!iframe,
+          iframeWH: iframe ? `${iframe.clientWidth}x${iframe.clientHeight}` : null,
+          frameWH: iframe ? `${iframe.getAttribute("width")}x${iframe.getAttribute("height")}` : null,
+          bodyChildren: doc?.body?.childElementCount,
+          bodyTextLen: doc?.body?.innerText?.length,
+        });
       }, 800);
     });
 
