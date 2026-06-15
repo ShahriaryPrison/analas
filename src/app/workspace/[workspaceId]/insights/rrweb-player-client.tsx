@@ -42,6 +42,13 @@ export default function RrwebPlayerClient({ events, height = 430 }: RrwebPlayerC
     let player: { pause?: () => void } | null = null;
     let cancelled = false;
 
+    const onErr = (e: ErrorEvent | PromiseRejectionEvent) => {
+      const err = "error" in e ? e.error : (e as PromiseRejectionEvent).reason;
+      console.error("[player] captured error:", err?.message || err, err);
+    };
+    window.addEventListener("error", onErr);
+    window.addEventListener("unhandledrejection", onErr);
+
     import("rrweb-player").then(({ default: Replayer }) => {
       if (cancelled) return;
       mount.innerHTML = "";
@@ -78,6 +85,8 @@ export default function RrwebPlayerClient({ events, height = 430 }: RrwebPlayerC
 
     return () => {
       cancelled = true;
+      window.removeEventListener("error", onErr);
+      window.removeEventListener("unhandledrejection", onErr);
       try {
         player?.pause?.();
       } catch {
