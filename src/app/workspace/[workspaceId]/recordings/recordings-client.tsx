@@ -397,7 +397,18 @@ function PlayerModal({ session, workspaceId, onClose }: PlayerModalProps) {
               <span className="text-sm text-white/40">No events found in this recording.</span>
             </div>
           )}
-          {events && events.length > 0 && <RrwebPlayerClient events={events} />}
+          {events && events.length > 0 && !events.some((e) => (e as { type?: number }).type === 2) && !error && (
+            <div className="h-[430px] w-full rounded-xl bg-amber-500/5 border border-amber-500/20 flex flex-col items-center justify-center gap-2 px-4 text-center">
+              <span className="text-sm text-amber-300/80">Recording can&apos;t be replayed.</span>
+              <span className="text-[11px] text-amber-300/40 max-w-sm">
+                The initial page snapshot wasn&apos;t captured for this session ({events.length} later
+                events only), so there&apos;s no starting view to play back.
+              </span>
+            </div>
+          )}
+          {events && events.some((e) => (e as { type?: number }).type === 2) && (
+            <RrwebPlayerClient events={events} />
+          )}
         </div>
       </div>
     </div>,
