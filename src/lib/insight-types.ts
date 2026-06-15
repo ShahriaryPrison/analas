@@ -313,9 +313,10 @@ export const INSIGHT_TYPES: InsightTypeDef[] = [
     description: "Record and replay real user sessions to understand behavior and find UX issues.",
     icon: "⏺",
     configFields: [
-      { key: "pagePath", label: "Page Path Filter", placeholder: "/dashboard" },
-      { key: "distinctId", label: "User ID Filter", placeholder: "user_123" },
+      { key: "pagePath", label: "Page Path Filter", placeholder: "/dashboard", optional: true },
+      { key: "distinctId", label: "User ID Filter", placeholder: "user_123", optional: true },
     ],
+
     docs: {
       en: {
         description:
