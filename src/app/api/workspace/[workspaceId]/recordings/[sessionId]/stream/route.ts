@@ -6,7 +6,7 @@ export const runtime = "nodejs";
 
 import { NextResponse } from "next/server";
 import { Readable } from "node:stream";
-import { createGunzip, createGzip } from "node:zlib";
+import { gunzipSync } from "node:zlib";
 import { prisma } from "@/lib/prisma";
 import { getAppSession } from "@/lib/session";
 import { getRecordingStore } from "@/lib/recordings/store";
@@ -55,26 +55,36 @@ export async function GET(
 
   // The store concatenates one immutable gzip member per flush. That is a valid
   // multi-member gzip stream, but a browser's transparent `Content-Encoding: gzip`
-  // decoder only inflates the FIRST member — so any session with more than one
-  // flushed chunk would fail to load in the client. Re-encode here as a single
-  // member: gunzip the concatenated stream (Node handles multi-member correctly)
-  // and re-gzip it, so the browser always receives exactly one gzip member.
-  const source = Readable.fromWeb(stream as Parameters<typeof Readable.fromWeb>[0]);
-  const gunzip = createGunzip();
-  const gzip = createGzip();
-  source.on("error", (err) => gunzip.destroy(err));
-  gunzip.on("error", (err) => {
-    console.error("[recordings:stream] gunzip failed sessionId=%s", sessionId, err);
-    gzip.destroy(err);
-  });
-  source.pipe(gunzip).pipe(gzip);
+  // decoder only reliably inflates the FIRST member, so multi-chunk sessions broke
+  // in the client. Decode the whole thing here (Node handles multi-member gzip) and
+  // return plain NDJSON — no Content-Encoding, no streaming-error -> 502 surface.
+  let ndjson: Buffer;
+  try {
+    const compressed = await streamToBuffer(stream);
+    ndjson = gunzipSync(compressed);
+  } catch (err) {
+    console.error(
+      "[recordings:stream] decode failed sessionId=%s storageKey=%s",
+      sessionId,
+      recording.storageKey,
+      err
+    );
+    return NextResponse.json({ error: "Failed to decode recording" }, { status: 500 });
+  }
 
-  return new Response(Readable.toWeb(gzip) as ReadableStream, {
+  return new Response(ndjson.toString("utf-8"), {
     headers: {
       "Content-Type": "application/x-ndjson",
-      "Content-Encoding": "gzip",
       "Cache-Control": "no-store",
       "X-Content-Type-Options": "nosniff",
     },
   });
+}
+
+async function streamToBuffer(stream: ReadableStream): Promise<Buffer> {
+  const chunks: Buffer[] = [];
+  for await (const chunk of Readable.fromWeb(stream as Parameters<typeof Readable.fromWeb>[0])) {
+    chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk as Uint8Array));
+  }
+  return Buffer.concat(chunks);
 }
