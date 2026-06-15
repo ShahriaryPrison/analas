@@ -168,9 +168,9 @@ function SetupInstructions({
       <CopyableCode code={code} />
 
       <div className="rounded-xl border border-white/10 bg-white/5 p-4 space-y-3">
-        <h4 className="text-xs font-bold uppercase tracking-wider text-white/40">Where is my API Key?</h4>
+        <h4 className="text-xs font-bold uppercase tracking-wider text-white/40">Domain Protection & Security</h4>
         <p className="text-xs text-white/50 leading-relaxed">
-          You can create or copy your API key under workspace settings:
+          Your public token is write-only and safe to include in frontend code. To prevent unauthorized websites from using your token, configure allowed domains in settings:
         </p>
         <div className="flex items-center gap-2">
           <Link
@@ -178,13 +178,8 @@ function SetupInstructions({
             className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-500/10 px-3 py-1.5 text-xs font-semibold text-emerald-300 border border-emerald-500/20 hover:bg-emerald-500/15 transition"
           >
             <SlidersIcon className="w-3.5 h-3.5" />
-            Go to Settings &rarr; API Keys
+            Go to Settings &rarr; Domain Protection
           </Link>
-          {activeKeyName && (
-            <span className="text-[10px] text-white/30 font-medium">
-              (Active key detected: <code className="text-emerald-400/70 font-mono">"{activeKeyName}"</code>)
-            </span>
-          )}
         </div>
       </div>
     </div>
