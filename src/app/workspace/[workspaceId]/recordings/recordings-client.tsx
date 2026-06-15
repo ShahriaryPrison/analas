@@ -242,7 +242,7 @@ interface PlayerModalProps {
 function PlayerModal({ session, workspaceId, onClose }: PlayerModalProps) {
   const [events, setEvents] = useState<eventWithTime[] | null>(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const dialogRef = useRef<HTMLDivElement>(null);
   const [mounted, setMounted] = useState(false);
 
@@ -260,12 +260,23 @@ function PlayerModal({ session, workspaceId, onClose }: PlayerModalProps) {
         );
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const text = (await res.text()).trim();
-        const parsed = text
-          ? text.split("\n").filter(Boolean).map((line) => JSON.parse(line))
-          : [];
+        let parsed: unknown[];
+        try {
+          parsed = text
+            ? text.split("\n").filter(Boolean).map((line) => JSON.parse(line))
+            : [];
+        } catch (e) {
+          throw new Error(
+            `parse failed (${text.length} bytes, starts: ${JSON.stringify(text.slice(0, 40))})`
+          );
+        }
         setEvents(parsed as eventWithTime[]);
-      } catch {
-        if (!ac.signal.aborted) setError(true);
+      } catch (e) {
+        if (!ac.signal.aborted) {
+          const msg = e instanceof Error ? e.message : String(e);
+          console.error("[replay] failed to load recording", session.id, msg, e);
+          setError(msg);
+        }
       } finally {
         if (!ac.signal.aborted) setLoading(false);
       }
@@ -365,8 +376,9 @@ function PlayerModal({ session, workspaceId, onClose }: PlayerModalProps) {
             </div>
           )}
           {error && !loading && (
-            <div className="h-[430px] w-full rounded-xl bg-red-500/5 border border-red-500/20 flex items-center justify-center">
+            <div className="h-[430px] w-full rounded-xl bg-red-500/5 border border-red-500/20 flex flex-col items-center justify-center gap-2 px-4 text-center">
               <span className="text-sm text-red-400/70">Failed to load recording.</span>
+              <span className="text-[11px] font-mono text-red-400/40 break-all">{error}</span>
             </div>
           )}
           {events && events.length === 0 && !error && (
