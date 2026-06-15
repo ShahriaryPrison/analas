@@ -32,7 +32,7 @@ export async function POST(req: Request) {
   // ── 1) Age-based prune, honoring each workspace's plan retention ────────────
   const workspaces = await prisma.workspace.findMany({ select: { id: true, plan: true } });
   for (const ws of workspaces) {
-    const retentionDays = getEffectivePlan(ws.plan as Plan).dataRetentionDays;
+    const retentionDays = getEffectivePlan(ws.plan as Plan).recordingRetentionDays;
     if (!retentionDays || retentionDays <= 0) continue;
     const cutoff = new Date(Date.now() - retentionDays * DAY_MS);
     const expired = await prisma.sessionRecording.findMany({

@@ -148,8 +148,8 @@ export function initSessionRecorder(opts: SessionRecorderOptions): () => void {
     const events = eventBuffer.splice(0);
     const duration = Math.floor((Date.now() - startedAt) / 1000);
 
-    const jsonStr = JSON.stringify(events);
-    const compressed = await gzipBase64(jsonStr);
+    const ndjson = events.map((e) => JSON.stringify(e)).join("\n") + "\n";
+    const compressed = await gzipBase64(ndjson);
 
     const payload: Record<string, unknown> = {
       sessionId,
@@ -251,4 +251,10 @@ export function initSessionRecorder(opts: SessionRecorderOptions): () => void {
   }
 
   return cleanup;
+}
+
+if (typeof window !== "undefined") {
+  (window as any).AnalasRecorder = {
+    init: initSessionRecorder,
+  };
 }

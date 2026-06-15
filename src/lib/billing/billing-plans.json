@@ -7,7 +7,9 @@
     "maxDashboards": 1,
     "maxMembers": 3,
     "dataRetentionDays": 30,
-    "features": ["basic_insights"]
+    "maxRecordingsPerMonth": 10,
+    "recordingRetentionDays": 7,
+    "features": ["basic_insights", "session_recording"]
   },
   "PRO": {
     "name": "Pro",
@@ -18,7 +20,9 @@
     "maxDashboards": 10,
     "maxMembers": 10,
     "dataRetentionDays": 365,
-    "features": ["basic_insights", "cohort_retention", "funnels", "advanced_filters"]
+    "maxRecordingsPerMonth": 500,
+    "recordingRetentionDays": 14,
+    "features": ["basic_insights", "cohort_retention", "funnels", "advanced_filters", "session_recording"]
   },
   "BUSINESS": {
     "name": "Business",
@@ -29,7 +33,9 @@
     "maxDashboards": 25,
     "maxMembers": 25,
     "dataRetentionDays": 365,
-    "features": ["basic_insights", "cohort_retention", "funnels", "advanced_filters", "public_dashboards"]
+    "maxRecordingsPerMonth": 3000,
+    "recordingRetentionDays": 30,
+    "features": ["basic_insights", "cohort_retention", "funnels", "advanced_filters", "public_dashboards", "session_recording"]
   },
   "ENTERPRISE": {
     "name": "Enterprise",
@@ -39,6 +45,8 @@
     "maxDashboards": 100,
     "maxMembers": 100,
     "dataRetentionDays": 3650,
-    "features": ["basic_insights", "cohort_retention", "funnels", "advanced_filters", "public_dashboards"]
+    "maxRecordingsPerMonth": 50000,
+    "recordingRetentionDays": 90,
+    "features": ["basic_insights", "cohort_retention", "funnels", "advanced_filters", "public_dashboards", "session_recording"]
   }
 }

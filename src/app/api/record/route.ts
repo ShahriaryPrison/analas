@@ -10,7 +10,7 @@ export const runtime = "nodejs";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getRecordingStore } from "@/lib/recordings/store";
-import { isCloudHosted } from "@/lib/billing/plans";
+import { isCloudHosted, getEffectivePlan } from "@/lib/billing/plans";
 import crypto from "node:crypto";
 import { gzip, gunzip } from "node:zlib";
 import { promisify } from "node:util";
@@ -22,12 +22,12 @@ const gunzipAsync = promisify(gunzip);
 const UUID_V4_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
-// API key → workspaceId cache (5 min TTL, same pattern as /api/capture).
+// API key → workspaceId/plan cache (5 min TTL, same pattern as /api/capture).
 const CACHE_TTL = 5 * 60 * 1000;
-const apiCache = new Map<string, { workspaceId: string; expiresAt: number }>();
+const apiCache = new Map<string, { workspaceId: string; plan: string; expiresAt: number }>();
 
 // Per-key ingest velocity backstop (1-minute window) — caps disk-fill rate.
-const RATE_LIMIT = 600;
+const RATE_LIMIT = 60;
 const rateMap = new Map<string, { ts: number; count: number }>();
 
 // Abuse / resource caps.
@@ -82,19 +82,22 @@ export async function POST(req: Request) {
 
     // ── Resolve workspace (cached) ────────────────────────────────────────────
     let workspaceId: string;
+    let plan: string;
     const cached = apiCache.get(keyHash);
     if (cached && cached.expiresAt > now) {
       workspaceId = cached.workspaceId;
+      plan = cached.plan;
     } else {
       const apiKey = await prisma.apiKey.findUnique({
         where: { keyHash },
-        select: { workspaceId: true },
+        include: { workspace: { select: { plan: true } } },
       });
       if (!apiKey) {
         return NextResponse.json({ error: "Invalid API key" }, { status: 401 });
       }
       workspaceId = apiKey.workspaceId;
-      apiCache.set(keyHash, { workspaceId, expiresAt: now + CACHE_TTL });
+      plan = apiKey.workspace.plan;
+      apiCache.set(keyHash, { workspaceId, plan, expiresAt: now + CACHE_TTL });
     }
 
     // ── Parse body ────────────────────────────────────────────────────────────
@@ -117,11 +120,13 @@ export async function POST(req: Request) {
       } catch {
         return NextResponse.json({ error: "Invalid gzip payload" }, { status: 400 });
       }
-      const parsed = JSON.parse(decompressed.toString("utf-8"));
-      if (!Array.isArray(parsed)) {
-        return NextResponse.json({ error: "Events must be an array" }, { status: 400 });
+      
+      const lines = decompressed.toString("utf-8").split("\n").filter(Boolean);
+      try {
+        events = lines.map((line) => JSON.parse(line));
+      } catch {
+        return NextResponse.json({ error: "Invalid NDJSON payload" }, { status: 400 });
       }
-      events = parsed;
     } else if (Array.isArray(body.events)) {
       events = body.events;
     } else {
@@ -143,7 +148,7 @@ export async function POST(req: Request) {
     // ── Guard rails before writing ────────────────────────────────────────────
     const existing = await prisma.sessionRecording.findUnique({
       where: { id: sessionId },
-      select: { workspaceId: true, chunkCount: true },
+      select: { workspaceId: true, chunkCount: true, duration: true },
     });
     if (existing) {
       // A session id is globally unique; never let one workspace append to another's.
@@ -153,20 +158,43 @@ export async function POST(req: Request) {
       if (existing.chunkCount >= MAX_SESSION_CHUNKS) {
         return NextResponse.json({ error: "Recording too large" }, { status: 413 });
       }
-    } else if (isCloudHosted()) {
-      // Soft per-workspace quota — only enforced for cloud; self-hosted is unlimited.
-      const active = await prisma.sessionRecording.count({ where: { workspaceId } });
-      if (active >= MAX_ACTIVE_RECORDINGS) {
-        return NextResponse.json({ error: "Recording quota exceeded" }, { status: 429 });
+    } else {
+      const planConfig = getEffectivePlan(plan as any);
+      if (!planConfig.features.includes("session_recording")) {
+        return NextResponse.json({ error: "Session Replay is not enabled on your plan" }, { status: 403 });
+      }
+
+      if (isCloudHosted()) {
+        const startOfMonth = new Date();
+        startOfMonth.setDate(1);
+        startOfMonth.setHours(0, 0, 0, 0);
+
+        const monthlyCount = await prisma.sessionRecording.count({
+          where: {
+            workspaceId,
+            createdAt: { gte: startOfMonth },
+          },
+        });
+
+        if (monthlyCount >= planConfig.maxRecordingsPerMonth) {
+          return NextResponse.json({ error: "Monthly session recording quota exceeded" }, { status: 429 });
+        }
       }
     }
 
     // ── Store the flush as one immutable gzipped-NDJSON chunk ──────────────────
-    const ndjson = events.map((e) => JSON.stringify(e)).join("\n") + "\n";
-    const gz = await gzipAsync(ndjson);
+    let gz: Buffer;
+    if (body.eventsGzip) {
+      gz = Buffer.from(body.eventsGzip, "base64");
+    } else {
+      const ndjson = events.map((e) => JSON.stringify(e)).join("\n") + "\n";
+      gz = await gzipAsync(ndjson);
+    }
     const storageKey = await getRecordingStore().putChunk(workspaceId, sessionId, gz);
 
     // ── Upsert metadata (atomic; tolerates the flush/pagehide write race) ──────
+    const newDuration = existing ? Math.max(existing.duration, duration) : duration;
+
     await prisma.sessionRecording.upsert({
       where: { id: sessionId },
       create: {
@@ -176,12 +204,12 @@ export async function POST(req: Request) {
         browser: body.browser,
         os: body.os,
         pagePath: body.pagePath,
-        duration,
+        duration: newDuration,
         storageKey,
         chunkCount: 1,
       },
       update: {
-        duration,
+        duration: newDuration,
         chunkCount: { increment: 1 },
         // Enrich metadata if a later chunk carries it.
         ...(body.distinctId ? { distinctId: body.distinctId } : {}),

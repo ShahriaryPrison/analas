@@ -26,7 +26,56 @@ export default function InsightTypesDocsPage() {
           </Link>
         </div>
 
-        <div className="space-y-3">
+        {/* Integrating Session Replay Section */}
+        <section className="space-y-6 border-b border-white/10 pb-12">
+          <div className="space-y-3">
+            <h1 className="text-3xl font-black text-white tracking-tight leading-none">
+              Integrating Session Replay
+            </h1>
+            <p className="text-white/60 leading-relaxed text-sm">
+              Capture, compress, and stream client sessions natively to your ANALAS server. Add the tracker directly to your website or import it in your SPA.
+            </p>
+          </div>
+
+          <div className="space-y-4">
+            <h3 className="text-sm font-semibold text-white/80">Option A: HTML Script Tag</h3>
+            <p className="text-xs text-white/50">Add this snippet in the <code className="text-emerald-300 font-mono text-[11px] bg-white/5 px-1 rounded">&lt;head&gt;</code> of your website to record sessions automatically:</p>
+            <pre className="rounded-xl bg-slate-950 border border-white/10 p-5 text-xs font-mono text-white/80 overflow-x-auto whitespace-pre">{`<!-- Load the ANALAS Session Recorder -->
+<script src="/session-recorder.js"></script>
+
+<script>
+  AnalasRecorder.init({
+    apiKey: "your-workspace-api-key",
+    sampleRate: 0.2,                // Record only 20% of sessions (0-1)
+    maskAllText: true,              // Enable strict full-text masking
+    excludePaths: ["/billing", "/settings"] // Skip tracking these routes
+  });
+</script>`}</pre>
+          </div>
+
+          <div className="space-y-4">
+            <h3 className="text-sm font-semibold text-white/80">Option B: JavaScript / SPA Import</h3>
+            <p className="text-xs text-white/50">For React, Next.js, or Single Page Apps, import and initialize the tracker inside your root layout or app wrapper:</p>
+            <pre className="rounded-xl bg-slate-950 border border-white/10 p-5 text-xs font-mono text-white/80 overflow-x-auto whitespace-pre">{`import { initSessionRecorder } from "@/lib/session-recorder";
+import { useEffect } from "react";
+
+export default function RootProvider({ children }) {
+  useEffect(() => {
+    // Starts the recorder and returns a cleanup function
+    const cleanup = initSessionRecorder({
+      apiKey: "your-workspace-api-key",
+      sampleRate: 0.5,              // Record 50% of sessions
+      excludePaths: ["/admin"]      // Exclude paths
+    });
+    return cleanup;
+  }, []);
+
+  return children;
+}`}</pre>
+          </div>
+        </section>
+
+        <div className="space-y-3 pt-6">
           <h1 className="text-3xl font-bold">Contributing an insight type</h1>
           <p className="text-white/60 leading-relaxed">
             Insight types are defined in{" "}

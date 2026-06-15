@@ -5,7 +5,19 @@ import { createPortal } from "react-dom";
 import dynamic from "next/dynamic";
 import type { eventWithTime } from "@rrweb/types";
 import type { Row } from "./insight-card";
-import { TrashIcon, XIcon } from "@/components/icons";
+import {
+  TrashIcon,
+  XIcon,
+  ChromeIcon,
+  SafariIcon,
+  FirefoxIcon,
+  EdgeIcon,
+  WindowsIcon,
+  AppleIcon,
+  LinuxIcon,
+  AndroidIcon,
+  GlobeIcon,
+} from "@/components/icons";
 
 // Dynamically imported — rrweb-player requires a real DOM and must not run on server.
 const RrwebPlayerClient = dynamic(() => import("./rrweb-player-client"), {
@@ -51,8 +63,43 @@ function formatDate(iso: string): string {
   }).format(new Date(iso));
 }
 
-function clientLabel(s: SessionRow): string {
-  return [s.browser, s.os].filter(Boolean).join(" · ") || "—";
+function getBrowserIcon(browser?: string) {
+  const b = (browser || "").toLowerCase();
+  if (b.includes("chrome")) return <ChromeIcon className="w-3.5 h-3.5" />;
+  if (b.includes("safari")) return <SafariIcon className="w-3.5 h-3.5" />;
+  if (b.includes("firefox")) return <FirefoxIcon className="w-3.5 h-3.5" />;
+  if (b.includes("edge")) return <EdgeIcon className="w-3.5 h-3.5" />;
+  return <GlobeIcon className="w-3.5 h-3.5" />;
+}
+
+function getOSIcon(os?: string) {
+  const o = (os || "").toLowerCase();
+  if (o.includes("windows")) return <WindowsIcon className="w-3.5 h-3.5" />;
+  if (o.includes("mac") || o.includes("ios") || o.includes("ipad") || o.includes("iphone")) {
+    return <AppleIcon className="w-3.5 h-3.5" fill="currentColor" />;
+  }
+  if (o.includes("linux")) return <LinuxIcon className="w-3.5 h-3.5" />;
+  if (o.includes("android")) return <AndroidIcon className="w-3.5 h-3.5" />;
+  return null;
+}
+
+function ClientBadges({ browser, os }: { browser?: string; os?: string }) {
+  return (
+    <div className="flex items-center gap-1.5 justify-end">
+      {browser && (
+        <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-white/5 border border-white/10 text-[9px] font-bold text-white/50 leading-none h-4.5">
+          {getBrowserIcon(browser)}
+          <span className="mt-0.5">{browser}</span>
+        </span>
+      )}
+      {os && (
+        <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-white/5 border border-white/10 text-[9px] font-bold text-white/50 leading-none h-4.5">
+          {getOSIcon(os)}
+          <span className="mt-0.5">{os}</span>
+        </span>
+      )}
+    </div>
+  );
 }
 
 // ── Loading skeleton ──────────────────────────────────────────────────────────
@@ -80,6 +127,11 @@ function PlayerModal({ session, workspaceId, onClose }: PlayerModalProps) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const dialogRef = useRef<HTMLDivElement>(null);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   // Fetch + parse the NDJSON recording (gzip is inflated transparently by fetch).
   useEffect(() => {
@@ -143,6 +195,8 @@ function PlayerModal({ session, workspaceId, onClose }: PlayerModalProps) {
     };
   }, [onClose]);
 
+  if (!mounted) return null;
+
   return createPortal(
     <div
       className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4"
@@ -174,8 +228,7 @@ function PlayerModal({ session, workspaceId, onClose }: PlayerModalProps) {
           </div>
           <div className="flex items-center gap-3 shrink-0">
             <div className="hidden sm:flex items-center gap-3 text-[11px] text-white/40">
-              {session.browser && <span>{session.browser}</span>}
-              {session.os && <span>{session.os}</span>}
+              <ClientBadges browser={session.browser} os={session.os} />
               <span>{formatDuration(session.duration)}</span>
               <span>{formatDate(session.createdAt)}</span>
             </div>
@@ -260,8 +313,8 @@ function RecordingRow({ session, onOpen, onDelete }: RecordingRowProps) {
         </span>
 
         {/* Browser · OS */}
-        <span className="hidden md:block shrink-0 w-[110px] truncate text-right text-[11px] text-white/40">
-          {clientLabel(session)}
+        <span className="hidden md:block shrink-0 w-[110px] text-right">
+          <ClientBadges browser={session.browser} os={session.os} />
         </span>
 
         {/* Duration */}

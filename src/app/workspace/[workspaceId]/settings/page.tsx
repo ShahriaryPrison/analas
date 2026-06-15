@@ -1,6 +1,7 @@
 import { requireAdminAccess } from "@/lib/workspace-access";
 import SettingsClient from "./settings-client";
 import { SparklesIcon, UsersIcon, KeyIcon } from "@/components/icons";
+import { prisma } from "@/lib/prisma";
 
 export default async function SettingsPage({
   params,
@@ -32,6 +33,17 @@ export default async function SettingsPage({
 
   // Get current public link token if enabled
   const publicLinkInvite = workspace.invites.find((i) => i.email === null);
+
+  const startOfMonth = new Date();
+  startOfMonth.setDate(1);
+  startOfMonth.setHours(0, 0, 0, 0);
+
+  const currentMonthRecordings = await prisma.sessionRecording.count({
+    where: {
+      workspaceId,
+      createdAt: { gte: startOfMonth },
+    },
+  });
 
   return (
     <section className="space-y-8">
@@ -90,6 +102,7 @@ export default async function SettingsPage({
         appUrl={process.env.NEXTAUTH_URL ?? process.env.NEXT_PUBLIC_APP_URL ?? ""}
         plan={workspace.plan}
         currentMonthEvents={workspace.currentMonthEvents}
+        currentMonthRecordings={currentMonthRecordings}
       />
     </section>
   );

@@ -1,6 +1,6 @@
 export type Plan = "FREE" | "PRO" | "BUSINESS" | "ENTERPRISE";
 
-export type Feature = "basic_insights" | "cohort_retention" | "funnels" | "advanced_filters" | "public_dashboards";
+export type Feature = "basic_insights" | "cohort_retention" | "funnels" | "advanced_filters" | "public_dashboards" | "session_recording";
 
 export interface PlanConfig {
   name: string;
@@ -11,6 +11,8 @@ export interface PlanConfig {
   maxDashboards: number;
   maxMembers: number;
   dataRetentionDays: number;
+  maxRecordingsPerMonth: number;
+  recordingRetentionDays: number;
   features: Feature[];
 }
 

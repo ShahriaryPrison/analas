@@ -63,6 +63,16 @@ const FEATURES = [
     body: "See top events, daily series, and breakdowns powered by ClickHouse columnar queries — fast even over millions of rows.",
   },
   {
+    icon: (
+      <svg className="h-5 w-5 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+        <circle cx="12" cy="12" r="10" />
+        <polygon points="10 8 16 12 10 16 10 8" fill="currentColor" />
+      </svg>
+    ),
+    title: "Session Replays",
+    body: "Record and replay user sessions frame-by-frame. Locate user friction, analyze console errors, and watch real customer behavior natively.",
+  },
+  {
     icon: <IconShield />,
     title: "Multi-tenant Isolation",
     body: "Each workspace gets a unique tenant UUID. ClickHouse partitions events per tenant — your data never bleeds across accounts.",
@@ -88,8 +98,9 @@ const PLANS = [
     features: [
       "1 workspace limit",
       "10,000 events / month",
+      "10 Session Replays / month",
       "3 team members limit",
-      "30-day data retention",
+      "30-day retention (7d replays)",
       "Captures & Insights",
     ],
     cta: "Start for free",
@@ -105,8 +116,9 @@ const PLANS = [
     features: [
       "1 workspace limit",
       "250,000 events / month",
+      "500 Session Replays / month",
       "Up to 10 team members",
-      "365-day data retention",
+      "365-day retention (14d replays)",
       "Funnels & Cohort Retention",
     ],
     cta: "Upgrade to Pro",
@@ -123,8 +135,9 @@ const PLANS = [
     features: [
       "1 workspace limit",
       "2,000,000 events / month",
+      "3,000 Session Replays / month",
       "Up to 25 team members",
-      "365-day data retention",
+      "365-day retention (30d replays)",
       "Public Shared Dashboards",
     ],
     cta: "Upgrade to Business",
@@ -140,6 +153,7 @@ const PLANS = [
     features: [
       "Unlimited workspaces",
       "Custom monthly events",
+      "Custom Replay limits (90d replays)",
       "SSO / SAML integration",
       "10-year data retention",
       "Dedicated support & SLAs",
@@ -509,6 +523,165 @@ export default function LandingPage() {
                 </div>
               </div>
             ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ════════════════════════════════════════════════
+          SESSION REPLAY FEATURE SHOWCASE
+      ════════════════════════════════════════════════ */}
+      <section className="px-6 py-24 border-t border-b border-white/5 bg-gradient-to-b from-transparent via-emerald-950/5 to-transparent">
+        <div className="mx-auto max-w-5xl">
+          <div className="grid gap-12 lg:grid-cols-12 items-center">
+            
+            {/* Left Column: Copy */}
+            <div className="space-y-6 lg:col-span-5">
+              <div>
+                <span className="rounded-full bg-emerald-500/10 border border-emerald-500/20 px-3.5 py-1 text-xs font-semibold uppercase tracking-wider text-emerald-400">
+                  New Feature
+                </span>
+                <h2 className="mt-4 text-3xl font-black text-white tracking-tight leading-none sm:text-4xl">
+                  Session Replay
+                </h2>
+                <p className="text-xl font-bold text-white/40 mt-1">
+                  See what your users see.
+                </p>
+              </div>
+              
+              <p className="text-base leading-relaxed text-white/55">
+                Understand user drop-offs and reproduce hard-to-find client bugs. Capture clicks, typing, scrolls, and DOM mutations in real time, and replay them in a beautiful player directly inside ANALAS.
+              </p>
+              
+              <ul className="space-y-3.5">
+                {[
+                  ["High-Fidelity Replay", "Reconstructs HTML/CSS events dynamically instead of recording heavy video streams."],
+                  ["Privacy-First Masking", "Automatically redacts inputs and supports strict full-text masking by default."],
+                  ["Developer Timeline", "Inspect exact navigation logs, clicks, and page interactions on a visual timeline."],
+                  ["Gzip Compression", "All replay streams are compressed client-side, reducing server bandwidth and S3 costs to near zero."]
+                ].map(([title, desc]) => (
+                  <li key={title} className="flex gap-3">
+                    <span className="mt-1 flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-emerald-500/15 text-emerald-400">
+                      <svg className="h-2.5 w-2.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                      </svg>
+                    </span>
+                    <div>
+                      <strong className="text-sm font-semibold text-white/90">{title}</strong>
+                      <p className="text-xs text-white/50 mt-0.5">{desc}</p>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            {/* Right Column: Interactive Replayer Mockup */}
+            <div className="lg:col-span-7">
+              <div className="rounded-2xl border border-white/10 bg-slate-950/80 shadow-2xl overflow-hidden shadow-emerald-500/5 hover:border-white/15 transition-all">
+                {/* Header */}
+                <div className="flex items-center justify-between border-b border-white/8 bg-slate-900/50 px-4 py-3">
+                  <div className="flex items-center gap-2">
+                    <span className="h-2 w-2 rounded-full bg-red-500/60" />
+                    <span className="font-mono text-xs text-emerald-400 flex items-center gap-1.5">
+                      <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-ping" />
+                      REPLAYING SESSION
+                    </span>
+                  </div>
+                  <span className="text-xs font-mono text-white/30">sess_k9r2j8w5…</span>
+                </div>
+                
+                {/* Player Layout */}
+                <div className="grid grid-cols-12 divide-y md:divide-y-0 md:divide-x divide-white/8">
+                  {/* Canvas Viewport */}
+                  <div className="col-span-12 md:col-span-8 p-6 flex flex-col justify-between min-h-[260px] bg-slate-900/10 relative overflow-hidden select-none">
+                    {/* Mock Website Canvas */}
+                    <div className="border border-white/5 bg-slate-950/40 rounded-xl p-4 space-y-4 flex-1 flex flex-col justify-between">
+                      <div className="flex items-center justify-between border-b border-white/5 pb-2 text-[10px] text-white/30">
+                        <span>acme-shop.ir/checkout</span>
+                        <span>🛒 3 items</span>
+                      </div>
+                      
+                      {/* Fake Payment Form */}
+                      <div className="space-y-2 max-w-xs mx-auto w-full">
+                        <div className="h-7 rounded-lg bg-white/5 border border-white/10 flex items-center px-2 text-[10px] text-white/30 justify-between">
+                          <span>Cardholder Name</span>
+                          <span className="font-mono bg-white/10 px-1 py-0.2 rounded text-white/60">*** ***</span>
+                        </div>
+                        <div className="h-7 rounded-lg bg-white/5 border border-white/10 flex items-center px-2 text-[10px] text-white/30 justify-between">
+                          <span>Card Number</span>
+                          <span className="font-mono bg-white/10 px-1 py-0.2 rounded text-white/60">**** **** **** 8820</span>
+                        </div>
+                        <button className="h-7 rounded-lg bg-emerald-500/20 border border-emerald-500/30 text-[10px] font-bold text-emerald-400 w-full flex items-center justify-center">
+                          Pay 1,200,000 Toman
+                        </button>
+                      </div>
+                      
+                      <div className="text-[8px] text-white/20 text-center font-mono">
+                        Security inputs redacted via [data-mask] automatically
+                      </div>
+                    </div>
+                    
+                    {/* Floating Replay Cursor */}
+                    <div className="absolute top-1/2 left-2/3 -translate-x-1/2 -translate-y-1/2 flex flex-col items-start gap-1">
+                      <svg className="h-4 w-4 text-emerald-400 drop-shadow-lg" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M4.5 3v15.2l3.8-3.8h5.9l-9.7-11.4z" />
+                      </svg>
+                      <span className="text-[8px] bg-emerald-500 text-slate-950 font-bold px-1.5 py-0.5 rounded shadow">
+                        Click: Pay
+                      </span>
+                    </div>
+                  </div>
+                  
+                  {/* Event Timeline Sidebar */}
+                  <div className="col-span-12 md:col-span-4 bg-slate-950/20 p-4 space-y-3 font-mono text-[10px]">
+                    <div className="font-bold text-white/30 text-xs pb-1 uppercase tracking-wider">
+                      Events Log
+                    </div>
+                    <div className="space-y-2">
+                      {[
+                        ["00:02", "page_loaded", "checkout"],
+                        ["00:11", "input_change", "name"],
+                        ["00:24", "input_change", "card"],
+                        ["00:32", "button_click", "submit"]
+                      ].map(([time, type, detail], idx) => (
+                        <div key={idx} className={`flex items-center gap-2 p-1.5 rounded transition ${idx === 3 ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/10" : "text-white/40"}`}>
+                          <span className="opacity-60">{time}</span>
+                          <span className={`h-1.5 w-1.5 rounded-full ${idx === 3 ? "bg-emerald-400" : "bg-white/20"}`} />
+                          <div className="flex-1 min-w-0">
+                            <div className="font-semibold truncate">{type}</div>
+                            <div className="opacity-45 text-[8px]">{detail}</div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+                
+                {/* Control Bar */}
+                <div className="border-t border-white/8 bg-slate-900/50 px-5 py-3 flex items-center justify-between gap-4 text-xs font-mono">
+                  <div className="flex items-center gap-3 shrink-0">
+                    <button className="h-6 w-6 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 flex items-center justify-center hover:bg-emerald-500/20">
+                      ▶
+                    </button>
+                    <span className="text-white/30">00:32 / 01:10</span>
+                  </div>
+                  
+                  {/* Progress Line */}
+                  <div className="flex-1 h-1 bg-white/5 rounded-full relative overflow-hidden">
+                    <div className="absolute top-0 left-0 h-full w-[45%] bg-emerald-400 rounded-full" />
+                  </div>
+                  
+                  <div className="flex items-center gap-2 shrink-0">
+                    <span className="bg-white/5 border border-white/10 px-2 py-0.5 rounded text-[10px] font-bold text-white/50">
+                      2x Speed
+                    </span>
+                    <span className="bg-emerald-500/15 border border-emerald-500/20 px-2 py-0.5 rounded text-[10px] font-bold text-emerald-400">
+                      Skip Inactivity
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+            
           </div>
         </div>
       </section>
