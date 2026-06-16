@@ -39,6 +39,10 @@ model Workspace {
   internalSubscriptionId     String?   @unique
   billingCycleStart          DateTime?
   currentMonthEvents         Int       @default(0)
+  // Increment-only quota counter: bumped when a NEW recording is first ingested,
+  // never decremented on delete (deleting frees storage, not monthly quota).
+  // Reset to 0 at each billing cycle alongside currentMonthEvents.
+  currentMonthRecordings     Int       @default(0)
   members           WorkspaceMember[]
   apiKeys           ApiKey[]
   dashboards        Dashboard[]

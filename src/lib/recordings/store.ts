@@ -29,7 +29,7 @@ import {
   S3Client,
   PutObjectCommand,
   GetObjectCommand,
-  DeleteObjectsCommand,
+  DeleteObjectCommand,
   ListObjectsV2Command,
 } from "@aws-sdk/client-s3";
 
@@ -254,7 +254,14 @@ class S3Store implements RecordingStore {
   }
 
   async deleteSession(storageKey: string): Promise<void> {
+    console.log("[store:s3] deleteSession storageKey=%s", storageKey);
+    // Delete objects ONE AT A TIME. The batch DeleteObjects API is unreliable on
+    // several S3-compatible endpoints (Cloudflare R2 / MinIO): it can return HTTP
+    // 200 while silently dropping the deletes, which orphaned recording media.
+    // Individual DeleteObject is universally supported, and we throw on the first
+    // failure so the caller does NOT remove the DB row when media still remains.
     let token: string | undefined;
+    let deleted = 0;
     do {
       const res = await this.client.send(
         new ListObjectsV2Command({
@@ -263,19 +270,21 @@ class S3Store implements RecordingStore {
           ContinuationToken: token,
         })
       );
-      const objects = (res.Contents ?? [])
-        .filter((o) => !!o.Key)
-        .map((o) => ({ Key: o.Key! }));
-      if (objects.length > 0) {
-        await this.client.send(
-          new DeleteObjectsCommand({
-            Bucket: this.bucket,
-            Delete: { Objects: objects },
-          })
-        );
+      for (const obj of res.Contents ?? []) {
+        if (!obj.Key) continue;
+        try {
+          await this.client.send(
+            new DeleteObjectCommand({ Bucket: this.bucket, Key: obj.Key })
+          );
+          deleted++;
+        } catch (err) {
+          console.error("[store:s3] deleteSession FAILED key=%s", obj.Key, err);
+          throw err;
+        }
       }
       token = res.IsTruncated ? res.NextContinuationToken : undefined;
     } while (token);
+    console.log("[store:s3] deleteSession OK storageKey=%s deleted=%d", storageKey, deleted);
   }
 
   async listSessionKeys(): Promise<string[]> {

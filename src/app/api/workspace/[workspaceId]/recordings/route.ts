@@ -9,10 +9,20 @@ export async function GET(
   const { workspaceId } = await params;
 
   // 1. Authorize workspace access
+  let workspace: Awaited<ReturnType<typeof getAuthorizedWorkspace>>["workspace"];
   try {
-    await getAuthorizedWorkspace(workspaceId);
+    ({ workspace } = await getAuthorizedWorkspace(workspaceId));
   } catch {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  // 2. Feature gate
+  const { hasFeature } = await import("@/lib/billing/plans");
+  if (!hasFeature(workspace.plan as any, "session_recording")) {
+    return NextResponse.json(
+      { error: "Session Recording is not available on your current plan. Please upgrade." },
+      { status: 403 }
+    );
   }
 
   // 2. Parse query filters (pagePath, distinctId, cursor)

@@ -34,16 +34,14 @@ export default async function SettingsPage({
   // Get current public link token if enabled
   const publicLinkInvite = workspace.invites.find((i) => i.email === null);
 
-  const startOfMonth = new Date();
-  startOfMonth.setDate(1);
-  startOfMonth.setHours(0, 0, 0, 0);
-
-  const currentMonthRecordings = await prisma.sessionRecording.count({
-    where: {
-      workspaceId,
-      createdAt: { gte: startOfMonth },
-    },
+  // Usage reflects the increment-only quota counter (recordings ingested this
+  // billing period), not a live row count — so it does not drop when recordings
+  // are deleted, matching how the ingest gate meters quota.
+  const usageRow = await prisma.workspace.findUnique({
+    where: { id: workspaceId },
+    select: { currentMonthRecordings: true },
   });
+  const currentMonthRecordings = usageRow?.currentMonthRecordings ?? 0;
 
   return (
     <section className="space-y-8">

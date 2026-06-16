@@ -63,7 +63,7 @@ export async function POST(req: NextRequest, { params }: Params) {
   const planConfig = getEffectivePlan(result.workspace!.plan as any);
   
   const currentMembersCount = await prisma.workspaceMember.count({ where: { workspaceId } });
-  const pendingInvitesCount = await prisma.workspaceInvite.count({ where: { workspaceId, usedAt: null } });
+  const pendingInvitesCount = await prisma.workspaceInvite.count({ where: { workspaceId, usedAt: null, email: { not: null } } });
   const totalSlotsUsed = currentMembersCount + pendingInvitesCount;
 
   if (totalSlotsUsed >= planConfig.maxMembers) {

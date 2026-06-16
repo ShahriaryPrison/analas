@@ -23,6 +23,23 @@ export async function POST(
 
   if (!workspace) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
+  const { hasFeature } = await import("@/lib/billing/plans");
+
+  const featureMap: Record<string, string> = {
+    retention: "cohort_retention",
+    funnel: "funnels",
+    metric: "advanced_filters",
+    session_recording: "session_recording",
+  };
+  const requiredFeature = featureMap[type] ?? "basic_insights";
+
+  if (!hasFeature(workspace.plan as any, requiredFeature)) {
+    return NextResponse.json(
+      { error: `Your current plan does not support ${type} insights. Please upgrade.` },
+      { status: 403 }
+    );
+  }
+
   const data = await fetchInsightData(
     workspace.tenantId,
     type,

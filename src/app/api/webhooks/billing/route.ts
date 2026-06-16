@@ -140,6 +140,7 @@ export async function POST(req: NextRequest) {
             internalSubscriptionId: String(subscriptionId),
             billingCycleStart: new Date(),
             currentMonthEvents: 0,
+            currentMonthRecordings: 0,
           },
         });
 
@@ -172,6 +173,7 @@ export async function POST(req: NextRequest) {
           data: {
             billingCycleStart: new Date(),
             currentMonthEvents: 0, // Reset monthly quota
+            currentMonthRecordings: 0,
           },
         });
         break;

@@ -40,8 +40,14 @@ export async function DELETE(
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
 
-  // Files first (retryable), then the row.
-  await getRecordingStore().deleteSession(recording.storageKey);
+  // Files first (retryable), then the row. If object deletion fails we must NOT
+  // drop the row — otherwise the media is orphaned with no way to find it again.
+  try {
+    await getRecordingStore().deleteSession(recording.storageKey);
+  } catch (err) {
+    console.error("[recordings:delete] failed to delete media sessionId=%s", sessionId, err);
+    return NextResponse.json({ error: "Failed to delete recording media" }, { status: 500 });
+  }
   await prisma.sessionRecording.delete({ where: { id: sessionId } });
 
   return NextResponse.json({ status: "deleted" });

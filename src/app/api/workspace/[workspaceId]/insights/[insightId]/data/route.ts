@@ -27,6 +27,23 @@ export async function GET(
 
   if (!insight) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
+  // Feature gate — defense-in-depth in case an insight was created via another path
+  const { hasFeature } = await import("@/lib/billing/plans");
+  const plan = insight.dashboard.workspace.plan;
+  const featureMap: Record<string, string> = {
+    retention: "cohort_retention",
+    funnel: "funnels",
+    metric: "advanced_filters",
+    session_recording: "session_recording",
+  };
+  const requiredFeature = featureMap[insight.type];
+  if (requiredFeature && !hasFeature(plan as any, requiredFeature)) {
+    return NextResponse.json(
+      { error: "This insight type is not available on your current plan. Please upgrade." },
+      { status: 403 }
+    );
+  }
+
   // ── Session Recording: served from Postgres, not ClickHouse ─────────────
   if (insight.type === "session_recording") {
     const qc = (insight.queryConfig ?? {}) as { pagePath?: string; distinctId?: string };

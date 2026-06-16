@@ -13,7 +13,11 @@ function getOrigin(req: NextRequest): string {
     process.env.NEXTAUTH_URL ??
     process.env.NEXT_PUBLIC_APP_URL ??
     req.nextUrl.origin
-  ).replace(/\/$/, ""); // strip trailing slash
+  ).replace(/\/$/, "");
+}
+
+function errorRedirect(origin: string, reason: string): NextResponse {
+  return NextResponse.redirect(`${origin}/invite/error?reason=${reason}`);
 }
 
 // ── GET /api/invite/[token] ───────────────────────────────────────────────────
@@ -22,24 +26,24 @@ function getOrigin(req: NextRequest): string {
 // - Logged out → redirect to /register?invite=[token]
 export async function GET(req: NextRequest, { params }: Params) {
   const { token } = await params;
+  const origin = getOrigin(req);
 
   const invite = await prisma.workspaceInvite.findUnique({ where: { token } });
 
   if (!invite) {
-    return NextResponse.json({ error: "Invalid invite link" }, { status: 404 });
+    return errorRedirect(origin, "invalid");
   }
 
   if (invite.usedAt && invite.email !== null) {
     // Email invites are single-use
-    return NextResponse.json({ error: "This invite has already been used" }, { status: 410 });
+    return errorRedirect(origin, "used");
   }
 
   if (invite.expiresAt && invite.expiresAt < new Date()) {
-    return NextResponse.json({ error: "This invite link has expired" }, { status: 410 });
+    return errorRedirect(origin, "expired");
   }
 
   const session = await getAppSession();
-  const origin = getOrigin(req);
 
   if (!session) {
     return NextResponse.redirect(`${origin}/register?invite=${token}`);
@@ -53,10 +57,7 @@ export async function GET(req: NextRequest, { params }: Params) {
 
   // Email-specific invite: validate the email matches
   if (invite.email && invite.email !== user.email) {
-    return NextResponse.json(
-      { error: "This invite was sent to a different email address" },
-      { status: 403 }
-    );
+    return errorRedirect(origin, "email_mismatch");
   }
 
   // Check not already a member
@@ -65,15 +66,16 @@ export async function GET(req: NextRequest, { params }: Params) {
   });
 
   if (!existing) {
-    // Check limit
     const workspace = await prisma.workspace.findUnique({ where: { id: invite.workspaceId } });
     if (workspace) {
       const { getEffectivePlan } = await import("@/lib/billing/plans");
       const planConfig = getEffectivePlan(workspace.plan as any);
-      
-      const currentMembersCount = await prisma.workspaceMember.count({ where: { workspaceId: invite.workspaceId } });
+
+      const currentMembersCount = await prisma.workspaceMember.count({
+        where: { workspaceId: invite.workspaceId },
+      });
       if (currentMembersCount >= planConfig.maxMembers) {
-        return NextResponse.json({ error: "This workspace has reached its maximum member limit." }, { status: 403 });
+        return errorRedirect(origin, "member_limit");
       }
     }
 

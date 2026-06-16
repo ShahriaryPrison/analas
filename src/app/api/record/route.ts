@@ -232,18 +232,14 @@ async function handlePost(req: Request) {
       }
 
       if (isCloudHosted()) {
-        const startOfMonth = new Date();
-        startOfMonth.setDate(1);
-        startOfMonth.setHours(0, 0, 0, 0);
-
-        const monthlyCount = await prisma.sessionRecording.count({
-          where: {
-            workspaceId,
-            createdAt: { gte: startOfMonth },
-          },
+        // Quota is metered by an increment-only counter (currentMonthRecordings),
+        // not a live row count — so deleting recordings frees storage but does not
+        // refund monthly quota, and the cap can't be bypassed by delete/re-record.
+        const ws = await prisma.workspace.findUnique({
+          where: { id: workspaceId },
+          select: { currentMonthRecordings: true },
         });
-
-        if (monthlyCount >= planConfig.maxRecordingsPerMonth) {
+        if ((ws?.currentMonthRecordings ?? 0) >= planConfig.maxRecordingsPerMonth) {
           return NextResponse.json({ error: "Monthly session recording quota exceeded" }, { status: 429 });
         }
       }
@@ -284,6 +280,15 @@ async function handlePost(req: Request) {
         ...(body.os ? { os: body.os } : {}),
       },
     });
+
+    // Count a NEW recording against the monthly quota exactly once (on first
+    // chunk). Increment-only: never decremented when a recording is deleted.
+    if (!existing) {
+      await prisma.workspace.update({
+        where: { id: workspaceId },
+        data: { currentMonthRecordings: { increment: 1 } },
+      });
+    }
 
     return NextResponse.json({ status: "ok", ingested: events.length }, { status: 202 });
   } catch (err) {

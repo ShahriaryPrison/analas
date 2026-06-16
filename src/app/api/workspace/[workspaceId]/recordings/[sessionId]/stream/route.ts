@@ -29,12 +29,26 @@ export async function GET(
   }
 
   // Caller must be a member of the workspace.
-  const member = await prisma.workspaceMember.findFirst({
-    where: { workspaceId, user: { email: session.user.email! } },
-    select: { id: true },
-  });
+  const [member, workspace] = await Promise.all([
+    prisma.workspaceMember.findFirst({
+      where: { workspaceId, user: { email: session.user.email! } },
+      select: { id: true },
+    }),
+    prisma.workspace.findUnique({
+      where: { id: workspaceId },
+      select: { plan: true },
+    }),
+  ]);
   if (!member) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
+  }
+
+  const { hasFeature } = await import("@/lib/billing/plans");
+  if (!workspace || !hasFeature(workspace.plan as any, "session_recording")) {
+    return NextResponse.json(
+      { error: "Session Recording is not available on your current plan. Please upgrade." },
+      { status: 403 }
+    );
   }
 
   const recording = await prisma.sessionRecording.findFirst({

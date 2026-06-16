@@ -84,6 +84,8 @@ export async function POST(req: Request) {
       await sendOtpSms(phone, smsOtp);
     }
 
+    const { getEffectivePlan } = await import("@/lib/billing/plans");
+
     // 3. Auto-join any pending email invites for this email (outside main tx)
     const pendingEmailInvites = await prisma.workspaceInvite.findMany({
       where: { email: email.trim().toLowerCase(), usedAt: null },
@@ -94,15 +96,24 @@ export async function POST(req: Request) {
       const existing = await prisma.workspaceMember.findFirst({
         where: { workspaceId: invite.workspaceId, userId: result.user.id },
       });
-      if (!existing) {
-        await prisma.workspaceMember.create({
-          data: { workspaceId: invite.workspaceId, userId: result.user.id, role: invite.role },
-        });
+      if (existing) {
+        // Already a member — consume the invite so it isn't re-processed
+        await prisma.workspaceInvite.update({ where: { id: invite.id }, data: { usedAt: new Date() } });
+        continue;
       }
-      await prisma.workspaceInvite.update({
-        where: { id: invite.id },
-        data: { usedAt: new Date() },
-      });
+      const ws = await prisma.workspace.findUnique({ where: { id: invite.workspaceId } });
+      if (ws) {
+        const planConfig = getEffectivePlan(ws.plan as any);
+        const memberCount = await prisma.workspaceMember.count({ where: { workspaceId: invite.workspaceId } });
+        if (memberCount < planConfig.maxMembers) {
+          await prisma.workspaceMember.create({
+            data: { workspaceId: invite.workspaceId, userId: result.user.id, role: invite.role },
+          });
+          // Only consume the invite once the join actually succeeds
+          await prisma.workspaceInvite.update({ where: { id: invite.id }, data: { usedAt: new Date() } });
+        }
+        // If at limit, leave the invite unconsumed so it can be honoured when a seat opens up
+      }
     }
 
     // 4. Honor a public link invite token if provided
@@ -121,13 +132,20 @@ export async function POST(req: Request) {
           where: { workspaceId: publicInvite.workspaceId, userId: result.user.id },
         });
         if (!alreadyMember) {
-          await prisma.workspaceMember.create({
-            data: {
-              workspaceId: publicInvite.workspaceId,
-              userId: result.user.id,
-              role: publicInvite.role,
-            },
-          });
+          const ws = await prisma.workspace.findUnique({ where: { id: publicInvite.workspaceId } });
+          if (ws) {
+            const planConfig = getEffectivePlan(ws.plan as any);
+            const memberCount = await prisma.workspaceMember.count({ where: { workspaceId: publicInvite.workspaceId } });
+            if (memberCount < planConfig.maxMembers) {
+              await prisma.workspaceMember.create({
+                data: {
+                  workspaceId: publicInvite.workspaceId,
+                  userId: result.user.id,
+                  role: publicInvite.role,
+                },
+              });
+            }
+          }
         }
         // Public link tokens are NOT marked as used (reusable)
       }

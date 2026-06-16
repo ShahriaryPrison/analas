@@ -48,7 +48,7 @@ export async function POST(req: Request) {
     // 2. Reset month event counters in PostgreSQL
     await prisma.workspace.update({
       where: { id: workspaceId },
-      data: { currentMonthEvents: 0 },
+      data: { currentMonthEvents: 0, currentMonthRecordings: 0 },
     });
 
     return NextResponse.json({ success: true });

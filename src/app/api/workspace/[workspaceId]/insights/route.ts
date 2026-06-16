@@ -35,15 +35,19 @@ export async function POST(
   }
 
   // Feature Enforcement
-  const { hasFeature } = await import("@/lib/billing/plans");
-  let requiredFeature: any = "basic_insights";
-  if (type === "retention") requiredFeature = "cohort_retention";
-  if (type === "funnel") requiredFeature = "funnels";
-  if (type === "metric") requiredFeature = "advanced_filters";
+  const { hasFeature, getEffectivePlan } = await import("@/lib/billing/plans");
 
-  if (!hasFeature(workspace.plan, requiredFeature)) {
-    return NextResponse.json({ 
-      error: `Your current plan does not support ${type} insights. Please upgrade.` 
+  const featureMap: Record<string, string> = {
+    retention: "cohort_retention",
+    funnel: "funnels",
+    metric: "advanced_filters",
+    session_recording: "session_recording",
+  };
+  const requiredFeature = featureMap[type] ?? "basic_insights";
+
+  if (!hasFeature(workspace.plan, requiredFeature as any)) {
+    return NextResponse.json({
+      error: `Your current plan does not support ${type} insights. Please upgrade.`
     }, { status: 403 });
   }
 
@@ -54,6 +58,14 @@ export async function POST(
   if (!dashboard) {
     if (requestedDashboardId) {
       return NextResponse.json({ error: "Dashboard not found in this workspace" }, { status: 404 });
+    }
+    // Auto-create the first dashboard, but respect the plan's dashboard limit
+    const planConfig = getEffectivePlan(workspace.plan as any);
+    if (workspace.dashboards.length >= planConfig.maxDashboards) {
+      return NextResponse.json(
+        { error: `You have reached the maximum number of dashboards allowed on your ${planConfig.name} plan (${planConfig.maxDashboards}). Please upgrade.` },
+        { status: 403 }
+      );
     }
     dashboard = await prisma.dashboard.create({
       data: {
