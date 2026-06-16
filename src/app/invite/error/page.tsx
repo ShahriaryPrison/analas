@@ -32,7 +32,7 @@ const FALLBACK = {
 
 export default async function InviteErrorPage({ searchParams }: Props) {
   const { reason } = await searchParams;
-  const { title, body } = (reason && MESSAGES[reason]) ?? FALLBACK;
+  const { title, body } = (reason ? MESSAGES[reason] : undefined) ?? FALLBACK;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-emerald-950 via-slate-900 to-amber-950 flex items-center justify-center p-4">

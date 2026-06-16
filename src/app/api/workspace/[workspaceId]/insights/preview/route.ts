@@ -25,13 +25,14 @@ export async function POST(
 
   const { hasFeature } = await import("@/lib/billing/plans");
 
-  const featureMap: Record<string, string> = {
+  const featureMap: Record<string, import("@/lib/billing/plans").Feature> = {
     retention: "cohort_retention",
     funnel: "funnels",
     metric: "advanced_filters",
     session_recording: "session_recording",
   };
-  const requiredFeature = featureMap[type] ?? "basic_insights";
+  const requiredFeature: import("@/lib/billing/plans").Feature =
+    featureMap[type] ?? "basic_insights";
 
   if (!hasFeature(workspace.plan as any, requiredFeature)) {
     return NextResponse.json(

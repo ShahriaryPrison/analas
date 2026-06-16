@@ -30,7 +30,7 @@ export async function GET(
   // Feature gate — defense-in-depth in case an insight was created via another path
   const { hasFeature } = await import("@/lib/billing/plans");
   const plan = insight.dashboard.workspace.plan;
-  const featureMap: Record<string, string> = {
+  const featureMap: Record<string, import("@/lib/billing/plans").Feature> = {
     retention: "cohort_retention",
     funnel: "funnels",
     metric: "advanced_filters",
