@@ -245,9 +245,8 @@ export default function CapturesClient({ workspaceId, topEvents }: Props) {
   }
 
   function loadMore() {
-    const next = offset + LIMIT;
-    setOffset(next);
-    fetchCaptures(filters, next, true);
+    fetchCaptures(filters, rows.length, true);
+    setOffset(rows.length);
   }
 
   const hasActiveFilters = filters.event !== "" || filters.userId !== "" || filters.preset !== "all";
