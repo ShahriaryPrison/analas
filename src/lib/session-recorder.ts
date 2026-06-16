@@ -131,7 +131,7 @@ export function initSessionRecorder(opts: SessionRecorderOptions): () => void {
   const {
     apiKey,
     endpoint = defaultEndpoint,
-    sampleRate = 0.2,
+    sampleRate = 0.1,
     excludePaths = [],
     flushIntervalMs = 5000,
     distinctId,
