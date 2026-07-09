@@ -20,7 +20,7 @@ services:
       - .env
     depends_on:
       postgres:
-        condition: service_started
+        condition: service_healthy
     command: npx prisma db push --accept-data-loss
 
   app:
@@ -141,6 +141,11 @@ services:
       POSTGRES_DB: ${POSTGRES_DB:-saas_users}
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-admin} -d ${POSTGRES_DB:-saas_users}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
 
 volumes:
   clickhouse_data:
