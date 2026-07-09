@@ -120,7 +120,7 @@ services:
     image: clickhouse/clickhouse-server:latest
     container_name: clickhouse_analytics
     environment:
-      - CLICKHOUSE_MAX_SERVER_MEMORY_USAGE=4294967296
+      - CLICKHOUSE_MAX_SERVER_MEMORY_USAGE=2147483648
       - CLICKHOUSE_USER=${CLICKHOUSE_USER:-admin}
       - CLICKHOUSE_PASSWORD=${CLICKHOUSE_PASSWORD:-analytics_pass}
       - CLICKHOUSE_DB=${CLICKHOUSE_DB:-analas_analytics}
