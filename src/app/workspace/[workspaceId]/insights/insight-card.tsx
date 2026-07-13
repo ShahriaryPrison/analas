@@ -552,13 +552,13 @@ export function TrendChart({ rows, suffix = "" }: { rows: Row[]; suffix?: string
               {row.count?.toLocaleString()}{suffix}
             </div>
           )}
-          <div className="flex h-32 w-full items-end rounded-lg border border-white/10 bg-white/5 p-2">
+          <div className={`flex h-32 w-full items-end rounded-lg border border-white/10 bg-white/5 ${rows.length > 7 ? "p-0.5" : "p-2"}`}>
             <div
-              className="w-full rounded-md bg-emerald-400 transition-all duration-500"
+              className={`w-full bg-emerald-400 transition-all duration-500 ${rows.length > 7 ? "rounded-t-sm" : "rounded-md"}`}
               style={{ height: `${((row.count || 0) / max) * 100}%`, minHeight: (row.count || 0) > 0 ? "4px" : "0" }}
             />
           </div>
-          <div className="text-[11px] text-white/50 font-medium h-4 flex items-center justify-center">
+          <div className="text-[11px] text-white/50 font-medium h-4 flex items-center justify-center whitespace-nowrap">
             {shouldShowLabel(i, rows.length) && (
               <>
                 <span className="hidden sm:inline">{(row.day || "").slice(5)}</span>
@@ -593,7 +593,7 @@ export function MultiTrendChart({ rows, labels, suffix = "" }: { rows: any[]; la
                 {labels?.[hoveredSegment.ev] || hoveredSegment.ev}: {dayRow.counts[hoveredSegment.ev]?.toLocaleString()}{suffix}
               </div>
             )}
-            <div className="flex h-32 w-full items-end justify-center gap-0.5 rounded-lg border border-white/5 bg-white/2 p-1">
+            <div className={`flex h-32 w-full items-end justify-center gap-0.5 rounded-lg border border-white/5 bg-white/2 ${rows.length > 7 ? "p-0.5" : "p-1"}`}>
               {events.map((ev, ei) => {
                 const count = dayRow.counts[ev] || 0;
                 return (
@@ -607,7 +607,7 @@ export function MultiTrendChart({ rows, labels, suffix = "" }: { rows: any[]; la
                 );
               })}
             </div>
-            <div className="text-[10px] text-white/30 h-4 flex items-center justify-center">
+            <div className="text-[10px] text-white/30 h-4 flex items-center justify-center whitespace-nowrap">
               {shouldShowLabel(i, rows.length) ? (dayRow.day || "").slice(5) : ""}
             </div>
           </div>
