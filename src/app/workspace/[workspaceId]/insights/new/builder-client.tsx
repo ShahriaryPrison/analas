@@ -218,7 +218,14 @@ export default function InsightBuilder({ workspaceId, topEvents, plan, dashboard
                       key={t.id}
                       onClick={() => { 
                         if (!isLocked) {
-                          setType(t.id); setStep(2); 
+                          setType(t.id);
+                          setStep(2);
+                          // Initialize displayType according to type
+                          if (t.id === "retention") {
+                            setQueryConfig(prev => ({ ...prev, displayType: "table", timeFrame: "7" }));
+                          } else if (t.id === "trend" || t.id === "metric" || t.id === "multi_trend") {
+                            setQueryConfig(prev => ({ ...prev, displayType: "bar", timeFrame: "7" }));
+                          }
                         }
                       }}
                       className={`group relative text-left p-6 rounded-2xl border transition-all duration-300 ${
@@ -560,25 +567,84 @@ export default function InsightBuilder({ workspaceId, topEvents, plan, dashboard
                       )}
                       {type === "breakdown" && <BreakdownList rows={activeData.rows} />}
                       {type === "funnel" && <FunnelView rows={activeData.rows} labels={eventLabels} />}
-                      {type === "retention" && (
-                         <div className="flex flex-col lg:flex-row gap-6">
-                           <div className="flex-1 min-w-0">
-                             <RetentionTable rows={activeData.rows} timeFrame={7} />
-                           </div>
-                           <div className="flex flex-col gap-4 w-full lg:w-48 shrink-0 justify-end pb-2">
-                              <div className="glass-panel p-4 rounded-xl text-center bg-white/5 border-emerald-500/10 flex flex-col justify-center h-full">
-                                  <div className="text-2xl font-black text-white">{activeData.total.toLocaleString()}</div>
-                                  <div className="text-[9px] font-bold tracking-widest text-white/40 uppercase mt-2">All-Time Users</div>
+                      {type === "retention" && (() => {
+                          const displayType = String(queryConfig.displayType || "table");
+                          const timeFrame = Number(queryConfig.timeFrame || "7");
+                          
+                          // Check if a cell is in the future based on cohort date and day index
+                          const isFuture = (cohortStr: string, dayIdx: number) => {
+                            if (!cohortStr) return true;
+                            const cohortDate = new Date(cohortStr);
+                            const targetDate = new Date(cohortDate);
+                            targetDate.setDate(cohortDate.getDate() + dayIdx);
+                            const today = new Date();
+                            today.setHours(0,0,0,0);
+                            targetDate.setHours(0,0,0,0);
+                            return targetDate > today;
+                          };
+
+                          return (
+                            <div className="flex flex-col lg:flex-row gap-6 w-full">
+                              {/* Left: Table or Chart */}
+                              <div className="flex-1 min-w-0">
+                                {displayType === "table" ? (
+                                  <RetentionTable rows={activeData.rows} timeFrame={timeFrame} />
+                                ) : displayType === "all_line" ? (() => {
+                                  const formatted = activeData.rows.map(r => {
+                                    const size = r.size || 0;
+                                    const days = r.days || [];
+                                    const counts: Record<string, number | null> = {};
+                                    for (let i = 1; i <= 7; i++) {
+                                      const isFut = isFuture(r.cohort || "", i);
+                                      counts[`D${i}`] = isFut ? null : (size > 0 ? Math.round((days[i] || 0) / size * 100) : 0);
+                                    }
+                                    return { day: r.cohort || "", counts };
+                                  });
+                                  const labels: Record<string, string> = {};
+                                  for (let i = 1; i <= 7; i++) labels[`D${i}`] = `Day ${i}`;
+                                  return <MultiTrendLineChart rows={formatted} labels={labels} suffix="%" />;
+                                })() : (() => {
+                                  const match = displayType.match(/^d([1-7])_(line|bar)$/);
+                                  if (match) {
+                                    const dayNum = parseInt(match[1], 10);
+                                    const formatted = activeData.rows
+                                      .filter(r => !isFuture(r.cohort || "", dayNum))
+                                      .map(r => {
+                                        const size = r.size || 0;
+                                        const days = r.days || [];
+                                        const val = days[dayNum] || 0;
+                                        const pct = size > 0 ? (val / size) * 100 : 0;
+                                        return {
+                                          day: r.cohort || "",
+                                          count: Math.round(pct)
+                                        };
+                                      });
+                                    return match[2] === "line" ? (
+                                      <TrendLineChart rows={formatted} suffix="%" />
+                                    ) : (
+                                      <TrendChart rows={formatted} suffix="%" />
+                                    );
+                                  }
+                                  return <RetentionTable rows={activeData.rows} timeFrame={timeFrame} />;
+                                })()}
                               </div>
-                              <div className="glass-panel p-4 rounded-xl text-center bg-emerald-500/5 border-emerald-500/20 flex flex-col justify-center h-full">
-                                  <div className="text-2xl font-black text-emerald-400">
-                                     {activeData.returning ? ((activeData.returning / activeData.total) * 100).toFixed(1) : 0}%
-                                  </div>
-                                  <div className="text-[9px] font-bold tracking-widest text-emerald-400/60 uppercase mt-2">All-Time Return Rate</div>
+                              
+                              {/* Right: Stats */}
+                              <div className="flex flex-col gap-4 w-full lg:w-48 shrink-0 justify-end pb-2">
+                                <div className="glass-panel p-4 rounded-xl text-center bg-white/5 border-emerald-500/10 flex flex-col justify-center h-full">
+                                    <div className="text-2xl font-black text-white">{activeData.total.toLocaleString()}</div>
+                                    <div className="text-[9px] font-bold tracking-widest text-white/40 uppercase mt-2">All-Time Users</div>
+                                </div>
+                                <div className="glass-panel p-4 rounded-xl text-center bg-emerald-500/5 border-emerald-500/20 flex flex-col justify-center h-full">
+                                    <div className="text-2xl font-black text-emerald-400">
+                                       {activeData.returning ? ((activeData.returning / activeData.total) * 100).toFixed(1) : 0}%
+                                    </div>
+                                    <div className="text-[9px] font-bold tracking-widest text-emerald-400/60 uppercase mt-2">All-Time Return Rate</div>
+                                </div>
                               </div>
-                           </div>
-                         </div>
-                      )}
+                            </div>
+                          );
+                       })()}
                     </div>
                   </div>
                 ) : (

@@ -89,7 +89,7 @@ export default async function InsightsPage({
 
               return (
                 <div key={ins.id} className={`${sizeClass} transition-all duration-500 hover:-translate-y-1`}>
-                  <InsightCard workspaceId={workspace.id} insight={ins} />
+                  <InsightCard workspaceId={workspace.id} insight={ins} dashboardId={activeDashboard.id} />
                 </div>
               );
             })}

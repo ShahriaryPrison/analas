@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { getInsightType } from "@/lib/insight-types";
-import { BarChart2Icon, ActivityIcon, TrashIcon, PencilIcon } from "@/components/icons";
+import { BarChart2Icon, ActivityIcon, TrashIcon, PencilIcon, CopyIcon } from "@/components/icons";
 import MoveInsightButton from "./move-insight-button";
 import InsightDocsViewer from "./insight-docs-viewer";
 import SessionRecordingRenderer from "./session-recording-renderer";
@@ -26,17 +26,42 @@ type Props = {
     type: string;
     queryConfig: Record<string, unknown>;
   };
+  dashboardId?: string;
 };
 
-export default function InsightCard({ workspaceId, insight }: Props) {
+export default function InsightCard({ workspaceId, insight, dashboardId }: Props) {
   const [data, setData] = useState<InsightData | null>(null);
   const [error, setError] = useState(false);
   const typeDef = getInsightType(insight.type);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [duplicating, setDuplicating] = useState(false);
   const [showDocs, setShowDocs] = useState(false);
   const router = useRouter();
   const eventLabels = insight.queryConfig["eventLabels"] as Record<string, string> | undefined;
+
+  async function handleDuplicate() {
+    setDuplicating(true);
+    try {
+      const res = await fetch(`/api/workspace/${workspaceId}/insights`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: `${insight.name} (Copy)`,
+          type: insight.type,
+          queryConfig: insight.queryConfig,
+          dashboardId,
+        }),
+      });
+      if (res.ok) {
+        router.refresh();
+      }
+    } catch (e) {
+      console.error("Failed to duplicate:", e);
+    } finally {
+      setDuplicating(false);
+    }
+  }
 
   async function handleDelete() {
     setDeleting(true);
@@ -137,6 +162,14 @@ export default function InsightCard({ workspaceId, insight }: Props) {
               >
                 <PencilIcon className="w-3.5 h-3.5" />
               </Link>
+              <button
+                onClick={handleDuplicate}
+                disabled={duplicating}
+                title="Duplicate insight"
+                className="p-1.5 text-white/20 hover:text-emerald-400 hover:bg-emerald-500/10 transition disabled:opacity-50"
+              >
+                <CopyIcon className="w-3.5 h-3.5" />
+              </button>
               <button
                 onClick={() => setConfirmDelete(true)}
                 title="Delete insight"
@@ -262,28 +295,85 @@ export default function InsightCard({ workspaceId, insight }: Props) {
             <p className="text-sm text-red-400/70">Could not load data.</p>
           ) : !data ? (
              <div className="w-full h-32 animate-pulse rounded-lg bg-white/5" />
-          ) : (
-             <div className="flex flex-col lg:flex-row gap-6">
-               {/* Left: The Cohort Table */}
-               <div className="flex-1 min-w-0">
-                 <RetentionTable rows={data.rows} timeFrame={7} />
-               </div>
+          ) : (() => {
+             const displayType = String(insight.queryConfig.displayType || "table");
+             const timeFrame = Number(insight.queryConfig.timeFrame || "7");
+             
+             // Check if a cell is in the future based on cohort date and day index
+             const isFuture = (cohortStr: string, dayIdx: number) => {
+               if (!cohortStr) return true;
+               const cohortDate = new Date(cohortStr);
+               const targetDate = new Date(cohortDate);
+               targetDate.setDate(cohortDate.getDate() + dayIdx);
                
-               {/* Right: All-Time Stats Sidebar */}
-               <div className="grid grid-cols-2 lg:flex lg:flex-col gap-4 w-full lg:w-48 shrink-0 justify-end pb-2">
-                  <div className="glass-panel p-4 rounded-xl text-center bg-white/5 border-emerald-500/10 flex flex-col justify-center h-full">
-                      <div className="text-2xl font-black text-white">{data.total.toLocaleString()}</div>
-                      <div className="text-[9px] font-bold tracking-widest text-white/40 uppercase mt-2">All-Time Users</div>
-                  </div>
-                  <div className="glass-panel p-4 rounded-xl text-center bg-emerald-500/5 border-emerald-500/20 flex flex-col justify-center h-full">
-                      <div className="text-2xl font-black text-emerald-400">
-                         {data.returning ? ((data.returning / data.total) * 100).toFixed(1) : 0}%
-                      </div>
-                      <div className="text-[9px] font-bold tracking-widest text-emerald-400/60 uppercase mt-2">All-Time Return Rate</div>
-                  </div>
+               const today = new Date();
+               today.setHours(0,0,0,0);
+               targetDate.setHours(0,0,0,0);
+               return targetDate > today;
+             };
+
+             return (
+               <div className="flex flex-col lg:flex-row gap-6">
+                 {/* Left: Table or Chart */}
+                 <div className="flex-1 min-w-0">
+                   {displayType === "table" ? (
+                     <RetentionTable rows={data.rows} timeFrame={timeFrame} />
+                   ) : displayType === "all_line" ? (() => {
+                     const formatted = data.rows.map(r => {
+                       const size = r.size || 0;
+                       const days = r.days || [];
+                       const counts: Record<string, number | null> = {};
+                       for (let i = 1; i <= 7; i++) {
+                         const isFut = isFuture(r.cohort || "", i);
+                         counts[`D${i}`] = isFut ? null : (size > 0 ? Math.round((days[i] || 0) / size * 100) : 0);
+                       }
+                       return { day: r.cohort || "", counts };
+                     });
+                     const labels: Record<string, string> = {};
+                     for (let i = 1; i <= 7; i++) labels[`D${i}`] = `Day ${i}`;
+                     return <MultiTrendLineChart rows={formatted} labels={labels} suffix="%" />;
+                   })() : (() => {
+                     const match = displayType.match(/^d([1-7])_(line|bar)$/);
+                     if (match) {
+                       const dayNum = parseInt(match[1], 10);
+                       const formatted = data.rows
+                         .filter(r => !isFuture(r.cohort || "", dayNum))
+                         .map(r => {
+                           const size = r.size || 0;
+                           const days = r.days || [];
+                           const val = days[dayNum] || 0;
+                           const pct = size > 0 ? (val / size) * 100 : 0;
+                           return {
+                             day: r.cohort || "",
+                             count: Math.round(pct)
+                           };
+                         });
+                       return match[2] === "line" ? (
+                         <TrendLineChart rows={formatted} suffix="%" />
+                       ) : (
+                         <TrendChart rows={formatted} suffix="%" />
+                       );
+                     }
+                     return <RetentionTable rows={data.rows} timeFrame={timeFrame} />;
+                   })()}
+                 </div>
+                 
+                 {/* Right: All-Time Stats Sidebar */}
+                 <div className="grid grid-cols-2 lg:flex lg:flex-col gap-4 w-full lg:w-48 shrink-0 justify-end pb-2">
+                    <div className="glass-panel p-4 rounded-xl text-center bg-white/5 border-emerald-500/10 flex flex-col justify-center h-full">
+                        <div className="text-2xl font-black text-white">{data.total.toLocaleString()}</div>
+                        <div className="text-[9px] font-bold tracking-widest text-white/40 uppercase mt-2">All-Time Users</div>
+                    </div>
+                    <div className="glass-panel p-4 rounded-xl text-center bg-emerald-500/5 border-emerald-500/20 flex flex-col justify-center h-full">
+                        <div className="text-2xl font-black text-emerald-400">
+                           {data.returning ? ((data.returning / data.total) * 100).toFixed(1) : 0}%
+                        </div>
+                        <div className="text-[9px] font-bold tracking-widest text-emerald-400/60 uppercase mt-2">All-Time Return Rate</div>
+                    </div>
+                 </div>
                </div>
-             </div>
-          )}
+             );
+          })()}
         </div>
       )}
 
@@ -342,11 +432,11 @@ export default function InsightCard({ workspaceId, insight }: Props) {
   );
 }
 
-export function TrendChart({ rows }: { rows: Row[] }) {
+export function TrendChart({ rows, suffix = "" }: { rows: Row[]; suffix?: string }) {
   const [hoveredBar, setHoveredBar] = useState<number | null>(null);
   const max = Math.max(...rows.map((r) => r.count || 0), 1);
   return (
-    <div className="grid grid-cols-7 gap-2">
+    <div className="grid gap-2" style={{ gridTemplateColumns: `repeat(${rows.length}, minmax(0, 1fr))` }}>
       {rows.map((row, i) => (
         <div
           key={row.day || i}
@@ -357,7 +447,7 @@ export function TrendChart({ rows }: { rows: Row[] }) {
           {/* Tooltip */}
           {hoveredBar === i && (
             <div className="absolute -top-2 -translate-y-full left-1/2 -translate-x-1/2 px-2 py-1 text-xs font-semibold text-white bg-zinc-900/90 border border-white/10 rounded-lg shadow-xl whitespace-nowrap z-20 backdrop-blur-sm pointer-events-none">
-              {row.count?.toLocaleString()}
+              {row.count?.toLocaleString()}{suffix}
             </div>
           )}
           <div className="flex h-32 w-full items-end rounded-lg border border-white/10 bg-white/5 p-2">
@@ -378,14 +468,14 @@ export function TrendChart({ rows }: { rows: Row[] }) {
 
 const PALETTE = ["bg-emerald-400", "bg-indigo-400", "bg-amber-400", "bg-rose-400", "bg-cyan-400"];
 
-export function MultiTrendChart({ rows, labels }: { rows: any[]; labels?: Record<string, string> }) {
+export function MultiTrendChart({ rows, labels, suffix = "" }: { rows: any[]; labels?: Record<string, string>; suffix?: string }) {
   const [hoveredSegment, setHoveredSegment] = useState<{ dayIdx: number; ev: string } | null>(null);
   const events = Object.keys(rows[0]?.counts || {});
   const max = Math.max(...rows.flatMap(r => Object.values(r.counts as Record<string, number>)), 1);
 
   return (
     <div className="space-y-6">
-      <div className="grid grid-cols-7 gap-1">
+      <div className="grid gap-1" style={{ gridTemplateColumns: `repeat(${rows.length}, minmax(0, 1fr))` }}>
         {rows.map((dayRow, i) => (
           <div
             key={dayRow.day || i}
@@ -394,7 +484,7 @@ export function MultiTrendChart({ rows, labels }: { rows: any[]; labels?: Record
             {/* Tooltip for segment */}
             {hoveredSegment && hoveredSegment.dayIdx === i && (
               <div className="absolute -top-2 -translate-y-full left-1/2 -translate-x-1/2 px-2 py-1 text-xs font-semibold text-white bg-zinc-900/90 border border-white/10 rounded-lg shadow-xl whitespace-nowrap z-20 backdrop-blur-sm pointer-events-none">
-                {labels?.[hoveredSegment.ev] || hoveredSegment.ev}: {dayRow.counts[hoveredSegment.ev]?.toLocaleString()}
+                {labels?.[hoveredSegment.ev] || hoveredSegment.ev}: {dayRow.counts[hoveredSegment.ev]?.toLocaleString()}{suffix}
               </div>
             )}
             <div className="flex h-32 w-full items-end justify-center gap-0.5 rounded-lg border border-white/5 bg-white/2 p-1">
@@ -484,7 +574,7 @@ export function FunnelView({ rows, labels }: { rows: Row[]; labels?: Record<stri
     </div>
   );
 }
-export function TrendLineChart({ rows }: { rows: Row[] }) {
+export function TrendLineChart({ rows, suffix = "" }: { rows: Row[]; suffix?: string }) {
   const [hoveredPoint, setHoveredPoint] = useState<number | null>(null);
   const max = Math.max(...rows.map((r) => r.count || 0), 1);
   const width = 700;
@@ -541,17 +631,15 @@ export function TrendLineChart({ rows }: { rows: Row[] }) {
            className="absolute -top-2 -translate-y-full -translate-x-1/2 px-2 py-1 text-xs font-semibold text-white bg-zinc-900/90 border border-white/10 rounded-lg shadow-xl whitespace-nowrap z-20 backdrop-blur-sm pointer-events-none"
            style={{ left: `${(pointCoords[hoveredPoint].x / width) * 100}%` }}
          >
-           {rows[hoveredPoint].count?.toLocaleString()}
+           {rows[hoveredPoint].count?.toLocaleString()}{suffix}
          </div>
        )}
     </div>
   );
-}
-
-export function MultiTrendLineChart({ rows, labels }: { rows: any[]; labels?: Record<string, string> }) {
+}export function MultiTrendLineChart({ rows, labels, suffix = "" }: { rows: any[]; labels?: Record<string, string>; suffix?: string }) {
   const [hoveredPointIdx, setHoveredPointIdx] = useState<number | null>(null);
   const events = Object.keys(rows[0]?.counts || {});
-  const max = Math.max(...rows.flatMap(r => Object.values(r.counts as Record<string, number>)), 1);
+  const max = Math.max(...rows.flatMap(r => Object.values(r.counts as Record<string, number | null>).filter((v): v is number => v !== null)), 1);
   const width = 700;
   const height = 120;
 
@@ -560,12 +648,17 @@ export function MultiTrendLineChart({ rows, labels }: { rows: any[]; labels?: Re
       <div className="relative w-full h-32">
         <svg viewBox={`0 0 ${width} ${height}`} className="w-full h-full overflow-visible">
            {events.map((ev, i) => {
-              const points = rows.map((r, ri) => {
-                const x = (ri / Math.max(rows.length - 1, 1)) * width;
-                const count = r.counts[ev] || 0;
-                const y = height - (count / max) * height;
-                return { x, y, count };
-              });
+              const points = rows
+                .map((r, ri) => {
+                  const x = (ri / Math.max(rows.length - 1, 1)) * width;
+                  const count = r.counts[ev];
+                  if (count === undefined || count === null) return null;
+                  const y = height - (count / max) * height;
+                  return { x, y, count, ri };
+                })
+                .filter((p): p is { x: number; y: number; count: number; ri: number } => p !== null);
+
+              if (points.length === 0) return null;
 
               const colorMap: Record<string, string> = {
                 "bg-emerald-400": "#34d399",
@@ -576,6 +669,7 @@ export function MultiTrendLineChart({ rows, labels }: { rows: any[]; labels?: Re
               };
 
               const strokeColor = colorMap[PALETTE[i % PALETTE.length]] || "#34d399";
+              const hoveredPoint = points.find(p => p.ri === hoveredPointIdx);
 
               return (
                 <g key={ev}>
@@ -589,10 +683,10 @@ export function MultiTrendLineChart({ rows, labels }: { rows: any[]; labels?: Re
                     className="transition-all duration-700"
                   />
                   {/* Visible dot on hovered point for this line */}
-                  {hoveredPointIdx !== null && (
+                  {hoveredPointIdx !== null && hoveredPoint && (
                     <circle
-                      cx={points[hoveredPointIdx].x}
-                      cy={points[hoveredPointIdx].y}
+                      cx={hoveredPoint.x}
+                      cy={hoveredPoint.y}
                       r={5}
                       fill={strokeColor}
                       stroke="#fff"
@@ -637,10 +731,12 @@ export function MultiTrendLineChart({ rows, labels }: { rows: any[]; labels?: Re
                   "bg-cyan-400": "text-cyan-400"
                 };
                 const textColor = colorMap[PALETTE[i % PALETTE.length]] || "text-emerald-400";
+                const count = dayRow?.counts[ev];
+                if (count === undefined || count === null) return null;
                 return (
                   <div key={ev} className="flex items-center justify-between gap-3 text-[10px]">
-                    <span className="text-white/60 truncate max-w-[100px]">{labels?.[ev] || ev}</span>
-                    <span className={`font-bold ${textColor}`}>{(dayRow?.counts[ev] || 0).toLocaleString()}</span>
+                     <span className="text-white/60 truncate max-w-[100px]">{labels?.[ev] || ev}</span>
+                     <span className={`font-bold ${textColor}`}>{count.toLocaleString()}{suffix}</span>
                   </div>
                 );
               })}

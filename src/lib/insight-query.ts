@@ -282,7 +282,8 @@ export async function fetchInsightData(
     const startEventValue = String(config.startEventValue || "");
     const returnEventProperty = String(config.returnEventProperty || "").replace(/[^\w]/g, "");
     const returnEventValue = String(config.returnEventValue || "");
-    const timeFrame = 7;
+    const rawTimeFrame = Number(config.timeFrame || "7");
+    const timeFrame = Math.min(rawTimeFrame, retentionDays);
     
     if (!startEvent || !returnEvent) return { total: 0, rows: [] };
 
