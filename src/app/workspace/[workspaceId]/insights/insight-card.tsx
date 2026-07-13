@@ -11,6 +11,16 @@ import Link from "next/link";
 
 const APP_TIMEZONE = process.env.NEXT_PUBLIC_TIMEZONE || "Asia/Tehran";
 
+function shouldShowLabel(index: number, total: number) {
+  if (total <= 7) return true;
+  const step = total > 30 ? 10 : 5;
+  if (index === total - 1) return true;
+  if (index % step === 0) {
+    return (total - 1 - index) >= Math.ceil(step / 2);
+  }
+  return false;
+}
+
 export type Row = {
   day?: string; count?: number; label?: string; val?: string;
   counts?: Record<string, number>; cohort?: string; size?: number; returning_count?: number; days?: number[];
@@ -548,9 +558,13 @@ export function TrendChart({ rows, suffix = "" }: { rows: Row[]; suffix?: string
               style={{ height: `${((row.count || 0) / max) * 100}%`, minHeight: (row.count || 0) > 0 ? "4px" : "0" }}
             />
           </div>
-          <div className="text-[11px] text-white/50 font-medium">
-            <span className="hidden sm:inline">{(row.day || "").slice(5)}</span>
-            <span className="inline sm:hidden">{(row.day || "").slice(8)}</span>
+          <div className="text-[11px] text-white/50 font-medium h-4 flex items-center justify-center">
+            {shouldShowLabel(i, rows.length) && (
+              <>
+                <span className="hidden sm:inline">{(row.day || "").slice(5)}</span>
+                <span className="inline sm:hidden">{(row.day || "").slice(8)}</span>
+              </>
+            )}
           </div>
         </div>
       ))}
@@ -593,7 +607,9 @@ export function MultiTrendChart({ rows, labels, suffix = "" }: { rows: any[]; la
                 );
               })}
             </div>
-            <div className="text-[10px] text-white/30">{(dayRow.day || "").slice(8)}</div>
+            <div className="text-[10px] text-white/30 h-4 flex items-center justify-center">
+              {shouldShowLabel(i, rows.length) ? (dayRow.day || "").slice(5) : ""}
+            </div>
           </div>
         ))}
       </div>
