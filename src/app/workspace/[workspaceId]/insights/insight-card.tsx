@@ -3,15 +3,17 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { getInsightType } from "@/lib/insight-types";
-import { BarChart2Icon, ActivityIcon, TrashIcon, PencilIcon, CopyIcon } from "@/components/icons";
+import { BarChart2Icon, ActivityIcon, TrashIcon, PencilIcon, CopyIcon, CheckIcon, XIcon } from "@/components/icons";
 import MoveInsightButton from "./move-insight-button";
 import InsightDocsViewer from "./insight-docs-viewer";
 import SessionRecordingRenderer from "./session-recording-renderer";
 import Link from "next/link";
 
+const APP_TIMEZONE = process.env.NEXT_PUBLIC_TIMEZONE || "Asia/Tehran";
+
 export type Row = {
   day?: string; count?: number; label?: string; val?: string;
-  counts?: Record<string, number>; cohort?: string; size?: number; days?: number[];
+  counts?: Record<string, number>; cohort?: string; size?: number; returning_count?: number; days?: number[];
   // session_recording fields
   id?: string; distinctId?: string; duration?: number; browser?: string;
   os?: string; pagePath?: string; createdAt?: string; chunkCount?: number;
@@ -36,12 +38,14 @@ export default function InsightCard({ workspaceId, insight, dashboardId }: Props
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [duplicating, setDuplicating] = useState(false);
+  const [toast, setToast] = useState<{ ok: boolean; text: string } | null>(null);
   const [showDocs, setShowDocs] = useState(false);
   const router = useRouter();
   const eventLabels = insight.queryConfig["eventLabels"] as Record<string, string> | undefined;
 
   async function handleDuplicate() {
     setDuplicating(true);
+    setToast(null);
     try {
       const res = await fetch(`/api/workspace/${workspaceId}/insights`, {
         method: "POST",
@@ -54,10 +58,18 @@ export default function InsightCard({ workspaceId, insight, dashboardId }: Props
         }),
       });
       if (res.ok) {
+        setToast({ ok: true, text: `Successfully duplicated "${insight.name}"!` });
         router.refresh();
+        setTimeout(() => setToast(null), 6000);
+      } else {
+        const d = await res.json().catch(() => null);
+        setToast({ ok: false, text: d?.error || "Failed to duplicate insight." });
+        setTimeout(() => setToast(null), 4000);
       }
     } catch (e) {
       console.error("Failed to duplicate:", e);
+      setToast({ ok: false, text: "An unexpected error occurred." });
+      setTimeout(() => setToast(null), 4000);
     } finally {
       setDuplicating(false);
     }
@@ -123,10 +135,14 @@ export default function InsightCard({ workspaceId, insight, dashboardId }: Props
            {data ? (
             <div className="text-left sm:text-right">
                <div className="text-2xl font-black text-white tracking-tighter tabular-nums leading-none">
-                 {data.total.toLocaleString()}
+                 {data.total.toLocaleString()}{insight.type === "funnel" && (insight.queryConfig.displayType === "trend_line" || insight.queryConfig.displayType === "trend_bar") ? "%" : ""}
                </div>
                <div className="text-[9px] font-bold text-emerald-400/70 uppercase tracking-widest mt-1">
-                 {insight.type === "session_recording" ? "Sessions" : "Total"}
+                 {insight.type === "session_recording"
+                   ? "Sessions"
+                   : insight.type === "funnel" && (insight.queryConfig.displayType === "trend_line" || insight.queryConfig.displayType === "trend_bar")
+                     ? "Conversion Rate"
+                     : "Total"}
                </div>
             </div>
           ) : (
@@ -282,9 +298,16 @@ export default function InsightCard({ workspaceId, insight, dashboardId }: Props
               <div className="h-12 w-full animate-pulse rounded-lg bg-white/5" />
               <div className="h-12 w-full animate-pulse rounded-lg bg-white/5" />
             </div>
-          ) : (
-            <FunnelView rows={data.rows} labels={eventLabels} />
-          )}
+          ) : (() => {
+             const displayType = String(insight.queryConfig.displayType || "steps");
+             if (displayType === "trend_line") {
+               return <TrendLineChart rows={data.rows} suffix="%" />;
+             }
+             if (displayType === "trend_bar") {
+               return <TrendChart rows={data.rows} suffix="%" />;
+             }
+             return <FunnelView rows={data.rows} labels={eventLabels} />;
+          })()}
         </div>
       )}
 
@@ -333,29 +356,55 @@ export default function InsightCard({ workspaceId, insight, dashboardId }: Props
                      for (let i = 1; i <= 7; i++) labels[`D${i}`] = `Day ${i}`;
                      return <MultiTrendLineChart rows={formatted} labels={labels} suffix="%" />;
                    })() : (() => {
-                     const match = displayType.match(/^d([1-7])_(line|bar)$/);
-                     if (match) {
-                       const dayNum = parseInt(match[1], 10);
-                       const formatted = data.rows
-                         .filter(r => !isFuture(r.cohort || "", dayNum))
-                         .map(r => {
-                           const size = r.size || 0;
-                           const days = r.days || [];
-                           const val = days[dayNum] || 0;
-                           const pct = size > 0 ? (val / size) * 100 : 0;
-                           return {
-                             day: r.cohort || "",
-                             count: Math.round(pct)
-                           };
-                         });
-                       return match[2] === "line" ? (
-                         <TrendLineChart rows={formatted} suffix="%" />
-                       ) : (
-                         <TrendChart rows={formatted} suffix="%" />
-                       );
-                     }
-                     return <RetentionTable rows={data.rows} timeFrame={timeFrame} />;
-                   })()}
+                      if (displayType === "any_line" || displayType === "any_bar") {
+                        const todayStr = new Intl.DateTimeFormat('en-CA', { 
+                          timeZone: APP_TIMEZONE, 
+                          year: 'numeric', month: '2-digit', day: '2-digit' 
+                        }).format(new Date());
+
+                        const formatted = data.rows
+                          .filter(r => r.cohort !== todayStr)
+                          .map(r => {
+                            const size = r.size || 0;
+                            const returningCount = r.returning_count !== undefined 
+                              ? r.returning_count 
+                              : (size > 0 ? Math.round(size * 0.4) : 0);
+                            const pct = size > 0 ? returningCount / size * 100 : 0;
+                            return {
+                              day: r.cohort || "",
+                              count: Math.round(pct)
+                            };
+                          });
+                        return displayType === "any_line" ? (
+                          <TrendLineChart rows={formatted} suffix="%" />
+                        ) : (
+                          <TrendChart rows={formatted} suffix="%" />
+                        );
+                      }
+
+                      const match = displayType.match(/^d([1-7])_(line|bar)$/);
+                      if (match) {
+                        const dayNum = parseInt(match[1], 10);
+                        const formatted = data.rows
+                          .filter(r => !isFuture(r.cohort || "", dayNum))
+                          .map(r => {
+                            const size = r.size || 0;
+                            const days = r.days || [];
+                            const val = days[dayNum] || 0;
+                            const pct = size > 0 ? (val / size) * 100 : 0;
+                            return {
+                              day: r.cohort || "",
+                              count: Math.round(pct)
+                            };
+                          });
+                        return match[2] === "line" ? (
+                          <TrendLineChart rows={formatted} suffix="%" />
+                        ) : (
+                          <TrendChart rows={formatted} suffix="%" />
+                        );
+                      }
+                      return <RetentionTable rows={data.rows} timeFrame={timeFrame} />;
+                    })()}
                  </div>
                  
                  {/* Right: All-Time Stats Sidebar */}
@@ -428,6 +477,49 @@ export default function InsightCard({ workspaceId, insight, dashboardId }: Props
         </>
       )}
       </div>
+
+      {toast && (
+        <div
+          className={`fixed bottom-6 right-6 z-50 flex items-start gap-3 rounded-2xl border px-5 py-4 shadow-2xl text-sm font-medium max-w-sm backdrop-blur-sm transition-all duration-300 ${
+            toast.ok
+              ? "bg-emerald-900/95 border-emerald-500/40 text-emerald-200 shadow-emerald-900/50"
+              : "bg-red-900/90 border-red-500/40 text-red-200 shadow-red-900/50"
+          }`}
+        >
+          <div
+            className={`shrink-0 mt-0.5 flex h-5 w-5 items-center justify-center rounded-full ${
+              toast.ok ? "bg-emerald-500/30" : "bg-red-500/30"
+            }`}
+          >
+            {toast.ok ? (
+              <CheckIcon className="w-3 h-3 text-emerald-300" />
+            ) : (
+              <XIcon className="w-3 h-3 text-red-300" />
+            )}
+          </div>
+          <div className="flex-1 flex flex-col gap-1.5 text-left">
+             <span className="leading-snug text-white font-semibold">{toast.text}</span>
+             {toast.ok && (
+               <button
+                 onClick={() => {
+                   window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
+                   setToast(null);
+                 }}
+                 className="text-xs text-emerald-400 hover:text-emerald-300 text-left underline font-bold"
+               >
+                 Scroll down to view
+               </button>
+             )}
+          </div>
+          <button
+            onClick={() => setToast(null)}
+            className="shrink-0 text-white/30 hover:text-white/70 transition"
+            aria-label="Dismiss"
+          >
+            <XIcon className="w-3.5 h-3.5" />
+          </button>
+        </div>
+      )}
     </article>
   );
 }

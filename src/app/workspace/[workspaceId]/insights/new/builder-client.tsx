@@ -105,7 +105,14 @@ export default function InsightBuilder({ workspaceId, topEvents, plan, dashboard
 
   const selectedType = type ? getInsightType(type) : null;
   const isDemo = !previewData;
-  const activeData = previewData || (type ? MOCK_DATA[type] : null);
+  const activeData = previewData || (type ? (
+    type === "funnel" && (queryConfig.displayType === "trend_line" || queryConfig.displayType === "trend_bar")
+      ? { total: 53.5, rows: [
+          { day: "Day 1", count: 48 }, { day: "Day 2", count: 52 }, { day: "Day 3", count: 50 },
+          { day: "Day 4", count: 53 }, { day: "Day 5", count: 58 }, { day: "Day 6", count: 54 }, { day: "Day 7", count: 53.5 }
+        ]}
+      : MOCK_DATA[type]
+  ) : null);
 
   // Auto-fetch preview
   useEffect(() => {
@@ -223,6 +230,8 @@ export default function InsightBuilder({ workspaceId, topEvents, plan, dashboard
                           // Initialize displayType according to type
                           if (t.id === "retention") {
                             setQueryConfig(prev => ({ ...prev, displayType: "table", timeFrame: "7" }));
+                          } else if (t.id === "funnel") {
+                            setQueryConfig(prev => ({ ...prev, displayType: "steps", timeFrame: "7" }));
                           } else if (t.id === "trend" || t.id === "metric" || t.id === "multi_trend") {
                             setQueryConfig(prev => ({ ...prev, displayType: "bar", timeFrame: "7" }));
                           }
@@ -532,12 +541,14 @@ export default function InsightBuilder({ workspaceId, topEvents, plan, dashboard
                   <div className="space-y-8 animate-in zoom-in-95 duration-500">
                     <div className="text-center">
                        <div className="text-6xl font-black text-white tabular-nums tracking-tighter">
-                         {activeData.total.toLocaleString()}
+                         {activeData.total.toLocaleString()}{type === "funnel" && (queryConfig.displayType === "trend_line" || queryConfig.displayType === "trend_bar") ? "%" : ""}
                        </div>
                        <div className="text-[10px] text-white/30 mt-3 font-semibold uppercase tracking-widest">
                           {type === "metric"
                             ? ({ uniq: "Unique Count", avg: "Average", p50: "Median (P50)", p95: "95th Percentile (P95)" } as Record<string,string>)[queryConfig.aggregation] ?? "Aggregate Value"
-                            : "Total Matches"}
+                            : type === "funnel" && (queryConfig.displayType === "trend_line" || queryConfig.displayType === "trend_bar")
+                               ? "Overall Conversion Rate"
+                               : "Total Matches"}
                        </div>
                     </div>
 
@@ -566,7 +577,16 @@ export default function InsightBuilder({ workspaceId, topEvents, plan, dashboard
                          : <MultiTrendChart rows={activeData.rows} labels={eventLabels} />
                       )}
                       {type === "breakdown" && <BreakdownList rows={activeData.rows} />}
-                      {type === "funnel" && <FunnelView rows={activeData.rows} labels={eventLabels} />}
+                      {type === "funnel" && (() => {
+                          const displayType = String(queryConfig.displayType || "steps");
+                          if (displayType === "trend_line") {
+                            return <TrendLineChart rows={activeData.rows} suffix="%" />;
+                          }
+                          if (displayType === "trend_bar") {
+                            return <TrendChart rows={activeData.rows} suffix="%" />;
+                          }
+                          return <FunnelView rows={activeData.rows} labels={eventLabels} />;
+                       })()}
                       {type === "retention" && (() => {
                           const displayType = String(queryConfig.displayType || "table");
                           const timeFrame = Number(queryConfig.timeFrame || "7");
@@ -604,6 +624,26 @@ export default function InsightBuilder({ workspaceId, topEvents, plan, dashboard
                                   for (let i = 1; i <= 7; i++) labels[`D${i}`] = `Day ${i}`;
                                   return <MultiTrendLineChart rows={formatted} labels={labels} suffix="%" />;
                                 })() : (() => {
+                                  if (displayType === "any_line" || displayType === "any_bar") {
+                                    const formatted = activeData.rows
+                                      .map(r => {
+                                        const size = r.size || 0;
+                                        const returningCount = r.returning_count !== undefined 
+                                          ? r.returning_count 
+                                          : (size > 0 ? Math.round(size * 0.4) : 0);
+                                        const pct = size > 0 ? returningCount / size * 100 : 0;
+                                        return {
+                                          day: r.cohort || "",
+                                          count: Math.round(pct)
+                                        };
+                                      });
+                                    return displayType === "any_line" ? (
+                                      <TrendLineChart rows={formatted} suffix="%" />
+                                    ) : (
+                                      <TrendChart rows={formatted} suffix="%" />
+                                    );
+                                  }
+
                                   const match = displayType.match(/^d([1-7])_(line|bar)$/);
                                   if (match) {
                                     const dayNum = parseInt(match[1], 10);

@@ -206,6 +206,16 @@ export const INSIGHT_TYPES: InsightTypeDef[] = [
     configFields: [
       { key: "eventSteps", label: "Funnel steps (in order)", placeholder: "page_view, signup, purchase" },
       { key: "distinctId", label: "User ID property", placeholder: "user_id" },
+      {
+        key: "displayType",
+        label: "Display as",
+        placeholder: "Select style",
+        options: [
+          { label: "Steps Bar Chart", value: "steps" },
+          { label: "Conversion Trend (Line)", value: "trend_line" },
+          { label: "Conversion Trend (Bar)", value: "trend_bar" },
+        ],
+      },
     ],
     docs: {
       en: {
@@ -336,21 +346,9 @@ export const INSIGHT_TYPES: InsightTypeDef[] = [
         placeholder: "Select style",
         options: [
           { label: "Cohort Table", value: "table" },
-          { label: "Compare All Days (Line)", value: "all_line" },
-          { label: "Day 1 Retention (Line)", value: "d1_line" },
-          { label: "Day 1 Retention (Bar)", value: "d1_bar" },
-          { label: "Day 2 Retention (Line)", value: "d2_line" },
-          { label: "Day 2 Retention (Bar)", value: "d2_bar" },
-          { label: "Day 3 Retention (Line)", value: "d3_line" },
-          { label: "Day 3 Retention (Bar)", value: "d3_bar" },
-          { label: "Day 4 Retention (Line)", value: "d4_line" },
-          { label: "Day 4 Retention (Bar)", value: "d4_bar" },
-          { label: "Day 5 Retention (Line)", value: "d5_line" },
-          { label: "Day 5 Retention (Bar)", value: "d5_bar" },
-          { label: "Day 6 Retention (Line)", value: "d6_line" },
-          { label: "Day 6 Retention (Bar)", value: "d6_bar" },
-          { label: "Day 7 Retention (Line)", value: "d7_line" },
-          { label: "Day 7 Retention (Bar)", value: "d7_bar" },
+          { label: "Compare Days (Line)", value: "all_line" },
+          { label: "Overall Return Rate (Line)", value: "any_line" },
+          { label: "Overall Return Rate (Bar)", value: "any_bar" },
         ],
       },
     ],

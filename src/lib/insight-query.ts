@@ -155,18 +155,74 @@ export async function fetchInsightData(
 
     const distinctId = String(config.distinctId || "user_id");
     const isNativeId = distinctId === "user_id" || distinctId === "session_id";
-    // Sanitize and inline: same fix as metric/breakdown — {distinctId:String} inside
-    // JSONExtractString() fails with the ClickHouse HTTP param substitution.
     const sanitizedDistinctId = distinctId.replace(/[^\w]/g, "");
     const groupByExpr = isNativeId
       ? sanitizedDistinctId
       : `JSONExtractString(properties, '${sanitizedDistinctId}')`;
 
     const stepConditions = steps.map((_, i) => `event = {step${i}:String}`).join(", ");
-
     const funnelDays = Math.min(30, retentionDays);
     const params: Record<string, any> = { tenantId, steps, funnelDays };
     steps.forEach((s, i) => params[`step${i}`] = s);
+
+    const displayType = String(config.displayType || "steps");
+    const isTrend = displayType === "trend_line" || displayType === "trend_bar";
+
+    if (isTrend) {
+      const queryStr = `
+        SELECT
+            formatDateTime(start_date, '%Y-%m-%d', {timezone:String}) AS day,
+            count(DISTINCT IF(level >= 1, user_id, NULL)) AS step_1_users,
+            count(DISTINCT IF(level >= {totalSteps:Int32}, user_id, NULL)) AS completed_users
+        FROM (
+            SELECT
+                ${distinctId} AS user_id,
+                minIf(toDate(ts, '${APP_TIMEZONE}'), event = {step0:String}) AS start_date,
+                windowFunnel(86400)(
+                    toDateTime(ts),
+                    ${stepConditions}
+                ) AS level
+            FROM events
+            WHERE tenant_id = {tenantId:String}
+              AND event IN {steps:Array(String)}
+              AND ts >= now() - INTERVAL {funnelDays:Int32} DAY
+              AND ${distinctId} != ''
+            GROUP BY user_id
+        )
+        WHERE start_date IS NOT NULL
+        GROUP BY day
+        ORDER BY day ASC
+      `;
+
+      const raw = await queryJson<{ day: string; step_1_users: string | number; completed_users: string | number }>(
+        queryStr,
+        { ...params, totalSteps: steps.length, timezone: APP_TIMEZONE }
+      ).catch((e: any) => {
+        console.error("Funnel trend query error:", e?.message ?? e);
+        return [] as { day: string; step_1_users: string | number; completed_users: string | number }[];
+      });
+
+      const days = fillDays([], funnelDays);
+      const resultRows = days.map(d => {
+        const existing = raw.find(r => r.day === d.day);
+        if (existing) {
+          const s1 = Number(existing.step_1_users);
+          const comp = Number(existing.completed_users);
+          const rate = s1 > 0 ? (comp / s1) * 100 : 0;
+          return { day: d.day, count: Math.round(rate) };
+        }
+        return { day: d.day, count: 0 };
+      });
+
+      const totalStep1 = raw.reduce((sum, r) => sum + Number(r.step_1_users), 0);
+      const totalCompleted = raw.reduce((sum, r) => sum + Number(r.completed_users), 0);
+      const overallRate = totalStep1 > 0 ? (totalCompleted / totalStep1) * 100 : 0;
+
+      return {
+        total: Number(overallRate.toFixed(1)),
+        rows: resultRows
+      };
+    }
 
     const queryStr = `SELECT
           level,
@@ -317,6 +373,7 @@ export async function fetchInsightData(
       SELECT
           formatDateTime(cohort_date, '%Y-%m-%d') AS cohort,
           count(DISTINCT user_id) AS size,
+          count(DISTINCT IF(action_date > cohort_date, user_id, NULL)) AS returning_count,
           ${daySelectors}
       FROM (
           SELECT
@@ -371,7 +428,7 @@ export async function fetchInsightData(
       for (let i = 1; i <= timeFrame; i++) {
         days.push(Number(r[`day_${i}`] || 0));
       }
-      return { cohort: r.cohort, size: Number(r.size), days };
+      return { cohort: r.cohort, size: Number(r.size), returning_count: Number(r.returning_count || 0), days };
     });
 
     // Ensure we fill in empty days
@@ -390,7 +447,7 @@ export async function fetchInsightData(
       } else {
         const emptyDays = [0];
         for (let j = 1; j <= timeFrame; j++) emptyDays.push(0);
-        resultRows.push({ cohort: dateStr, size: 0, days: emptyDays });
+        resultRows.push({ cohort: dateStr, size: 0, returning_count: 0, days: emptyDays });
       }
     }
 
