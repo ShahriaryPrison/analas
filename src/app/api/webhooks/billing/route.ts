@@ -131,6 +131,13 @@ export async function POST(req: NextRequest) {
           return NextResponse.json({ error: "Workspace mapping not found" }, { status: 404 });
         }
 
+        let currentPeriodEnd: Date | null = null;
+        if (dataObject.current_period_end) {
+          currentPeriodEnd = new Date(Number(dataObject.current_period_end) * 1000);
+        } else {
+          currentPeriodEnd = new Date(Date.now() + 31 * 24 * 60 * 60 * 1000);
+        }
+
         // Upgrade the workspace
         await prisma.workspace.update({
           where: { id: sessionRecord.workspaceId },
@@ -139,6 +146,7 @@ export async function POST(req: NextRequest) {
             internalBillingCustomerId: customerId ? String(customerId) : null,
             internalSubscriptionId: String(subscriptionId),
             billingCycleStart: new Date(),
+            currentPeriodEnd,
             currentMonthEvents: 0,
             currentMonthRecordings: 0,
           },
@@ -168,10 +176,18 @@ export async function POST(req: NextRequest) {
           return NextResponse.json({ error: "Workspace not found for subscription" }, { status: 404 });
         }
 
+        let currentPeriodEnd: Date | null = null;
+        if (dataObject.current_period_end) {
+          currentPeriodEnd = new Date(Number(dataObject.current_period_end) * 1000);
+        } else {
+          currentPeriodEnd = new Date(Date.now() + 31 * 24 * 60 * 60 * 1000);
+        }
+
         await prisma.workspace.update({
           where: { id: workspace.id },
           data: {
             billingCycleStart: new Date(),
+            currentPeriodEnd,
             currentMonthEvents: 0, // Reset monthly quota
             currentMonthRecordings: 0,
           },
@@ -200,6 +216,7 @@ export async function POST(req: NextRequest) {
           data: {
             plan: "FREE",
             internalSubscriptionId: null,
+            currentPeriodEnd: null,
           },
         });
         break;

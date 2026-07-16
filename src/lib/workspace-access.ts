@@ -32,6 +32,24 @@ export async function getAuthorizedWorkspace(workspaceId: string) {
 
   if (!workspace) redirect("/dashboard");
 
+  // Lazily downgrade plan if currentPeriodEnd has expired
+  if (workspace.plan !== "FREE" && workspace.currentPeriodEnd && new Date() > workspace.currentPeriodEnd) {
+    workspace = await prisma.workspace.update({
+      where: { id: workspace.id },
+      data: {
+        plan: "FREE",
+        internalSubscriptionId: null,
+        currentPeriodEnd: null,
+      },
+      include: {
+        apiKeys: true,
+        members: { include: { user: true } },
+        dashboards: { include: { insights: true } },
+        invites: { where: { usedAt: null } },
+      },
+    });
+  }
+
   // Lazily generate publicToken if missing
   if (!workspace.publicToken) {
     const token = `analas_pub_${crypto.randomBytes(16).toString("hex")}`;

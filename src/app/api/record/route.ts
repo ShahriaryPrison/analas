@@ -113,24 +113,41 @@ async function handlePost(req: Request) {
       if (rawKey.startsWith("analas_pub_")) {
         const ws = await prisma.workspace.findUnique({
           where: { publicToken: rawKey },
-          select: { id: true, plan: true, allowedDomains: true },
+          select: { id: true, plan: true, allowedDomains: true, currentPeriodEnd: true },
         });
         if (!ws) {
           return NextResponse.json({ error: "Invalid client token" }, { status: 401 });
         }
         workspaceId = ws.id;
-        plan = ws.plan;
+        if (ws.plan !== "FREE" && ws.currentPeriodEnd && new Date() > ws.currentPeriodEnd) {
+          await prisma.workspace.update({
+            where: { id: ws.id },
+            data: { plan: "FREE", internalSubscriptionId: null, currentPeriodEnd: null },
+          });
+          plan = "FREE";
+        } else {
+          plan = ws.plan;
+        }
         allowedDomains = ws.allowedDomains;
       } else {
         const apiKey = await prisma.apiKey.findUnique({
           where: { keyHash },
-          include: { workspace: { select: { plan: true, allowedDomains: true } } },
+          include: { workspace: { select: { id: true, plan: true, allowedDomains: true, currentPeriodEnd: true } } },
         });
         if (!apiKey) {
           return NextResponse.json({ error: "Invalid API key" }, { status: 401 });
         }
         workspaceId = apiKey.workspaceId;
-        plan = apiKey.workspace.plan;
+        const ws = apiKey.workspace;
+        if (ws.plan !== "FREE" && ws.currentPeriodEnd && new Date() > ws.currentPeriodEnd) {
+          await prisma.workspace.update({
+            where: { id: ws.id },
+            data: { plan: "FREE", internalSubscriptionId: null, currentPeriodEnd: null },
+          });
+          plan = "FREE";
+        } else {
+          plan = ws.plan;
+        }
         allowedDomains = apiKey.workspace.allowedDomains;
       }
       apiCache.set(keyHash, { workspaceId, plan, allowedDomains, expiresAt: now + CACHE_TTL });

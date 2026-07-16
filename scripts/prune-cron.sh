@@ -11,6 +11,8 @@ fi
 # Write the crontab for the root user.
 printf '0 * * * *\twget -q -O- --header="Authorization: Bearer %s" --post-data="" http://app:3000/api/cron/prune-recordings\n' \
   "$CRON_SECRET" > /etc/crontabs/root
+printf '0 0 * * *\twget -q -O- --header="Authorization: Bearer %s" --post-data="" http://app:3000/api/cron/sync-subscriptions\n' \
+  "$CRON_SECRET" >> /etc/crontabs/root
 
 echo "[cron] Prune job scheduled at :00 every hour. Starting crond..."
 exec crond -f -l 2

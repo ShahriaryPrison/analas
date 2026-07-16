@@ -100,25 +100,42 @@ export async function POST(req: Request) {
       if (key.startsWith("analas_pub_")) {
         const ws = await prisma.workspace.findUnique({
           where: { publicToken: key },
-          select: { tenantId: true, plan: true, currentMonthEvents: true, allowedDomains: true },
+          select: { id: true, tenantId: true, plan: true, currentMonthEvents: true, allowedDomains: true, currentPeriodEnd: true },
         });
         if (!ws) {
           return NextResponse.json({ error: "Invalid client token" }, { status: 401 });
         }
+        if (ws.plan !== "FREE" && ws.currentPeriodEnd && new Date() > ws.currentPeriodEnd) {
+          await prisma.workspace.update({
+            where: { id: ws.id },
+            data: { plan: "FREE", internalSubscriptionId: null, currentPeriodEnd: null },
+          });
+          plan = "FREE";
+        } else {
+          plan = ws.plan;
+        }
         tenantId = ws.tenantId;
-        plan = ws.plan;
         currentMonthEvents = ws.currentMonthEvents;
         allowedDomains = ws.allowedDomains;
       } else {
         const api = await prisma.apiKey.findUnique({
           where: { keyHash },
-          include: { workspace: { select: { tenantId: true, plan: true, currentMonthEvents: true, allowedDomains: true } } },
+          include: { workspace: { select: { id: true, tenantId: true, plan: true, currentMonthEvents: true, allowedDomains: true, currentPeriodEnd: true } } },
         });
         if (!api) return NextResponse.json({ error: "Invalid API key" }, { status: 401 });
-        tenantId = api.workspace.tenantId;
-        plan = api.workspace.plan;
-        currentMonthEvents = api.workspace.currentMonthEvents;
-        allowedDomains = api.workspace.allowedDomains;
+        const ws = api.workspace;
+        if (ws.plan !== "FREE" && ws.currentPeriodEnd && new Date() > ws.currentPeriodEnd) {
+          await prisma.workspace.update({
+            where: { id: ws.id },
+            data: { plan: "FREE", internalSubscriptionId: null, currentPeriodEnd: null },
+          });
+          plan = "FREE";
+        } else {
+          plan = ws.plan;
+        }
+        tenantId = ws.tenantId;
+        currentMonthEvents = ws.currentMonthEvents;
+        allowedDomains = ws.allowedDomains;
       }
       apiCache.set(keyHash, {
         tenantId,
