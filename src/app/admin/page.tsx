@@ -34,6 +34,7 @@ export default async function AdminPage() {
     name: w.name,
     tenantId: w.tenantId,
     plan: w.plan,
+    currentPeriodEnd: w.currentPeriodEnd ? w.currentPeriodEnd.toISOString() : null,
     currentMonthEvents: w.currentMonthEvents,
     members: w.members.map((m) => ({
       userId: m.user.id,

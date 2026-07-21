@@ -20,6 +20,7 @@ type WorkspaceItem = {
   name: string;
   tenantId: string;
   plan: string;
+  currentPeriodEnd: string | null;
   currentMonthEvents: number;
   members: WorkspaceMemberItem[];
 };
@@ -54,8 +55,19 @@ export default function AdminClient({ initialWorkspaces, initialUsers }: Props) 
   const [wipingWs, setWipingWs] = useState<WorkspaceItem | null>(null);
   const [changingPasswordUser, setChangingPasswordUser] = useState<UserItem | null>(null);
   const [newPasswordVal, setNewPasswordVal] = useState("");
+  const [changingPlanWs, setChangingPlanWs] = useState<WorkspaceItem | null>(null);
+  const [newPlanVal, setNewPlanVal] = useState<string>("FREE");
+  const [expirationType, setExpirationType] = useState<string>("indefinite");
+  const [customExpirationDate, setCustomExpirationDate] = useState<string>("");
   const [loading, setLoading] = useState(false);
   const [toast, setToast] = useState<{ ok: boolean; text: string } | null>(null);
+
+  function openChangePlanModal(w: WorkspaceItem) {
+    setChangingPlanWs(w);
+    setNewPlanVal(w.plan);
+    setExpirationType("indefinite");
+    setCustomExpirationDate("");
+  }
 
   const filteredWorkspaces = workspaces.filter(
     (w) =>
@@ -168,6 +180,44 @@ export default function AdminClient({ initialWorkspaces, initialUsers }: Props) 
     }
   }
 
+  async function handleChangePlan() {
+    if (!changingPlanWs) return;
+    setLoading(true);
+    setToast(null);
+    try {
+      const res = await fetch("/api/admin/workspaces/change-plan", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          workspaceId: changingPlanWs.id,
+          plan: newPlanVal,
+          expirationType,
+          customDate: expirationType === "custom" ? customExpirationDate : undefined,
+        }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setWorkspaces((prev) =>
+          prev.map((w) =>
+            w.id === changingPlanWs.id
+              ? { ...w, plan: data.plan, currentPeriodEnd: data.currentPeriodEnd }
+              : w
+          )
+        );
+        setToast({ ok: true, text: `Plan for "${changingPlanWs.name}" updated to ${data.plan}.` });
+        setChangingPlanWs(null);
+      } else {
+        const d = await res.json();
+        setToast({ ok: false, text: d.error || "Failed to change workspace plan." });
+      }
+    } catch {
+      setToast({ ok: false, text: "An unexpected error occurred." });
+    } finally {
+      setLoading(false);
+      setTimeout(() => setToast(null), 4000);
+    }
+  }
+
   return (
     <div className="min-h-screen bg-slate-950 text-white flex flex-col">
       {/* Top Header */}
@@ -260,6 +310,11 @@ export default function AdminClient({ initialWorkspaces, initialUsers }: Props) 
                           <span className="rounded-full bg-purple-500/10 border border-purple-500/20 px-2.5 py-0.5 text-[10px] font-bold text-purple-300">
                             {w.plan}
                           </span>
+                          {w.currentPeriodEnd && (
+                            <span className="rounded-full bg-amber-500/10 border border-amber-500/20 px-2.5 py-0.5 text-[10px] font-bold text-amber-300" title={`Plan expires on ${new Date(w.currentPeriodEnd).toLocaleString()}`}>
+                              Expires: {new Date(w.currentPeriodEnd).toLocaleDateString()}
+                            </span>
+                          )}
                           <span className="rounded-full bg-white/5 border border-white/10 px-2.5 py-0.5 text-[10px] font-mono text-white/50">
                             {w.currentMonthEvents.toLocaleString()} events
                           </span>
@@ -277,10 +332,16 @@ export default function AdminClient({ initialWorkspaces, initialUsers }: Props) 
                         </div>
                       </div>
 
-                      <div className="flex items-center shrink-0">
+                      <div className="flex items-center gap-2 shrink-0">
+                        <button
+                          onClick={() => openChangePlanModal(w)}
+                          className="w-full md:w-auto flex items-center justify-center gap-1.5 rounded-xl border border-purple-500/25 bg-purple-500/8 px-4 py-2 text-xs font-bold text-purple-400 hover:bg-purple-500/15 transition cursor-pointer"
+                        >
+                          Change Plan
+                        </button>
                         <button
                           onClick={() => setWipingWs(w)}
-                          className="w-full md:w-auto flex items-center justify-center gap-1.5 rounded-xl border border-red-500/25 bg-red-500/8 px-4 py-2 text-xs font-bold text-red-400 hover:bg-red-500/15 transition cursor-pointer animate-pulse"
+                          className="w-full md:w-auto flex items-center justify-center gap-1.5 rounded-xl border border-red-500/25 bg-red-500/8 px-4 py-2 text-xs font-bold text-red-400 hover:bg-red-500/15 transition cursor-pointer"
                         >
                           <TrashIcon className="w-3.5 h-3.5" />
                           Wipe Data
@@ -549,6 +610,95 @@ export default function AdminClient({ initialWorkspaces, initialUsers }: Props) 
                 className="flex-1 py-2.5 bg-purple-600 text-white rounded-xl text-sm font-bold hover:bg-purple-700 transition disabled:opacity-50 disabled:hover:bg-purple-600"
               >
                 {loading ? "Saving..." : "Save Password"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* CHANGE PLAN MODAL */}
+      {changingPlanWs && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-xs z-50 flex items-center justify-center p-4 animate-in fade-in duration-200">
+          <div className="bg-slate-900 border border-white/10 p-6 rounded-3xl w-full max-w-sm shadow-2xl flex flex-col gap-4 animate-in zoom-in-95 duration-200">
+            <div className="flex items-center justify-between">
+              <h3 className="font-bold text-white text-lg flex items-center gap-2">
+                <PineappleIcon className="w-5 h-5 text-purple-400" />
+                Change Plan
+              </h3>
+              <button
+                onClick={() => setChangingPlanWs(null)}
+                className="p-1 rounded-lg text-white/30 hover:text-white/60 hover:bg-white/5 transition"
+              >
+                <XIcon className="w-4.5 h-4.5" />
+              </button>
+            </div>
+
+            <p className="text-xs text-white/50 leading-relaxed font-medium">
+              Update the active plan and billing cycle for workspace <strong>{changingPlanWs.name}</strong>.
+            </p>
+
+            <div className="space-y-4">
+              <div className="space-y-1">
+                <label className="text-[10px] font-bold uppercase tracking-wider text-white/40">Select Plan</label>
+                <select
+                  value={newPlanVal}
+                  onChange={(e) => setNewPlanVal(e.target.value)}
+                  className="w-full bg-slate-950 border border-white/10 rounded-xl px-4 py-2.5 text-xs text-white outline-none focus:ring-2 focus:ring-purple-400/40 transition"
+                >
+                  <option value="FREE">FREE</option>
+                  <option value="PRO">PRO</option>
+                  <option value="BUSINESS">BUSINESS</option>
+                  <option value="ENTERPRISE">ENTERPRISE</option>
+                </select>
+              </div>
+
+              {newPlanVal !== "FREE" && (
+                <>
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-bold uppercase tracking-wider text-white/40">Expiration</label>
+                    <select
+                      value={expirationType}
+                      onChange={(e) => setExpirationType(e.target.value)}
+                      className="w-full bg-slate-950 border border-white/10 rounded-xl px-4 py-2.5 text-xs text-white outline-none focus:ring-2 focus:ring-purple-400/40 transition"
+                    >
+                      <option value="indefinite">Indefinite (No Expiration)</option>
+                      <option value="1m">1 Month</option>
+                      <option value="3m">3 Months</option>
+                      <option value="6m">6 Months</option>
+                      <option value="1y">1 Year</option>
+                      <option value="custom">Custom Date</option>
+                    </select>
+                  </div>
+
+                  {expirationType === "custom" && (
+                    <div className="space-y-1 animate-in slide-in-from-top-2 duration-200">
+                      <label className="text-[10px] font-bold uppercase tracking-wider text-white/40">Custom Expiration Date</label>
+                      <input
+                        type="date"
+                        value={customExpirationDate}
+                        onChange={(e) => setCustomExpirationDate(e.target.value)}
+                        min={new Date().toISOString().split("T")[0]}
+                        className="w-full bg-slate-950 border border-white/10 rounded-xl px-4 py-2.5 text-xs text-white outline-none focus:ring-2 focus:ring-purple-400/40 transition [color-scheme:dark]"
+                      />
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
+
+            <div className="flex gap-3 mt-2">
+              <button
+                onClick={() => setChangingPlanWs(null)}
+                className="flex-1 py-2.5 bg-white/5 border border-white/10 text-white/80 rounded-xl text-sm font-semibold hover:bg-white/10 transition"
+              >
+                Cancel
+              </button>
+              <button
+                disabled={loading || (newPlanVal !== "FREE" && expirationType === "custom" && !customExpirationDate)}
+                onClick={handleChangePlan}
+                className="flex-1 py-2.5 bg-purple-600 text-white rounded-xl text-sm font-bold hover:bg-purple-700 transition disabled:opacity-50"
+              >
+                {loading ? "Saving..." : "Save Plan"}
               </button>
             </div>
           </div>
