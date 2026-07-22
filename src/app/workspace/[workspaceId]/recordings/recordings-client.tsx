@@ -244,11 +244,12 @@ function PlayerModal({ session, workspaceId, onClose }: PlayerModalProps) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const dialogRef = useRef<HTMLDivElement>(null);
-  const [mounted, setMounted] = useState(false);
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
+  // Portal target (document.body) is only meaningful once we're running in the
+  // browser. This component only ever mounts client-side (it's rendered from
+  // `activeSession &&` further below, which starts as null and is only set
+  // from a click handler), so a lazy initializer yields the same end state as
+  // the previous mount-effect without an extra render.
+  const [mounted] = useState(() => typeof window !== "undefined");
 
   useEffect(() => {
     const ac = new AbortController();
@@ -519,13 +520,14 @@ export default function RecordingsClient({
 
   const [showSetup, setShowSetup] = useState(false);
   const [activeSession, setActiveSession] = useState<SessionRow | null>(null);
-  const [hostUrl, setHostUrl] = useState("http://localhost:3000");
-
-  useEffect(() => {
-    if (typeof window !== "undefined") {
-      setHostUrl(window.location.origin);
-    }
-  }, []);
+  // hostUrl is only ever shown inside the empty-state setup guide (gated on
+  // `rows !== null`, which starts null and is only populated after the fetch
+  // effect below runs) or inside the setup modal (opened only via a click).
+  // Neither is part of the server-rendered/first-hydration output, so a lazy
+  // initializer is safe here and avoids an extra effect-triggered render.
+  const [hostUrl] = useState(() =>
+    typeof window !== "undefined" ? window.location.origin : "http://localhost:3000"
+  );
 
   const fetchRecordings = useCallback(
     async (cursor?: string, append = false) => {
@@ -565,9 +567,16 @@ export default function RecordingsClient({
     [workspaceId, pagePath, distinctId]
   );
 
-  // Fetch on mount if there are recordings
+  // Fetch on mount if there are recordings. This is a genuine effect: the
+  // data lives on the server and can't be produced during render, so we
+  // synchronize local state with it after mount (same shape as the
+  // already-lint-clean fetch effect in PlayerModal above). Lazily
+  // initializing `rows`/`loading` instead would change the server-rendered
+  // and first-hydration markup (e.g. showing the loading skeleton in the
+  // initial HTML), which is a visible behavior change we want to avoid here.
   useEffect(() => {
     if (initialCount > 0) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- see comment above the effect
       fetchRecordings();
     } else {
       setRows([]);
@@ -604,7 +613,7 @@ export default function RecordingsClient({
           </div>
           <h2 className="text-xl font-bold text-white mt-4">Setup Session Replays</h2>
           <p className="text-sm text-white/50 max-w-sm mx-auto">
-            You haven't captured any sessions yet! Add the recorder tag to start playing back real user visits.
+            You haven&apos;t captured any sessions yet! Add the recorder tag to start playing back real user visits.
           </p>
         </div>
 
