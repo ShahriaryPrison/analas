@@ -10,7 +10,17 @@ import {
 import { Plan, getEffectivePlan, isCloudHosted } from "@/lib/billing/plans";
 
 // ─── types ────────────────────────────────────────────────────────────────────
-type ApiKey = { id: string; name: string; createdAt: string };
+type ApiKey = { id: string; name: string; createdAt: string; scopes?: string[] };
+
+const SCOPE_OPTIONS: { value: string; label: string }[] = [
+  { value: "events:write", label: "Write events" },
+  { value: "events:read", label: "Read events" },
+  { value: "insights:read", label: "Read insights" },
+  { value: "insights:write", label: "Create insights" },
+  { value: "dashboards:read", label: "Read dashboards" },
+  { value: "dashboards:write", label: "Create dashboards" },
+  { value: "recordings:read", label: "Read recordings" },
+];
 type Member = { id: string; name: string | null; email: string; role: string };
 type PendingInvite = { id: string; email: string; role: string; createdAt: string };
 
@@ -85,6 +95,13 @@ export default function SettingsClient({
   const [copied, setCopied] = useState(false);
   const [codeCopied, setCodeCopied] = useState(false);
   const [lang, setLang] = useState<"js" | "curl">("curl");
+  const [selectedScopes, setSelectedScopes] = useState<string[]>(["events:write"]);
+
+  function toggleScope(scope: string) {
+    setSelectedScopes((prev) =>
+      prev.includes(scope) ? prev.filter((s) => s !== scope) : [...prev, scope]
+    );
+  }
 
   // ── Members & sharing state ─────────────────────────────────────────────────
   const [members, setMembers] = useState<Member[]>(initialMembers);
@@ -218,11 +235,18 @@ export default function SettingsClient({
   async function createKey() {
     setCreating(true);
     try {
-      const res = await fetch(`/api/workspace/${workspaceId}/api-keys`, { method: "POST" });
+      const res = await fetch(`/api/workspace/${workspaceId}/api-keys`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ scopes: selectedScopes }),
+      });
       const data = await res.json();
       if (res.ok) {
         setNewKey(data.rawKey);
-        setKeys((prev) => [{ id: data.id, name: data.name, createdAt: new Date().toISOString() }, ...prev]);
+        setKeys((prev) => [
+          { id: data.id, name: data.name, scopes: data.scopes, createdAt: new Date().toISOString() },
+          ...prev,
+        ]);
       }
     } finally {
       setCreating(false);
@@ -779,12 +803,35 @@ export default function SettingsClient({
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h2 className="text-lg font-semibold text-white">API Keys</h2>
-            <p className="mt-0.5 text-sm text-white/50">Keys authenticate event capture requests from your app.</p>
+            <p className="mt-0.5 text-sm text-white/50">
+              Keys authenticate event capture and, per scope, agent/API access to your data.
+            </p>
+          </div>
+        </div>
+
+        {/* Scope picker for the next key */}
+        <div className="space-y-2">
+          <span className="text-[10px] font-bold uppercase tracking-wider text-white/40">Scopes for new key</span>
+          <div className="flex flex-wrap gap-2">
+            {SCOPE_OPTIONS.map((opt) => (
+              <button
+                key={opt.value}
+                type="button"
+                onClick={() => toggleScope(opt.value)}
+                className={`rounded-full border px-3 py-1.5 text-xs font-medium transition ${
+                  selectedScopes.includes(opt.value)
+                    ? "border-emerald-500/40 bg-emerald-500/15 text-emerald-300"
+                    : "border-white/10 bg-white/5 text-white/50 hover:text-white/80"
+                }`}
+              >
+                {opt.label}
+              </button>
+            ))}
           </div>
           <button
             onClick={createKey}
-            disabled={creating}
-            className="flex items-center justify-center gap-1.5 rounded-lg bg-emerald-400 px-4 py-2.5 text-sm font-semibold text-slate-900 transition hover:bg-emerald-300 disabled:opacity-60 sm:shrink-0 sm:py-2"
+            disabled={creating || selectedScopes.length === 0}
+            className="flex items-center justify-center gap-1.5 rounded-lg bg-emerald-400 px-4 py-2.5 text-sm font-semibold text-slate-900 transition hover:bg-emerald-300 disabled:opacity-60"
           >
             <PlusIcon className="w-3.5 h-3.5" />
             {creating ? "Creating…" : "New key"}
@@ -854,6 +901,15 @@ export default function SettingsClient({
                   <div className="min-w-0">
                     <div className="text-sm font-medium text-white truncate">{k.name}</div>
                     <div className="text-xs text-white/40">Created {new Date(k.createdAt).toLocaleDateString()}</div>
+                    {k.scopes && k.scopes.length > 0 && (
+                      <div className="mt-1 flex flex-wrap gap-1">
+                        {k.scopes.map((s) => (
+                          <span key={s} className="rounded bg-white/5 px-1.5 py-0.5 text-[10px] text-white/40">
+                            {s}
+                          </span>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 </div>
                 <button

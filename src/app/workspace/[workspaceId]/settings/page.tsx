@@ -12,6 +12,7 @@ export default async function SettingsPage({
   const keys = workspace.apiKeys.map((k) => ({
     id: k.id,
     name: k.name,
+    scopes: k.scopes,
     createdAt: k.createdAt.toISOString(),
   }));
 

@@ -1,0 +1,50 @@
+# Analas
+
+> Analas is an event-analytics and session-recording SaaS (ClickHouse for events, Postgres for
+> app state). Every read and write a human can do in the dashboard — querying insights, browsing
+> session recordings, creating dashboards and insights — is also available to an AI agent through
+> a scoped API key. No browser session is required.
+
+## Authentication
+
+All `/api/v1/*` endpoints take a Bearer token:
+
+```
+Authorization: Bearer analas_pk_...
+```
+
+Create a key in Workspace Settings → API Keys, selecting only the scopes it needs:
+`events:write`, `events:read`, `insights:read`, `insights:write`, `dashboards:read`,
+`dashboards:write`, `recordings:read`. A key can only act on the workspace it was created in.
+
+## Endpoints
+
+- `GET  /api/v1/events` (events:read) — top event names for the workspace
+- `POST /api/v1/insights/query` (insights:read) — ad-hoc query, no saved insight required.
+  Body: `{ "type": "trend", "queryConfig": { "eventName": "...", "timeFrame": 14 } }`
+- `GET  /api/v1/insights/:insightId` (insights:read) — saved insight metadata
+- `GET  /api/v1/insights/:insightId/data` (insights:read) — run a saved insight
+- `POST /api/v1/insights` (insights:write) — create an insight.
+  Body: `{ "name": "...", "type": "trend", "queryConfig": {...}, "dashboardId": "optional" }`
+- `GET  /api/v1/dashboards` (dashboards:read) — list dashboards + their insights
+- `GET  /api/v1/dashboards/:dashboardId` (dashboards:read) — one dashboard + its insights
+- `POST /api/v1/dashboards` (dashboards:write) — create a dashboard. Body: `{ "name": "..." }`
+- `GET  /api/v1/recordings` (recordings:read) — cursor-paginated session recordings list
+- `GET  /api/v1/recordings/:sessionId/stream` (recordings:read) — raw NDJSON event log
+
+Insight `type` values: `count`, `trend`, `breakdown`, `multi_trend`, `funnel`, `metric`,
+`retention`, `session_recording`. Types beyond `count`/`trend` require a plan that includes
+that feature; a `403` means an upgrade is needed, not a bug.
+
+## Example: verify a metric changed after a deploy
+
+```
+curl https://your-domain.com/api/v1/insights/query \
+  -H "Authorization: Bearer $ANALAS_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"type":"count","queryConfig":{"eventName":"checkout_completed"}}'
+```
+
+## Full documentation
+
+Human-readable version with worked examples: /docs/ai-integration

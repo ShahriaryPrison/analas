@@ -73,6 +73,7 @@ model ApiKey {
   name        String
   workspaceId String
   workspace   Workspace @relation(fields: [workspaceId], references: [id])
+  scopes      String[] @default(["events:write"])
   createdAt   DateTime @default(now())
 }
 

@@ -2,6 +2,17 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getAppSession } from "@/lib/session";
 import crypto from "node:crypto";
+import type { ApiScope } from "@/lib/api-auth";
+
+const VALID_SCOPES: ApiScope[] = [
+  "events:write",
+  "events:read",
+  "insights:read",
+  "insights:write",
+  "dashboards:read",
+  "dashboards:write",
+  "recordings:read",
+];
 
 async function getMembership(workspaceId: string, email: string) {
   return prisma.workspaceMember.findFirst({
@@ -24,13 +35,14 @@ export async function GET(
   const keys = membership.workspace.apiKeys.map((k) => ({
     id: k.id,
     name: k.name,
+    scopes: k.scopes,
     createdAt: k.createdAt,
   }));
   return NextResponse.json({ apiKeys: keys });
 }
 
 export async function POST(
-  _req: Request,
+  req: Request,
   { params }: { params: Promise<{ workspaceId: string }> }
 ) {
   const { workspaceId } = await params;
@@ -40,6 +52,16 @@ export async function POST(
   const membership = await getMembership(workspaceId, session.user.email);
   if (!membership) return NextResponse.json({ error: "Not a member" }, { status: 403 });
 
+  const body = await req.json().catch(() => null);
+  const requestedScopes = Array.isArray(body?.scopes) ? body.scopes : null;
+  const scopes = requestedScopes
+    ? requestedScopes.filter((s: unknown): s is ApiScope => VALID_SCOPES.includes(s as ApiScope))
+    : ["events:write"];
+
+  if (requestedScopes && scopes.length === 0) {
+    return NextResponse.json({ error: "No valid scopes provided" }, { status: 400 });
+  }
+
   const rawKey = `analas_pk_${crypto.randomUUID()}`;
   const keyHash = crypto.createHash("sha256").update(rawKey).digest("hex");
 
@@ -48,8 +70,12 @@ export async function POST(
       keyHash,
       name: `Key ${new Date().toISOString().slice(0, 10)}`,
       workspaceId,
+      scopes,
     },
   });
 
-  return NextResponse.json({ id: created.id, name: created.name, rawKey }, { status: 201 });
+  return NextResponse.json(
+    { id: created.id, name: created.name, scopes: created.scopes, rawKey },
+    { status: 201 }
+  );
 }
