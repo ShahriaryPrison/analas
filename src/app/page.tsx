@@ -233,7 +233,7 @@ export default function LandingPage() {
         {/* badge */}
         <div className="mb-8 inline-flex items-center gap-2 rounded-full border border-emerald-500/25 bg-emerald-500/10 px-4 py-1.5 text-sm text-emerald-300">
           <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-400" />
-          Open analytics platform for developers
+          Open analytics platform for developers (CI/CD Active)
         </div>
 
         <h1 className="mx-auto max-w-4xl text-5xl font-extrabold leading-[1.1] tracking-tight md:text-[72px]">
