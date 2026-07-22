@@ -1,0 +1,24 @@
+name: Deploy
+
+on:
+  push:
+    branches:
+      - main
+  workflow_run:
+    workflows: ["Lint"]
+    types:
+      - completed
+
+jobs:
+  deploy:
+    runs-on: self-hosted
+    # Only deploy if it's the main branch and lint passed
+    if: ${{ github.event_name == 'push' || (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.head_branch == 'main') }}
+    steps:
+      - name: Deploy on Server
+        run: |
+          cd /opt/analas
+          sudo git fetch origin main
+          sudo git reset --hard origin/main
+          sudo docker compose up -d --build
+          sudo docker image prune -f
