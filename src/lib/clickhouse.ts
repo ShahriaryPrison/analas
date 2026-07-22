@@ -34,7 +34,7 @@ export async function queryJson<T>(
   return resultSet.json<T>();
 }
 
-export async function insertEvents(table: string, values: any[]) {
+export async function insertEvents(table: string, values: Record<string, unknown>[]) {
   await ensureMigration();
   return clickhouse.insert({
     table,
