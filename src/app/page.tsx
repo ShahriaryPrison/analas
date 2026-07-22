@@ -44,6 +44,14 @@ function IconDatabase() {
     </svg>
   );
 }
+function IconRobot() {
+  return (
+    <svg className="h-5 w-5 text-fuchsia-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+      <rect x="4" y="9" width="16" height="11" rx="2" strokeLinecap="round" strokeLinejoin="round" />
+      <path strokeLinecap="round" strokeLinejoin="round" d="M12 9V5m0 0a1.5 1.5 0 100-3 1.5 1.5 0 000 3zM8 14v1m8-1v1M2 12h2m16 0h2" />
+    </svg>
+  );
+}
 
 // ─── data ─────────────────────────────────────────────────────────────────
 const FEATURES = [
@@ -86,6 +94,11 @@ const FEATURES = [
     icon: <IconDatabase />,
     title: "ClickHouse-powered",
     body: "Built on ClickHouse, the fastest OLAP database on the planet. Handles billions of events without breaking a sweat.",
+  },
+  {
+    icon: <IconRobot />,
+    title: "Built for AI Agents",
+    body: "Every read and write a human does in the dashboard — querying insights, browsing recordings, building dashboards — is also a scoped API key call. No browser session required.",
   },
 ];
 
@@ -201,6 +214,7 @@ export default function LandingPage() {
           <div className="hidden items-center gap-8 text-sm text-white/55 md:flex">
             <a href="#how-it-works" className="hover:text-white transition-colors">How it works</a>
             <a href="#features" className="hover:text-white transition-colors">Features</a>
+            <a href="#ai-agents" className="hover:text-white transition-colors">AI Agents</a>
             <a href="#pricing" className="hover:text-white transition-colors">Pricing</a>
             <Link href="/docs/insight-types" className="hover:text-white transition-colors">Docs</Link>
             <a href={GITHUB_URL} target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors flex items-center gap-1.5">
@@ -681,7 +695,93 @@ export default function LandingPage() {
                 </div>
               </div>
             </div>
-            
+
+          </div>
+        </div>
+      </section>
+
+      {/* ════════════════════════════════════════════════
+          AI AGENTS FEATURE SHOWCASE
+      ════════════════════════════════════════════════ */}
+      <section id="ai-agents" className="px-6 py-24 border-t border-b border-white/5 bg-gradient-to-b from-transparent via-fuchsia-950/5 to-transparent">
+        <div className="mx-auto max-w-5xl">
+          <div className="grid gap-12 lg:grid-cols-12 items-center">
+
+            {/* Left Column: Copy */}
+            <div className="space-y-6 lg:col-span-5">
+              <div>
+                <span className="rounded-full bg-fuchsia-500/10 border border-fuchsia-500/20 px-3.5 py-1 text-xs font-semibold uppercase tracking-wider text-fuchsia-400">
+                  API-first
+                </span>
+                <h2 className="mt-4 text-3xl font-black text-white tracking-tight leading-none sm:text-4xl">
+                  Built for AI agents
+                </h2>
+                <p className="text-xl font-bold text-white/40 mt-1">
+                  Not just a dashboard for humans.
+                </p>
+              </div>
+
+              <p className="text-base leading-relaxed text-white/55">
+                A scoped API key gives an agent the same power a teammate has in the UI — query event counts and insight results, browse session recordings, and create dashboards and insights of its own. No browser session, no impersonating a human.
+              </p>
+
+              <ul className="space-y-3.5">
+                {[
+                  ["Sensor", "Poll event counts, error rates, and insight results on a schedule — no human has to open the dashboard."],
+                  ["Verification", "After shipping a fix elsewhere, ask Analas \"did metric X actually change\" and get a real answer back via API."],
+                  ["Analytics in its own right", "Create and edit insights and dashboards through the API — an agent can build its own view, not just read one a human already made."],
+                  ["Scoped keys", "Every key is limited to the resources and read/write access you grant it — a read-only key can never create or delete anything."],
+                ].map(([title, desc]) => (
+                  <li key={title} className="flex gap-3">
+                    <span className="mt-1 flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-fuchsia-500/15 text-fuchsia-400">
+                      <svg className="h-2.5 w-2.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                      </svg>
+                    </span>
+                    <div>
+                      <strong className="text-sm font-semibold text-white/90">{title}</strong>
+                      <p className="text-xs text-white/50 mt-0.5">{desc}</p>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+
+              <Link
+                href="/docs/ai-integration"
+                className="inline-flex items-center gap-1.5 text-sm font-semibold text-fuchsia-400 hover:text-fuchsia-300 transition"
+              >
+                Read the AI integration guide
+                <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M17 8l4 4m0 0l-4 4m4-4H3" />
+                </svg>
+              </Link>
+            </div>
+
+            {/* Right Column: API call mockup */}
+            <div className="lg:col-span-7">
+              <div className="rounded-2xl border border-white/10 bg-slate-950/80 shadow-2xl overflow-hidden shadow-fuchsia-500/5 hover:border-white/15 transition-all">
+                <div className="flex items-center justify-between border-b border-white/8 bg-slate-900/50 px-4 py-3">
+                  <div className="flex items-center gap-2">
+                    <span className="h-2 w-2 rounded-full bg-red-500/60" />
+                    <span className="h-2 w-2 rounded-full bg-amber-500/60" />
+                    <span className="h-2 w-2 rounded-full bg-emerald-500/60" />
+                  </div>
+                  <span className="text-xs font-mono text-white/30">agent.sh</span>
+                </div>
+                <pre className="overflow-x-auto p-5 text-xs leading-relaxed font-mono">
+<span className="text-white/30"># Ask Analas whether checkout conversion actually moved</span>{"\n"}
+<span className="text-fuchsia-400">curl</span> <span className="text-white/70">https://your-domain.com/api/v1/insights/query</span> \{"\n"}
+{"  "}<span className="text-white/40">-H</span> <span className="text-emerald-300">&quot;Authorization: Bearer analas_pk_...&quot;</span> \{"\n"}
+{"  "}<span className="text-white/40">-H</span> <span className="text-emerald-300">&quot;Content-Type: application/json&quot;</span> \{"\n"}
+{"  "}<span className="text-white/40">-d</span> <span className="text-emerald-300">{`'{"type":"trend","queryConfig":{"eventName":"checkout_completed","timeFrame":14}}'`}</span>
+                </pre>
+                <div className="border-t border-white/8 bg-slate-900/40 px-5 py-4">
+                  <div className="text-[10px] font-bold uppercase tracking-wider text-white/30 mb-2">Response</div>
+                  <pre className="text-xs font-mono text-white/60 leading-relaxed">{`{ "total": 842, "rows": [{ "day": "2026-07-21", "count": 61 }, ...] }`}</pre>
+                </div>
+              </div>
+            </div>
+
           </div>
         </div>
       </section>

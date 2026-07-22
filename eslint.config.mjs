@@ -13,6 +13,14 @@ const eslintConfig = defineConfig([
     "build/**",
     "next-env.d.ts",
   ]),
+  {
+    // Mocking Prisma's generated return types exactly is impractical in test fixtures —
+    // relax no-explicit-any for test files only, production code still enforces it.
+    files: ["src/**/*.test.ts", "src/test/**/*.ts"],
+    rules: {
+      "@typescript-eslint/no-explicit-any": "off",
+    },
+  },
 ]);
 
 export default eslintConfig;
