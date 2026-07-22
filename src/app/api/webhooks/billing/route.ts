@@ -111,23 +111,41 @@ export async function POST(req: NextRequest) {
           return NextResponse.json({ error: "Unrecognized price ID" }, { status: 400 });
         }
 
-        // Find all workspaces where this email belongs
-        const memberships = await prisma.workspaceMember.findMany({
-          where: { user: { email: customerEmail } },
-          select: { workspaceId: true },
-        });
-        const workspaceIds = memberships.map((m) => m.workspaceId);
+        const clientReferenceId = dataObject.client_reference_id;
+        
+        let targetWorkspaceId: string | null = null;
 
-        // Find the most recent StriteSession for these workspaces
-        const sessionRecord = await prisma.striteSession.findFirst({
-          where: {
-            workspaceId: { in: workspaceIds },
-          },
-          orderBy: { createdAt: "desc" },
+        if (clientReferenceId) {
+          targetWorkspaceId = clientReferenceId;
+        } else {
+          // Fallback for older sessions without client_reference_id
+          const memberships = await prisma.workspaceMember.findMany({
+            where: { user: { email: customerEmail } },
+            select: { workspaceId: true },
+          });
+          const workspaceIds = memberships.map((m) => m.workspaceId);
+
+          const sessionRecord = await prisma.striteSession.findFirst({
+            where: {
+              workspaceId: { in: workspaceIds },
+            },
+            orderBy: { createdAt: "desc" },
+          });
+
+          if (!sessionRecord) {
+            console.error(`[Strite Webhook] No matching checkout session found for email ${customerEmail}`);
+            return NextResponse.json({ error: "Workspace mapping not found" }, { status: 404 });
+          }
+          
+          targetWorkspaceId = sessionRecord.workspaceId;
+        }
+
+        const workspace = await prisma.workspace.findUnique({
+          where: { id: targetWorkspaceId },
         });
 
-        if (!sessionRecord) {
-          console.error(`[Strite Webhook] No matching checkout session found for email ${customerEmail}`);
+        if (!workspace) {
+          console.error(`[Strite Webhook] Workspace not found for id ${targetWorkspaceId}`);
           return NextResponse.json({ error: "Workspace mapping not found" }, { status: 404 });
         }
 
@@ -140,7 +158,7 @@ export async function POST(req: NextRequest) {
 
         // Upgrade the workspace
         await prisma.workspace.update({
-          where: { id: sessionRecord.workspaceId },
+          where: { id: targetWorkspaceId },
           data: {
             plan,
             internalBillingCustomerId: customerId ? String(customerId) : null,
@@ -152,9 +170,9 @@ export async function POST(req: NextRequest) {
           },
         });
 
-        // Clean up temporary session record
-        await prisma.striteSession.delete({
-          where: { token: sessionRecord.token },
+        // Clean up any temporary session records for this workspace
+        await prisma.striteSession.deleteMany({
+          where: { workspaceId: targetWorkspaceId },
         });
 
         break;

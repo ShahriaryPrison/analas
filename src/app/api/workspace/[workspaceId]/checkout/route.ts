@@ -59,6 +59,7 @@ export async function POST(
         customer_email: session.user.email,
         customer_name: workspace.name,
         customer_phone: user?.phone || undefined,
+        client_reference_id: workspace.id,
         success_url: `${appUrl}/workspace/${workspaceId}/settings?billing_success=true`,
         cancel_url: `${appUrl}/workspace/${workspaceId}/settings?billing_cancelled=true`,
       }),
