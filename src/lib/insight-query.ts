@@ -1,15 +1,38 @@
 import { queryJson } from "./clickhouse";
 import { prisma } from "./prisma";
-import { getEffectivePlan } from "./billing/plans";
+import { getEffectivePlan, type Plan } from "./billing/plans";
 
 export type DailyRow = { day: string; count: number };
 export type BreakdownRow = { val: string; count: number };
 export type FunnelRow = { level: number; count: number };
+export type MultiTrendRow = { day: string; counts: Record<string, number> };
+export type FunnelStepRow = { label: string; count: number };
+export type RetentionResultRow = {
+  cohort: string;
+  size: number;
+  returning_count: number;
+  days: number[];
+};
+
+// The cohort query's day_N columns are generated dynamically (one per day in
+// the requested time frame), so their exact keys aren't known statically —
+// hence the index signature rather than a fully-enumerated interface.
+interface RetentionCohortRow {
+  cohort: string;
+  size: string | number;
+  returning_count: string | number;
+  [dayColumn: string]: string | number;
+}
+
+interface RetentionAllTimeRow {
+  all_time_users: string | number;
+  returning_users: string | number;
+}
 
 export interface InsightData {
   total: number;
   returning?: number;
-  rows: any[];
+  rows: DailyRow[] | BreakdownRow[] | FunnelStepRow[] | MultiTrendRow[] | RetentionResultRow[];
 }
 
 export const APP_TIMEZONE = process.env.NEXT_PUBLIC_TIMEZONE || "Asia/Tehran";
@@ -34,15 +57,15 @@ export function fillDays(rows: { day: string; count: string | number }[], length
   return result;
 }
 
-const planCache = new Map<string, { plan: any; expiresAt: number }>();
+const planCache = new Map<string, { plan: Plan; expiresAt: number }>();
 const CACHE_TTL = 30 * 1000;
 
 export async function fetchInsightData(
   tenantId: string,
   type: string,
-  config: Record<string, any>
+  config: Record<string, unknown>
 ): Promise<InsightData> {
-  let plan: any = "FREE";
+  let plan: Plan = "FREE";
   const cached = planCache.get(tenantId);
   if (cached && cached.expiresAt > Date.now()) {
     plan = cached.plan;
@@ -162,7 +185,7 @@ export async function fetchInsightData(
 
     const stepConditions = steps.map((_, i) => `event = {step${i}:String}`).join(", ");
     const funnelDays = Math.min(30, retentionDays);
-    const params: Record<string, any> = { tenantId, steps, funnelDays };
+    const params: Record<string, unknown> = { tenantId, steps, funnelDays };
     steps.forEach((s, i) => params[`step${i}`] = s);
 
     const displayType = String(config.displayType || "steps");
@@ -197,8 +220,8 @@ export async function fetchInsightData(
       const raw = await queryJson<{ day: string; step_1_users: string | number; completed_users: string | number }>(
         queryStr,
         { ...params, totalSteps: steps.length, timezone: APP_TIMEZONE }
-      ).catch((e: any) => {
-        console.error("Funnel trend query error:", e?.message ?? e);
+      ).catch((e: unknown) => {
+        console.error("Funnel trend query error:", e instanceof Error ? e.message : e);
         return [] as { day: string; step_1_users: string | number; completed_users: string | number }[];
       });
 
@@ -241,8 +264,8 @@ export async function fetchInsightData(
        )
        GROUP BY level ORDER BY level ASC`;
 
-    const rows = await queryJson<FunnelRow>(queryStr, params).catch((e: any) => {
-      console.error("Funnel query error:", e?.message ?? e);
+    const rows = await queryJson<FunnelRow>(queryStr, params).catch((e: unknown) => {
+      console.error("Funnel query error:", e instanceof Error ? e.message : e);
       return [] as FunnelRow[];
     });
 
@@ -292,7 +315,7 @@ export async function fetchInsightData(
         ? `AND JSONExtractString(properties, '${property}') != ''`
         : `AND JSONExtractFloat(properties, '${property}') != 0`;
 
-    const baseParams: Record<string, any> = { tenantId, event: eventName, timeFrame };
+    const baseParams: Record<string, unknown> = { tenantId, event: eventName, timeFrame };
 
     const raw = await queryJson<{ day: string; count: string | number }>(
       `SELECT formatDateTime(ts, '%Y-%m-%d', {timezone:String}) AS day, ${aggFunc} AS count
@@ -355,7 +378,7 @@ export async function fetchInsightData(
       return `count(DISTINCT IF(dateDiff('day', cohort_date, action_date) = ${day}, user_id, NULL)) AS day_${day}`;
     }).join(",\n          ");
 
-    const params: Record<string, any> = { tenantId, startEvent, returnEvent, timeFrame, retentionDays };
+    const params: Record<string, unknown> = { tenantId, startEvent, returnEvent, timeFrame, retentionDays };
 
     let startCond = "event = {startEvent:String}";
     if (startEventProperty && startEventValue) {
@@ -413,13 +436,13 @@ export async function fetchInsightData(
     `;
 
     const [raw, allTimeRaw] = await Promise.all([
-      queryJson<any>(cohortQueryStr, params).catch((e) => {
+      queryJson<RetentionCohortRow>(cohortQueryStr, params).catch((e) => {
         console.error("Retention cohort error:", e);
-        return [];
+        return [] as RetentionCohortRow[];
       }),
-      queryJson<any>(allTimeQueryStr, params).catch((e) => {
+      queryJson<RetentionAllTimeRow>(allTimeQueryStr, params).catch((e) => {
         console.error("Retention all-time error:", e);
-        return [];
+        return [] as RetentionAllTimeRow[];
       })
     ]);
 
