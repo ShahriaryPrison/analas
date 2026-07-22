@@ -280,8 +280,16 @@ export function initSessionRecorder(opts: SessionRecorderOptions): () => void {
   return cleanup;
 }
 
+declare global {
+  interface Window {
+    AnalasRecorder?: {
+      init: typeof initSessionRecorder;
+    };
+  }
+}
+
 if (typeof window !== "undefined") {
-  (window as any).AnalasRecorder = {
+  window.AnalasRecorder = {
     init: initSessionRecorder,
   };
 }
