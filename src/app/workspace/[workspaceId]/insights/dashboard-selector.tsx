@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { PlusIcon, TrashIcon, CheckIcon, XIcon } from "@/components/icons";
-import { getEffectivePlan } from "@/lib/billing/plans";
+import { getEffectivePlan, type Plan } from "@/lib/billing/plans";
 
 type Dashboard = {
   id: string;
@@ -15,7 +15,7 @@ type Props = {
   workspaceId: string;
   dashboards: Dashboard[];
   activeDashboard: Dashboard;
-  plan: any;
+  plan: Plan;
 };
 
 function ChevronDownIcon({ className }: { className?: string }) {

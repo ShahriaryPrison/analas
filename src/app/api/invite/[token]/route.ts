@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getAppSession } from "@/lib/session";
+import type { Plan } from "@/lib/billing/plans";
 
 type Params = { params: Promise<{ token: string }> };
 
@@ -69,7 +70,7 @@ export async function GET(req: NextRequest, { params }: Params) {
     const workspace = await prisma.workspace.findUnique({ where: { id: invite.workspaceId } });
     if (workspace) {
       const { getEffectivePlan } = await import("@/lib/billing/plans");
-      const planConfig = getEffectivePlan(workspace.plan as any);
+      const planConfig = getEffectivePlan(workspace.plan as Plan);
 
       const currentMembersCount = await prisma.workspaceMember.count({
         where: { workspaceId: invite.workspaceId },

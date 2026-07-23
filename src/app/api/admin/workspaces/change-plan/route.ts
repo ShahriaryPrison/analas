@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { getAppSession } from "@/lib/session";
 import { isAdmin } from "@/lib/auth-admin";
 import { NextResponse } from "next/server";
+import type { Plan } from "@/lib/billing/plans";
 
 export async function POST(req: Request) {
   try {
@@ -58,7 +59,7 @@ export async function POST(req: Request) {
     await prisma.workspace.update({
       where: { id: workspaceId },
       data: {
-        plan: plan as any,
+        plan: plan as Plan,
         currentPeriodEnd,
       },
     });

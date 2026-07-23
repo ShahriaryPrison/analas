@@ -10,6 +10,7 @@ import { gunzipSync } from "node:zlib";
 import { prisma } from "@/lib/prisma";
 import { getAppSession } from "@/lib/session";
 import { getRecordingStore } from "@/lib/recordings/store";
+import type { Plan } from "@/lib/billing/plans";
 
 const UUID_V4_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -44,7 +45,7 @@ export async function GET(
   }
 
   const { hasFeature } = await import("@/lib/billing/plans");
-  if (!workspace || !hasFeature(workspace.plan as any, "session_recording")) {
+  if (!workspace || !hasFeature(workspace.plan as Plan, "session_recording")) {
     return NextResponse.json(
       { error: "Session Recording is not available on your current plan. Please upgrade." },
       { status: 403 }

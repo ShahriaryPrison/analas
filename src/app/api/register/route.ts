@@ -4,6 +4,7 @@ import { NextResponse } from "next/server";
 import crypto from "node:crypto";
 import { validatePhoneNumber } from "@/lib/countries";
 import { sendOtpSms } from "@/lib/sms";
+import type { Plan } from "@/lib/billing/plans";
 
 export async function POST(req: Request) {
   try {
@@ -103,7 +104,7 @@ export async function POST(req: Request) {
       }
       const ws = await prisma.workspace.findUnique({ where: { id: invite.workspaceId } });
       if (ws) {
-        const planConfig = getEffectivePlan(ws.plan as any);
+        const planConfig = getEffectivePlan(ws.plan as Plan);
         const memberCount = await prisma.workspaceMember.count({ where: { workspaceId: invite.workspaceId } });
         if (memberCount < planConfig.maxMembers) {
           await prisma.workspaceMember.create({
@@ -134,7 +135,7 @@ export async function POST(req: Request) {
         if (!alreadyMember) {
           const ws = await prisma.workspace.findUnique({ where: { id: publicInvite.workspaceId } });
           if (ws) {
-            const planConfig = getEffectivePlan(ws.plan as any);
+            const planConfig = getEffectivePlan(ws.plan as Plan);
             const memberCount = await prisma.workspaceMember.count({ where: { workspaceId: publicInvite.workspaceId } });
             if (memberCount < planConfig.maxMembers) {
               await prisma.workspaceMember.create({
