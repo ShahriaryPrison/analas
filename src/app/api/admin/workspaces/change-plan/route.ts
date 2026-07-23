@@ -61,6 +61,7 @@ export async function POST(req: Request) {
       data: {
         plan: plan as Plan,
         currentPeriodEnd,
+        ...(plan !== "FREE" ? { internalSubscriptionId: `admin_${Date.now()}_${workspaceId}` } : { internalSubscriptionId: null }),
       },
     });
 

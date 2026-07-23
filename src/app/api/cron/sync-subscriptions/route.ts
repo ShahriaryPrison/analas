@@ -37,6 +37,11 @@ export async function POST(req: Request) {
   let downgradedCount = 0;
 
   for (const ws of workspaces) {
+    if (ws.internalSubscriptionId?.startsWith("admin_")) {
+      console.log(`[Cron Sync] Workspace ${ws.id} has an admin-granted subscription. Skipping sync.`);
+      continue;
+    }
+
     // 1) If there is no internal subscription ID on a paid plan, downgrade it immediately
     if (!ws.internalSubscriptionId) {
       console.warn(`[Cron Sync] Workspace ${ws.id} is marked as ${ws.plan} but has no internal subscription ID. Downgrading to FREE.`);
@@ -107,7 +112,13 @@ export async function POST(req: Request) {
       } else {
         // Active or trialing subscription — sync the period end date
         if (currentPeriodEndStr) {
-          const currentPeriodEnd = new Date(currentPeriodEndStr);
+          let currentPeriodEnd: Date;
+          // Check if it's a Unix timestamp (seconds) or an ISO string
+          if (typeof currentPeriodEndStr === "number" || (typeof currentPeriodEndStr === "string" && !isNaN(Number(currentPeriodEndStr)))) {
+            currentPeriodEnd = new Date(Number(currentPeriodEndStr) * 1000);
+          } else {
+            currentPeriodEnd = new Date(currentPeriodEndStr);
+          }
           console.log(`[Cron Sync] Syncing subscription ${ws.internalSubscriptionId} for workspace ${ws.id}. Period end: ${currentPeriodEnd.toISOString()}`);
           await prisma.workspace.update({
             where: { id: ws.id },
