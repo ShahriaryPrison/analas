@@ -7,6 +7,37 @@ import Link from "next/link";
 import PineappleIcon from "@/components/PineappleIcon";
 import { ALLOWED_COUNTRIES } from "@/lib/countries";
 
+// Derives the initial success/error banner text from the auth-redirect query
+// params (?registered=, ?verified=, ?error=). Pure function of the URL, no
+// side effects, so it can back a lazy useState initializer instead of an
+// effect.
+function getInitialAuthMessages(searchParams: URLSearchParams): { success: string; error: string } {
+  let success = "";
+  let error = "";
+
+  if (searchParams.get("registered") === "true") {
+    success = "Account created! Sign in to continue.";
+  }
+  if (searchParams.get("verified") === "true") {
+    success = "Email verified successfully! You can now sign in.";
+  }
+  if (searchParams.get("verified") === "false") {
+    const errorMsg = searchParams.get("error");
+    if (errorMsg === "invalid_token") {
+      error = "The verification link is invalid or has expired.";
+    } else if (errorMsg === "missing_token") {
+      error = "Verification token is missing.";
+    } else {
+      error = "Email verification failed. Please try again.";
+    }
+  }
+  if (searchParams.get("error") === "CredentialsSignin") {
+    error = "Invalid credentials.";
+  }
+
+  return { success, error };
+}
+
 function LoginContent() {
   const [activeTab, setActiveTab] = useState<"email" | "phone">("email");
 
@@ -22,37 +53,18 @@ function LoginContent() {
   const [sendingCode, setSendingCode] = useState(false);
   const fromAutofill = useRef(false);
 
-  // Status & loading states
-  const [error, setError] = useState("");
-  const [success, setSuccess] = useState("");
-  const [loading, setLoading] = useState(false);
-
   const router = useRouter();
   const searchParams = useSearchParams();
 
-
-  // eslint-disable-next-line react-hooks/set-state-in-effect
-  useEffect(() => {
-    if (searchParams.get("registered") === "true") {
-      setSuccess("Account created! Sign in to continue.");
-    }
-    if (searchParams.get("verified") === "true") {
-      setSuccess("Email verified successfully! You can now sign in.");
-    }
-    if (searchParams.get("verified") === "false") {
-      const errorMsg = searchParams.get("error");
-      if (errorMsg === "invalid_token") {
-        setError("The verification link is invalid or has expired.");
-      } else if (errorMsg === "missing_token") {
-        setError("Verification token is missing.");
-      } else {
-        setError("Email verification failed. Please try again.");
-      }
-    }
-    if (searchParams.get("error") === "CredentialsSignin") {
-      setError("Invalid credentials.");
-    }
-  }, [searchParams]);
+  // Status & loading states
+  // useSearchParams() already reflects the URL on the very first render (this
+  // component is wrapped in <Suspense>, so it only ever mounts client-side),
+  // so the initial banner text can be derived once via a lazy initializer
+  // instead of an effect. Both messages remain plain, user-settable state
+  // afterwards (e.g. cleared on tab switch, overwritten on submit).
+  const [error, setError] = useState(() => getInitialAuthMessages(searchParams).error);
+  const [success, setSuccess] = useState(() => getInitialAuthMessages(searchParams).success);
+  const [loading, setLoading] = useState(false);
 
   // Handle email/password submit
   const handleEmailSubmit = async (e: React.FormEvent) => {

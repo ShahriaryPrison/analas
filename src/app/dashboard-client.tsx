@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import PineappleIcon from "@/components/PineappleIcon";
 import { signOut } from "next-auth/react";
 import {
@@ -21,8 +21,15 @@ type Workspace = {
 
 export default function DashboardClient({ workspaces: initialWorkspaces }: { workspaces: Workspace[] }) {
   const [workspaces, setWorkspaces] = useState<Workspace[]>(initialWorkspaces);
-  const [newKey, setNewKey] = useState<string | null>(null);
-  const [origin, setOrigin] = useState("");
+  // newKey/origin are only ever read from the URL/window after mount (the
+  // banner they drive is gated on `newKey` being truthy, which starts null
+  // either way), so a lazy initializer yields the same server-rendered and
+  // first-hydration output as the previous mount-effect without an extra
+  // render.
+  const [newKey] = useState<string | null>(() =>
+    typeof window !== "undefined" ? new URLSearchParams(window.location.search).get("newKey") : null
+  );
+  const [origin] = useState(() => (typeof window !== "undefined" ? window.location.origin : ""));
   const [copied, setCopied] = useState(false);
   const [codeCopied, setCodeCopied] = useState(false);
   const [dismissed, setDismissed] = useState(false);
@@ -45,13 +52,6 @@ export default function DashboardClient({ workspaces: initialWorkspaces }: { wor
       setLeavingId(null);
     }
   }
-
-  useEffect(() => {
-    const sp = new URLSearchParams(window.location.search);
-    const k = sp.get("newKey");
-    if (k) setNewKey(k);
-    setOrigin(window.location.origin);
-  }, []);
 
   function copy(text: string) {
     navigator.clipboard.writeText(text);

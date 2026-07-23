@@ -127,11 +127,13 @@ function PlayerModal({ session, workspaceId, onClose }: PlayerModalProps) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const dialogRef = useRef<HTMLDivElement>(null);
-  const [mounted, setMounted] = useState(false);
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
+  // Portal target (document.body) is only meaningful once we're running in
+  // the browser. This component only ever mounts client-side (it's rendered
+  // from `activeSession &&` further below, which starts as null and is only
+  // set from a click handler), so a lazy initializer yields the same end
+  // state as the previous mount-effect without an extra render — same
+  // pattern as the already-merged fix in recordings-client.tsx's PlayerModal.
+  const [mounted] = useState(() => typeof window !== "undefined");
 
   // Fetch + parse the NDJSON recording (gzip is inflated transparently by fetch).
   useEffect(() => {

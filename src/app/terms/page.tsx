@@ -28,7 +28,7 @@ export default function TermsPage() {
           <section className="space-y-2">
             <h2 className="text-base font-bold text-white">2. Data Retention Policy</h2>
             <p>
-              To optimize database efficiency and server footprint, we enforce dynamic event data retention limits based on your subscription plan. Events older than your plan's retention threshold are automatically and permanently deleted from our databases:
+              To optimize database efficiency and server footprint, we enforce dynamic event data retention limits based on your subscription plan. Events older than your plan&apos;s retention threshold are automatically and permanently deleted from our databases:
             </p>
             <ul className="list-disc pl-5 space-y-1 mt-2 text-slate-400">
               <li><strong className="text-white">Free Plan:</strong> 30 Days of data retention.</li>
