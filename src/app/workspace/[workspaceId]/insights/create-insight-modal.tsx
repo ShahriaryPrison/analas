@@ -59,10 +59,15 @@ export default function CreateInsightModal({ workspaceId, topEvents, onClose }: 
     return () => clearTimeout(timeout);
   }, [type, queryConfig, workspaceId, selectedType]);
 
-  // Discover properties when event changes
+  // Discover properties when event changes. This is a genuine effect (the
+  // suggestion list comes from a server fetch below, it can't be produced
+  // during render); the reset-to-empty branch has to live in the same effect
+  // because it's gated on the exact same `eventName` check that decides
+  // whether to fetch, so pulling it out would duplicate that condition.
   useEffect(() => {
     const eventName = queryConfig.eventName || queryConfig.fromEvent;
     if (!eventName) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- see comment above the effect
       setDiscoveredProperties([]);
       return;
     }
@@ -73,11 +78,18 @@ export default function CreateInsightModal({ workspaceId, topEvents, onClose }: 
       .catch(() => setDiscoveredProperties([]));
   }, [workspaceId, queryConfig.eventName, queryConfig.fromEvent]);
 
-  // Auto-name
+  // Auto-name: fills a default name the first time an event is chosen, but
+  // only while the user hasn't typed one themselves (`name` stays a fully
+  // user-editable controlled input below). Because it must defer to
+  // whatever the user has already typed, this can't be replaced with a
+  // plain derived value computed during render without fighting user edits
+  // (it would overwrite a manually-typed name on every config change), so
+  // it stays a targeted effect.
   useEffect(() => {
     if (!name) {
       const eventName = queryConfig.eventName || queryConfig.fromEvent || "";
       if (eventName) {
+        // eslint-disable-next-line react-hooks/set-state-in-effect -- see comment above the effect
         setName(`${eventName} ${selectedType.label}`);
       }
     }

@@ -94,19 +94,31 @@ function JsonValue({ value }: { value: unknown }) {
 }
 
 function JsonView({ raw }: { raw: string }) {
+  // Parsing (non-JSX) happens entirely inside the try/catch; JSX is
+  // constructed afterwards, unconditionally, based on the plain result. A
+  // try/catch that constructs JSX directly doesn't actually catch render
+  // errors thrown while building that JSX (see
+  // https://react.dev/reference/react/Component#catching-rendering-errors-with-an-error-boundary),
+  // so we only use try/catch to guard the JSON.parse call itself.
+  let parsed: unknown;
+  let parseFailed = false;
   try {
-    const parsed = JSON.parse(raw);
-    if (typeof parsed === "object" && parsed !== null && Object.keys(parsed).length === 0) {
-      return <span className="text-white/30 text-xs font-mono">{"{ }"}</span>;
-    }
-    return (
-      <div className="text-xs font-mono leading-relaxed">
-        <JsonValue value={parsed} />
-      </div>
-    );
+    parsed = JSON.parse(raw);
   } catch {
+    parseFailed = true;
+  }
+
+  if (parseFailed) {
     return <pre className="text-xs font-mono text-white/60 whitespace-pre-wrap">{raw}</pre>;
   }
+  if (typeof parsed === "object" && parsed !== null && Object.keys(parsed as object).length === 0) {
+    return <span className="text-white/30 text-xs font-mono">{"{ }"}</span>;
+  }
+  return (
+    <div className="text-xs font-mono leading-relaxed">
+      <JsonValue value={parsed} />
+    </div>
+  );
 }
 
 // --- Single capture row ---
@@ -224,7 +236,15 @@ export default function CapturesClient({ workspaceId, topEvents }: Props) {
     [workspaceId]
   );
 
+  // Fetch on mount. This is a genuine effect: the capture rows live on the
+  // server and can't be produced during render, so we synchronize local
+  // state with them after mount (same shape as the fetch-on-mount effect
+  // kept in recordings-client.tsx). Lazily initializing `rows`/`loading`
+  // instead would change the first-hydration markup (it would skip the
+  // initial loading state), which is a visible behavior change we want to
+  // avoid here.
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- see comment above the effect
     fetchCaptures(filters, 0, false);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);

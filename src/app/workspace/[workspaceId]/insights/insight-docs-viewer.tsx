@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { type InsightTypeDef, type InsightDoc } from "@/lib/insight-types";
 
 type Props = {
@@ -38,15 +38,12 @@ const TRANSLATIONS: Record<string, {
 };
 
 export default function InsightDocsViewer({ typeDef }: Props) {
-  const [locale, setLocale] = useState<string>("en");
-
-  // Load language preference from localStorage on mount
-  useEffect(() => {
-    const saved = localStorage.getItem("analas-docs-locale");
-    if (saved) {
-      setLocale(saved);
-    }
-  }, []);
+  // localStorage isn't available during SSR, so the saved preference is read
+  // lazily (client-only) instead of via a mount effect — same reasoning as
+  // the merged hostUrl/mounted fixes in recordings-client.tsx.
+  const [locale, setLocale] = useState<string>(() =>
+    (typeof window !== "undefined" ? localStorage.getItem("analas-docs-locale") : null) ?? "en"
+  );
 
   const changeLocale = (newLocale: string) => {
     setLocale(newLocale);
