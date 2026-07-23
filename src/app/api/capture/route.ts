@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { clickhouse, insertEvents } from "@/lib/clickhouse";
 import crypto from "node:crypto";
+import type { Plan } from "@/lib/billing/plans";
 
 type CaptureEvent = {
   event: string;
@@ -10,7 +11,7 @@ type CaptureEvent = {
   sessionId?: string;
   properties?: Record<string, unknown>;
   timestamp?: string | number;
-  [key: string]: any;
+  [key: string]: unknown;
 };
 
 const RATE_LIMIT = 600;
@@ -193,7 +194,7 @@ export async function POST(req: Request) {
     const items = Array.isArray(rawBody) ? rawBody : [rawBody];
 
     const { getEffectivePlan } = await import("@/lib/billing/plans");
-    const planConfig = getEffectivePlan(plan as any);
+    const planConfig = getEffectivePlan(plan as Plan);
     const maxEvents = planConfig.maxEventsPerMonth * 1.2; // 20% grace period
 
     if (currentMonthEvents + items.length > maxEvents) {

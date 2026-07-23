@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { getAppSession } from "@/lib/session";
 import { fetchInsightData } from "@/lib/insight-query";
 import { NextResponse } from "next/server";
+import type { Plan } from "@/lib/billing/plans";
 
 export async function GET(
   req: Request,
@@ -37,7 +38,7 @@ export async function GET(
     session_recording: "session_recording",
   };
   const requiredFeature = featureMap[insight.type];
-  if (requiredFeature && !hasFeature(plan as any, requiredFeature)) {
+  if (requiredFeature && !hasFeature(plan as Plan, requiredFeature)) {
     return NextResponse.json(
       { error: "This insight type is not available on your current plan. Please upgrade." },
       { status: 403 }

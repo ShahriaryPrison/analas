@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { PlusIcon } from "@/components/icons";
 import DashboardSelector from "./dashboard-selector";
+import type { Plan } from "@/lib/billing/plans";
 
 type Dashboard = {
   id: string;
@@ -12,7 +13,7 @@ type Props = {
   workspaceId: string;
   dashboards: Dashboard[];
   activeDashboard: Dashboard;
-  plan: any;
+  plan: Plan;
 };
 
 export default function InsightsHeader({

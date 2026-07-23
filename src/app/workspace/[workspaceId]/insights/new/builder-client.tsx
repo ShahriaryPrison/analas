@@ -3,7 +3,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { INSIGHT_TYPES, getInsightType } from "@/lib/insight-types";
-import { hasFeature } from "@/lib/billing/plans";
+import { hasFeature, type Feature, type Plan } from "@/lib/billing/plans";
 import InsightDocsViewer from "../insight-docs-viewer";
 import { 
   CheckIcon, 
@@ -29,7 +29,7 @@ import Link from "next/link";
 type Props = {
   workspaceId: string;
   topEvents: string[];
-  plan: any; // Using any to avoid importing prisma client into client boundary
+  plan: Plan;
   dashboardId?: string | null;
   initialInsight?: {
     id: string;
@@ -213,7 +213,7 @@ export default function InsightBuilder({ workspaceId, topEvents, plan, dashboard
             {step === 1 ? (
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 animate-in fade-in zoom-in-95 duration-500">
                 {INSIGHT_TYPES.map(t => {
-                  let requiredFeature: any = "basic_insights";
+                  let requiredFeature: Feature = "basic_insights";
                   if (t.id === "retention") requiredFeature = "cohort_retention";
                   if (t.id === "funnel") requiredFeature = "funnels";
                   if (t.id === "metric") requiredFeature = "advanced_filters";

@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { getAppSession } from "@/lib/session";
 import { NextResponse } from "next/server";
+import type { Plan } from "@/lib/billing/plans";
 
 export async function POST(
   req: Request,
@@ -37,7 +38,7 @@ export async function POST(
     });
 
     const { getEffectivePlan } = await import("@/lib/billing/plans");
-    const planConfig = getEffectivePlan(workspace.plan as any);
+    const planConfig = getEffectivePlan(workspace.plan as Plan);
 
     if (currentDashboardsCount >= planConfig.maxDashboards) {
       return NextResponse.json(

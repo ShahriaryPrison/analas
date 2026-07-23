@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getAppSession } from "@/lib/session";
 import crypto from "node:crypto";
+import type { Plan } from "@/lib/billing/plans";
 
 type Params = { params: Promise<{ workspaceId: string }> };
 
@@ -60,7 +61,7 @@ export async function POST(req: NextRequest, { params }: Params) {
 
   // Enforce Max Members Limit
   const { getEffectivePlan } = await import("@/lib/billing/plans");
-  const planConfig = getEffectivePlan(result.workspace!.plan as any);
+  const planConfig = getEffectivePlan(result.workspace!.plan as Plan);
   
   const currentMembersCount = await prisma.workspaceMember.count({ where: { workspaceId } });
   const pendingInvitesCount = await prisma.workspaceInvite.count({ where: { workspaceId, usedAt: null, email: { not: null } } });

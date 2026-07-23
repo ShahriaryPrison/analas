@@ -3,6 +3,26 @@ import { prisma } from "@/lib/prisma";
 import crypto from "crypto";
 import { PLAN_LIMITS, Plan } from "@/lib/billing/plans";
 
+// Shape of the subset of the Strite webhook payload this handler reads.
+// Strite's payload varies per event type; only the fields actually accessed
+// below are declared, all optional since presence depends on the event.
+interface StriteWebhookPayload {
+  event?: string;
+  data?: {
+    object?: {
+      id?: string;
+      subscription_id?: string;
+      customer_id?: string;
+      customer?: { id?: string; email?: string };
+      customer_email?: string;
+      price_id?: string;
+      price?: { id?: string };
+      client_reference_id?: string;
+      current_period_end?: number | string;
+    };
+  };
+}
+
 /**
  * POST /api/webhooks/billing
  *
@@ -34,9 +54,9 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Signature verification failed" }, { status: 401 });
   }
 
-  let body: any;
+  let body: StriteWebhookPayload;
   try {
-    body = JSON.parse(rawBody);
+    body = JSON.parse(rawBody) as StriteWebhookPayload;
   } catch (err) {
     console.error("[Strite Webhook Error] Invalid JSON received:", rawBody, err);
     return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });

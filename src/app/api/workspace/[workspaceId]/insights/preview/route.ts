@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { getAppSession } from "@/lib/session";
 import { fetchInsightData } from "@/lib/insight-query";
 import { NextResponse } from "next/server";
+import type { Plan } from "@/lib/billing/plans";
 
 export async function POST(
   req: Request,
@@ -34,7 +35,7 @@ export async function POST(
   const requiredFeature: import("@/lib/billing/plans").Feature =
     featureMap[type] ?? "basic_insights";
 
-  if (!hasFeature(workspace.plan as any, requiredFeature)) {
+  if (!hasFeature(workspace.plan as Plan, requiredFeature)) {
     return NextResponse.json(
       { error: `Your current plan does not support ${type} insights. Please upgrade.` },
       { status: 403 }

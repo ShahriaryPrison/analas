@@ -1,6 +1,7 @@
 import { getAuthorizedWorkspace } from "@/lib/workspace-access";
 import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
+import type { Plan } from "@/lib/billing/plans";
 
 export async function GET(
   req: Request,
@@ -18,7 +19,7 @@ export async function GET(
 
   // 2. Feature gate
   const { hasFeature } = await import("@/lib/billing/plans");
-  if (!hasFeature(workspace.plan as any, "session_recording")) {
+  if (!hasFeature(workspace.plan as Plan, "session_recording")) {
     return NextResponse.json(
       { error: "Session Recording is not available on your current plan. Please upgrade." },
       { status: 403 }

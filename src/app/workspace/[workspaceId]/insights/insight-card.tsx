@@ -574,7 +574,12 @@ export function TrendChart({ rows, suffix = "" }: { rows: Row[]; suffix?: string
 
 const PALETTE = ["bg-emerald-400", "bg-indigo-400", "bg-amber-400", "bg-rose-400", "bg-cyan-400"];
 
-export function MultiTrendChart({ rows, labels, suffix = "" }: { rows: any[]; labels?: Record<string, string>; suffix?: string }) {
+// Looser than `Row`: the "all_line" retention view synthesizes rows with
+// `null` counts for cohort days that haven't happened yet, which these two
+// multi-series chart components render as gaps.
+type MultiTrendRow = { day?: string; counts?: Record<string, number | null> };
+
+export function MultiTrendChart({ rows, labels, suffix = "" }: { rows: MultiTrendRow[]; labels?: Record<string, string>; suffix?: string }) {
   const [hoveredSegment, setHoveredSegment] = useState<{ dayIdx: number; ev: string } | null>(null);
   const events = Object.keys(rows[0]?.counts || {});
   const max = Math.max(...rows.flatMap(r => Object.values(r.counts as Record<string, number>)), 1);
@@ -590,12 +595,12 @@ export function MultiTrendChart({ rows, labels, suffix = "" }: { rows: any[]; la
             {/* Tooltip for segment */}
             {hoveredSegment && hoveredSegment.dayIdx === i && (
               <div className="absolute -top-2 -translate-y-full left-1/2 -translate-x-1/2 px-2 py-1 text-xs font-semibold text-white bg-zinc-900/90 border border-white/10 rounded-lg shadow-xl whitespace-nowrap z-20 backdrop-blur-sm pointer-events-none">
-                {labels?.[hoveredSegment.ev] || hoveredSegment.ev}: {dayRow.counts[hoveredSegment.ev]?.toLocaleString()}{suffix}
+                {labels?.[hoveredSegment.ev] || hoveredSegment.ev}: {dayRow.counts?.[hoveredSegment.ev]?.toLocaleString()}{suffix}
               </div>
             )}
             <div className={`flex h-32 w-full items-end justify-center gap-0.5 rounded-lg border border-white/5 bg-white/2 ${rows.length > 7 ? "p-0.5" : "p-1"}`}>
               {events.map((ev, ei) => {
-                const count = dayRow.counts[ev] || 0;
+                const count = dayRow.counts?.[ev] || 0;
                 return (
                   <div
                     key={ev}
@@ -744,7 +749,7 @@ export function TrendLineChart({ rows, suffix = "" }: { rows: Row[]; suffix?: st
        )}
     </div>
   );
-}export function MultiTrendLineChart({ rows, labels, suffix = "" }: { rows: any[]; labels?: Record<string, string>; suffix?: string }) {
+}export function MultiTrendLineChart({ rows, labels, suffix = "" }: { rows: MultiTrendRow[]; labels?: Record<string, string>; suffix?: string }) {
   const [hoveredPointIdx, setHoveredPointIdx] = useState<number | null>(null);
   const events = Object.keys(rows[0]?.counts || {});
   const max = Math.max(...rows.flatMap(r => Object.values(r.counts as Record<string, number | null>).filter((v): v is number => v !== null)), 1);
@@ -759,7 +764,7 @@ export function TrendLineChart({ rows, suffix = "" }: { rows: Row[]; suffix?: st
               const points = rows
                 .map((r, ri) => {
                   const x = (ri / Math.max(rows.length - 1, 1)) * width;
-                  const count = r.counts[ev];
+                  const count = r.counts?.[ev];
                   if (count === undefined || count === null) return null;
                   const y = height - (count / max) * height;
                   return { x, y, count, ri };
@@ -839,7 +844,7 @@ export function TrendLineChart({ rows, suffix = "" }: { rows: Row[]; suffix?: st
                   "bg-cyan-400": "text-cyan-400"
                 };
                 const textColor = colorMap[PALETTE[i % PALETTE.length]] || "text-emerald-400";
-                const count = dayRow?.counts[ev];
+                const count = dayRow?.counts?.[ev];
                 if (count === undefined || count === null) return null;
                 return (
                   <div key={ev} className="flex items-center justify-between gap-3 text-[10px]">

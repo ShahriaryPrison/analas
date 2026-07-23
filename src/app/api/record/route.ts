@@ -20,7 +20,7 @@ export async function OPTIONS() {
 }
 import { prisma } from "@/lib/prisma";
 import { getRecordingStore } from "@/lib/recordings/store";
-import { isCloudHosted, getEffectivePlan } from "@/lib/billing/plans";
+import { isCloudHosted, getEffectivePlan, type Plan } from "@/lib/billing/plans";
 import crypto from "node:crypto";
 import { gzip, gunzip } from "node:zlib";
 import { promisify } from "node:util";
@@ -243,7 +243,7 @@ async function handlePost(req: Request) {
         return NextResponse.json({ error: "Recording too large" }, { status: 413 });
       }
     } else {
-      const planConfig = getEffectivePlan(plan as any);
+      const planConfig = getEffectivePlan(plan as Plan);
       if (!planConfig.features.includes("session_recording")) {
         return NextResponse.json({ error: "Session Replay is not enabled on your plan" }, { status: 403 });
       }
