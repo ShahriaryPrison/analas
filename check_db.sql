@@ -1,0 +1,1 @@
+SELECT "workspaceId", "keyHash" FROM "ApiKey" WHERE "keyHash" IN ('be2c630030fa357d814034f5ceacd200be8fce0cbf828e19677f7518aee1909b', '3ce08e8d96adff0fada7afb5e6d65616ae8eaf362dec7b894e10f25a733b1f37');

@@ -1,0 +1,56 @@
+# Loop audit: analas-api → customer-metrics-read-api
+
+## What this is (one line)
+Analas is a self-hosted/cloud event-analytics + session-recording product (Next.js + ClickHouse + Postgres/Prisma) whose only API-key-authenticated endpoint is the write path (`capture/route.ts`); every read path (insights, events, recordings, dashboards) requires a logged-in NextAuth browser session, so a customer's own automation has no way to ask "what happened to my data" without a human clicking through the UI.
+
+## Layer-by-layer
+
+### Sensor layer
+- What exists: events land reliably in ClickHouse today. [capture/route.ts](src/app/api/capture/route.ts) buffers and batch-inserts via `insertEvents` ([clickhouse.ts:37](src/lib/clickhouse.ts)), and increments `Workspace.currentMonthEvents` in Postgres per tenant. A small aggregate helper already exists — `getTopEvents(tenantId, limit)` ([clickhouse.ts:46-54](src/lib/clickhouse.ts)) — proving the ClickHouse side can answer tenant-scoped aggregate questions today.
+- What's missing / broken: that signal has exactly one consumer — a human with a NextAuth session, via `fetchInsightData` ([insight-query.ts:40](src/lib/insight-query.ts)) called from the session-gated [insights data route](src/app/api/workspace/[workspaceId]/insights/[insightId]/data/route.ts). There is no API-key-authenticated read path at all, confirmed by grep: every route under `src/app/api/workspace/**` that queries data calls `getAppSession()`, none accept the `Authorization: Bearer` scheme the capture route uses. A customer's own monitoring/automation is structurally blind to their own account.
+
+### Policy layer
+- What exists: the ingestion path already runs several automatic, no-human-in-the-loop decisions with real teeth: plan-based event caps with a 20% grace period ([capture/route.ts:196-201](src/app/api/capture/route.ts)), auto-downgrade to `FREE` when `currentPeriodEnd` has passed (same file, both the public-token and private-key branches, lines 108-116 and 127-135), per-key in-memory rate limiting at 600 req/min, and origin/domain allow-listing. None of this asks a human — it's a real, working policy layer, just scoped only to writes.
+- What's missing: no policy has been defined for reads at all — which plan tier should even get API read access (FREE? PRO+?), what the read-side rate limit should be, and whether it shares the write path's `RATE_LIMIT`/`apiCache` maps or needs its own. This has to be decided, not inherited by default.
+
+### Tool layer
+- What exists: `queryJson()` and the ClickHouse client ([clickhouse.ts:24-35](src/lib/clickhouse.ts)) are generic and already used for tenant-scoped queries; `getEffectivePlan`/`hasFeature` ([billing/plans.ts](src/lib/billing/plans.ts)) is the existing plan-gate mechanism used consistently elsewhere. The auth-and-lookup logic in `capture/route.ts` (hash key → cache → `prisma.apiKey`/`workspace.publicToken` lookup → tenant scoping) is the pattern to reuse, per the handoff.
+- What's missing: (a) the read endpoint itself doesn't exist — this is the concrete gap to build; (b) the auth-and-plan-gate block in `capture/route.ts` (lines 79-147) is not a shared function — it's ~70 lines that would have to be copy-pasted a fourth time (it's already duplicated in spirit across `insights/route.ts`, `insights/[insightId]/data/route.ts`, and `recordings/route.ts`, each re-deriving its own gate check) if the new route is built the same way; (c) separately, and outside this specific scope: deploying anything that gets merged is **fully manual** — [README.md:52](README.md) documents `docker compose exec app npx prisma migrate deploy` as the production migration step, there is no `.github/workflows/`, `.gitlab-ci.yml`, `Jenkinsfile`, or any CI config in either remote (confirmed on both `origin` → github.com/ShahriaryPrison/analas and `hamgit` → hamgit.ir/gmodern2560/analas; the two remotes' `main` branches differ by only 2 files, a small billing-webhook diff, not CI). A merged PR has no automatic path to `analas.ir`.
+
+### Quality gate
+- What exists: TypeScript compilation via `next build`, and `npm run lint` (ESLint, flat config, `eslint-config-next`). Docker multi-stage build validates the build step.
+- What's missing: no test runner is configured anywhere — `package.json` has no `test` script, and a repo-wide search for `*.test.*`, `*.spec.*`, `__tests__/`, or `tests/` returns nothing. No CI workflow runs lint or build automatically on push/PR (confirmed above). This means every change today — including whatever gets built for this metrics endpoint — currently ships on manual review alone. This is the layer that caps how much of the rest of this loop (including this audit's own quick wins) can be called "gated" rather than "eyeballed."
+
+### Learning mechanism
+- What exists: none observed as a system. The closest precedent is negative: the plan-expiry-downgrade check is hand-duplicated verbatim in two branches of the *same function* in `capture/route.ts` rather than extracted once — a manual fix applied twice instead of consolidated, which is itself evidence nothing here feeds back into a shared, improving implementation.
+- What's missing: no mechanism to notice "this same fix pattern happened twice" and consolidate it, no alerting loop from production usage back into code.
+- Precedent found: the duplicated auto-downgrade block above is exactly the kind of one-off manual patch that should have become a shared `resolveEffectivePlan(workspace)` helper the first time, and didn't.
+
+## Loop status
+
+**No loop — blocked by Sensor, Tool, and Quality gate**, for the customer-metrics-read gap specifically. The read-side Sensor (a signal a customer's own automation can pull) doesn't exist, the Tool (the endpoint) doesn't exist, and there is no Quality gate at all in the repo to safely land either. Policy has real precedent to extend (ingestion's plan/rate-limit gating) and Learning has a concrete anti-pattern to fix, but two-of-five-strong doesn't offset three genuinely absent layers — this is "No loop," not "mostly there."
+
+Separately, the **deploy path** (any merged PR → production) is also **No loop — blocked by Tool (no CI/CD) and Quality gate (nothing to run in that CI)**. This is independent of the metrics-API gap and affects every future change to this repo, not just this one.
+
+## Cross-cutting checks
+- **Legibility**: the "how does auth/plan-gating work here" knowledge is scattered across at least four route files (`capture`, `insights/route.ts`, `insights/[insightId]/data/route.ts`, `recordings/route.ts`), each re-implementing its own version rather than reading from one place. Building the new endpoint by copy-pasting `capture/route.ts`'s auth block would be a fifth copy — worth extracting once instead.
+- **Ephemeral software vs. durable context**: plan limits/features are already externalized well (`billing-plans.json` behind `getEffectivePlan`/`hasFeature` — durable, data-driven). The auth-and-lookup block in `capture/route.ts` is the opposite: inline, stateful (module-level `Map`s for cache and rate limiting), and duplicated rather than shared — those in-memory maps also silently stop being a real limit the moment the app runs on more than one instance, since each instance gets its own map.
+- **Human/AI boundary**: granting a customer's own API key read access to their own tenant-scoped aggregate data is low-stakes and reversible (same trust boundary the write path already accepts) — a good candidate for the endpoint itself to run with no per-request human approval, exactly like `capture/route.ts` today. What should **not** auto-proceed: any deploy to the shared production instance serving real paying customers' data — that stays a human-confirmed action regardless of how good CI gets, per this skill's own step-7 rule.
+
+## What to address first
+
+1. **Quick win — Extract shared API-key auth + add a real test/CI gate.** Pull the auth-and-lookup block (`capture/route.ts` lines 79-147) into `src/lib/api-auth.ts` as a `requireApiKeyAuth(req)` helper returning `{ tenantId, plan, workspaceId }` or a 401/403 response; fix the duplicated auto-downgrade logic as part of the same extraction. Wire in a test runner (`vitest`, lightest fit for this Next.js/TS stack) with a `test` script in `package.json`, and add `.github/workflows/ci.yml` running lint + typecheck + test on push/PR — durable, checked-in CI, not a throwaway script.
+   - **Measurement plan**: instant — `npm run build`/`npm run lint` continue to pass, and a curl smoke test against the existing capture route (local dev ClickHouse/Postgres via `docker-compose.yml`) confirms unchanged 200/401/403 behavior before/after the refactor.
+   - **Quality-gate plan**: unit tests on the new `requireApiKeyAuth` helper (valid private key, valid public token, invalid key, expired-plan downgrade path) running in the new CI workflow — this is the gate the rest of this list depends on.
+   - Status: **Planned — awaiting the loop go-ahead.**
+
+2. **Quick win — Build `GET /api/workspace/[workspaceId]/metrics`** using the helper from #1: event counts by name over a caller-supplied time range, ClickHouse-backed via `queryJson`, tenant-scoped off `requireApiKeyAuth`'s result, gated behind a plan check (decide: new `Feature` flag e.g. `"api_read_access"`, or reuse an existing tier), and rate-limited on the same discipline as writes (flagging: if it shares the existing in-memory `rateMap`, note that map is per-process and won't hold under multiple app instances — worth deciding now rather than discovering it under load).
+   - **Measurement plan**: instant — curl the endpoint with a seeded test workspace/key against known ClickHouse rows, confirm correct counts; confirm 401 (bad key), 403 (wrong plan), 429 (rate limit) paths.
+   - **Quality-gate plan**: route-level tests in the CI added in #1 covering valid request, invalid key, wrong-plan key, rate-limit exceeded, and cross-tenant isolation (key for tenant A must never return tenant B's counts) — this last case is the one that actually matters for a live paid product with real customer data.
+   - Status: **Planned — awaiting the loop go-ahead.**
+
+3. **Structural bet (scope only) — CI/CD to production.** Currently 100% manual (`docker compose exec app npx prisma migrate deploy` per README, no workflow file on either remote). This determines whether merging #1/#2 ever reaches `analas.ir`, and on what timeline — independent of this specific feature, but directly relevant to it. Needs its own scoping pass (where the app actually runs, what triggers a deploy, what the rollback story is) before any building — not something to fold into a quick win.
+
+4. **Structural bet (scope only) — consolidate the duplicated plan-expiry-downgrade logic** into one shared billing helper rather than the two hand-copied inline blocks in `capture/route.ts`. Smaller than #3, but touches billing correctness directly, so it deserves its own look rather than a silent fix inside #1's refactor.
+
+Ready to proceed on 1–2 as a single blanket go-ahead (subagent implements, I review against this plan, gate runs, then I check back with you before anything touches the shared repo/production)? Items 3–4 stay proposals until you want them scoped further.
