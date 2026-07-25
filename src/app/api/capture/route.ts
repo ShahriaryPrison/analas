@@ -1,18 +1,8 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { clickhouse, insertEvents } from "@/lib/clickhouse";
+import { insertEvents } from "@/lib/clickhouse";
 import crypto from "node:crypto";
 import type { Plan } from "@/lib/billing/plans";
-
-type CaptureEvent = {
-  event: string;
-  userId?: string;
-  anonymousId?: string;
-  sessionId?: string;
-  properties?: Record<string, unknown>;
-  timestamp?: string | number;
-  [key: string]: unknown;
-};
 
 const RATE_LIMIT = 600;
 const rateMap = new Map<string, { ts: number; count: number }>();
