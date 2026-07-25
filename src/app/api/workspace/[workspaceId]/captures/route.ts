@@ -48,6 +48,8 @@ export async function GET(
     if (dateTo) {
       conditions.push("ts <= {dateTo:String}");
       qParams.dateTo = dateTo;
+    } else {
+      conditions.push("ts <= now()");
     }
 
     const whereClause = conditions.join(" AND ");
@@ -55,7 +57,7 @@ export async function GET(
     const [rows, countRows] = await Promise.all([
       queryJson<CaptureRow>(
         `SELECT event, user_id, session_id, properties,
-                formatDateTime(ts, '%Y-%m-%d %H:%i:%S', {timezone:String}) AS ts
+                formatDateTime(ts, '%Y-%m-%d %H:%M:%S', '${APP_TIMEZONE}') AS ts
          FROM events
          WHERE ${whereClause}
          ORDER BY ts DESC

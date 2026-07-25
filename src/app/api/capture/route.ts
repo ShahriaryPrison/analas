@@ -208,7 +208,11 @@ export async function POST(req: Request) {
         continue;
       }
 
-      const timestamp = item.timestamp ? new Date(item.timestamp) : new Date();
+      const nowMs = Date.now();
+      const timestamp = item.timestamp ? new Date(item.timestamp) : new Date(nowMs);
+      if (timestamp.getTime() > nowMs) {
+        timestamp.setTime(nowMs);
+      }
       
       const userId = String(item.userId || item.anonymousId || item.properties?.userId || item.properties?.anonymousId || "");
       const sessionId = String(item.sessionId || item.properties?.sessionId || "");

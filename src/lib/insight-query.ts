@@ -100,7 +100,7 @@ export async function fetchInsightData(
   if (type === "trend") {
     const eventName = String(config.eventName || "");
     const raw = await queryJson<{ day: string; count: string | number }>(
-      `SELECT formatDateTime(ts, '%Y-%m-%d', {timezone:String}) AS day, count() AS count
+      `SELECT formatDateTime(ts, '%Y-%m-%d', '${APP_TIMEZONE}') AS day, count() AS count
        FROM events
        WHERE tenant_id = {tenantId:String}
          AND event = {event:String}
@@ -147,7 +147,7 @@ export async function fetchInsightData(
     if (events.length === 0) return { total: 0, rows: [] };
 
     const raw = await queryJson<{ day: string; event: string; count: string | number }>(
-      `SELECT formatDateTime(ts, '%Y-%m-%d', {timezone:String}) AS day, event, count() AS count
+      `SELECT formatDateTime(ts, '%Y-%m-%d', '${APP_TIMEZONE}') AS day, event, count() AS count
        FROM events
        WHERE tenant_id = {tenantId:String}
          AND event IN {events:Array(String)}
@@ -194,7 +194,7 @@ export async function fetchInsightData(
     if (isTrend) {
       const queryStr = `
         SELECT
-            formatDateTime(start_date, '%Y-%m-%d', {timezone:String}) AS day,
+            formatDateTime(start_date, '%Y-%m-%d', '${APP_TIMEZONE}') AS day,
             count(DISTINCT IF(level >= 1, user_id, NULL)) AS step_1_users,
             count(DISTINCT IF(level >= {totalSteps:Int32}, user_id, NULL)) AS completed_users
         FROM (
@@ -318,7 +318,7 @@ export async function fetchInsightData(
     const baseParams: Record<string, unknown> = { tenantId, event: eventName, timeFrame };
 
     const raw = await queryJson<{ day: string; count: string | number }>(
-      `SELECT formatDateTime(ts, '%Y-%m-%d', {timezone:String}) AS day, ${aggFunc} AS count
+      `SELECT formatDateTime(ts, '%Y-%m-%d', '${APP_TIMEZONE}') AS day, ${aggFunc} AS count
        FROM events
        WHERE tenant_id = {tenantId:String}
          AND event = {event:String}
