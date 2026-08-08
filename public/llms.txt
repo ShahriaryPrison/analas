@@ -10,12 +10,14 @@
 All `/api/v1/*` endpoints take a Bearer token:
 
 ```
-Authorization: Bearer analas_pk_...
+Authorization: Bearer analas_sk_<workspace_prefix>_<token>
 ```
+*(Legacy `analas_pk_...` keys continue to be fully supported)*
 
-Create a key in Workspace Settings → API Keys, selecting only the scopes it needs:
+Create a key in Workspace Settings → API Keys with an optional descriptive name, selecting only the scopes it needs:
 `events:write`, `events:read`, `insights:read`, `insights:write`, `dashboards:read`,
 `dashboards:write`, `recordings:read`. A key can only act on the workspace it was created in.
+Each key displays a safe non-secret hint (e.g. `analas_sk_...••••8d2c`) and tracks `lastUsedAt`.
 
 ## Endpoints
 

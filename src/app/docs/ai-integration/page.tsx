@@ -136,18 +136,24 @@ export default function AiIntegrationDocsPage() {
         <section className="space-y-4 border-b border-white/10 pb-12">
           <h2 className="text-xl font-bold text-white">1. Get a scoped API key</h2>
           <p className="text-sm text-white/60 leading-relaxed">
-            In <strong>Workspace Settings → API Keys</strong>, create a key and select only the scopes it needs.
+            In <strong>Workspace Settings → API Keys</strong>, create a key with a descriptive name (e.g. <em>&quot;Claude Ingest Agent&quot;</em> or <em>&quot;CI Verification Worker&quot;</em>) and select only the scopes it needs.
             Scopes are additive and immutable after creation — revoke and recreate a key to change its scopes.
           </p>
-          <pre className="rounded-xl bg-slate-950 border border-white/10 p-5 text-xs font-mono text-white/80 overflow-x-auto whitespace-pre">{`events:write        # capture events (default scope, existing keys)
+          <pre className="rounded-xl bg-slate-950 border border-white/10 p-5 text-xs font-mono text-white/80 overflow-x-auto whitespace-pre">{`events:write        # capture events (default scope)
 events:read         # list top event names
 insights:read       # read saved insights, run ad-hoc queries
 insights:write      # create insights
 dashboards:read     # list/read dashboards
 dashboards:write    # create dashboards
 recordings:read     # list and stream session recordings`}</pre>
+          <div className="rounded-xl bg-slate-950 border border-white/10 p-4 space-y-2">
+            <h3 className="text-xs font-bold uppercase tracking-wider text-fuchsia-400">Structured Key Format &amp; Workspace Identification</h3>
+            <p className="text-xs text-white/70 leading-relaxed">
+              Keys are structured as <code className="text-emerald-300 font-mono text-xs">analas_sk_&lt;workspace_prefix&gt;_&lt;random_token&gt;</code>. Each key also displays a safe non-secret hint (e.g. <code className="text-emerald-300 font-mono text-xs">analas_sk_a1b2c3_••••8d2c</code>) and tracks its last usage time (<code className="text-white/80 font-mono text-xs">lastUsedAt</code>) so you can easily identify which workspace and agent a key belongs to without exposing the secret.
+            </p>
+          </div>
           <p className="text-sm text-white/60 leading-relaxed">
-            Every request authenticates the same way as event capture: an <code className="text-emerald-300 font-mono text-xs bg-white/5 px-1 rounded">Authorization: Bearer analas_pk_...</code> header. A key can only act on the workspace it was created in, and only within the scopes it was granted — a read-only key can never create or delete anything.
+            Every request authenticates the same way: an <code className="text-emerald-300 font-mono text-xs bg-white/5 px-1 rounded">Authorization: Bearer analas_sk_...</code> header (legacy <code className="text-emerald-300 font-mono text-xs bg-white/5 px-1 rounded">analas_pk_...</code> keys continue to be fully supported). A key can only act on the workspace it was created in, and only within the scopes it was granted — a read-only key can never create or delete anything.
           </p>
         </section>
 

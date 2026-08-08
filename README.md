@@ -12,7 +12,8 @@ Open-source product analytics platform built for developers. Capture events with
 - **Zero SDK required** — Any language, any runtime. A plain `POST` is all it takes
 - **Insight types** — Extensible registry: Count, Trend, and community-contributed types
 - **Multi-tenant isolation** — Each workspace gets a unique tenant UUID, partitioned in ClickHouse
-- **API key management** — Create and revoke keys per workspace instantly
+- **Structured API key management** — Scoped, identifiable keys (`analas_sk_<workspace>_<token>`) with custom naming, non-secret hint badges, and activity tracking
+- **AI agent & automation ready** — Full REST API (`/api/v1/*`) and `llms.txt` documentation for agent-driven analytics
 - **Self-hostable** — Ships as a Docker Compose stack: Next.js + PostgreSQL + ClickHouse
 
 ---
@@ -148,12 +149,14 @@ Then: `certbot --nginx -d analas.example.com`
 Send events to your instance using a simple `POST` request. You can send a single event object or an array of objects (bulk). 
 
 **Endpoint:** `POST /api/capture`  
-**Auth:** `Authorization: Bearer <YOUR_API_KEY>`
+**Auth:** `Authorization: Bearer <YOUR_API_KEY>` (e.g. `analas_sk_...` or public token `analas_pub_...`)
 
 **Key Features:**
+- **Structured Keys & Identification:** Keys use `analas_sk_<workspace_prefix>_<token>` with non-secret masked hints (e.g. `analas_sk_...••••8d2c`) and last-activity tracking in workspace settings.
 - **Bulk Ingestion:** Send arrays `[{ event: "click" }, { event: "view" }]` for high-throughput batching.
 - **Dynamic User Tracking:** If your payload includes `userId`, `anonymousId`, or `sessionId` (either at the root or inside `properties`), Analas automatically extracts them into ultra-fast indexed columns for funnel and unique-user queries.
 - **Flexible Payload:** Any other fields are safely stored as JSON and can be queried instantly.
+- **AI Agent API:** Full scoped REST API (`/api/v1/events`, `/api/v1/insights`, `/api/v1/dashboards`, `/api/v1/recordings`) documented at `/docs/ai-integration` and `/llms.txt`.
 
 **Example Payload:**
 ```json
