@@ -4,6 +4,7 @@ import { NextResponse } from "next/server";
 import crypto from "node:crypto";
 import { validatePhoneNumber } from "@/lib/countries";
 import { sendOtpSms } from "@/lib/sms";
+import { generateStructuredApiKey } from "@/lib/api-keys";
 import type { Plan } from "@/lib/billing/plans";
 
 export async function POST(req: Request) {
@@ -13,9 +14,9 @@ export async function POST(req: Request) {
     // 1. Hash the password
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    // Generate raw API key before transaction so we can return it
-    const rawKey = `analas_pk_${crypto.randomUUID()}`;
-    const keyHash = crypto.createHash("sha256").update(rawKey).digest("hex");
+    // Pre-generate tenantId and structured API key before transaction
+    const tenantId = crypto.randomUUID();
+    const { rawKey, keyHash, keyHint, lastFour } = generateStructuredApiKey({ tenantId });
 
     // Generate verification details
     const emailToken = crypto.randomBytes(32).toString("hex");
@@ -49,7 +50,7 @@ export async function POST(req: Request) {
       const workspace = await tx.workspace.create({
         data: {
           name: `${name}'s Workspace`,
-          tenantId: crypto.randomUUID(), // This is your ClickHouse ID!
+          tenantId, // This is your ClickHouse ID!
           publicToken: `analas_pub_${crypto.randomBytes(16).toString("hex")}`,
           members: {
             create: {
@@ -60,10 +61,12 @@ export async function POST(req: Request) {
         },
       });
 
-      // Create a default API key for this workspace (using pre-computed hash)
+      // Create a default API key for this workspace
       await tx.apiKey.create({
         data: {
           keyHash,
+          keyHint,
+          lastFour,
           name: "Default key",
           workspaceId: workspace.id,
         },

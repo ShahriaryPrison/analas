@@ -169,4 +169,37 @@ describe("resolveApiKey", () => {
 
     expect(prisma.apiKey.findUnique).toHaveBeenCalledTimes(1);
   });
+
+  it("authenticates structured secret keys with analas_sk_ prefix", async () => {
+    vi.mocked(prisma.apiKey.findUnique).mockResolvedValueOnce({
+      id: "key_sk_1",
+      keyHint: "analas_sk_tenant_••••9999",
+      lastFour: "9999",
+      scopes: ["events:read"],
+      workspace: baseWorkspace,
+    } as any);
+    vi.mocked(prisma.apiKey.update).mockResolvedValue({} as any);
+
+    const key = "analas_sk_tenant_0123456789abcdef0123456789abcdef";
+    const result = await resolveApiKey(req(key), { scope: "events:read" });
+
+    expect(result).not.toBeInstanceOf(NextResponse);
+    expect((result as any).workspaceId).toBe("ws_1");
+  });
+
+  it("maintains 100% backward compatibility for legacy keys lacking keyHint and lastFour", async () => {
+    vi.mocked(prisma.apiKey.findUnique).mockResolvedValueOnce({
+      id: "legacy_key_1",
+      keyHint: null,
+      lastFour: null,
+      scopes: ["events:write"],
+      workspace: baseWorkspace,
+    } as any);
+
+    const legacyKey = "analas_pk_3c0d8b4e-7b79-4d26-a0bf-b58611eb2cb9";
+    const result = await resolveApiKey(req(legacyKey), { scope: "events:write" });
+
+    expect(result).not.toBeInstanceOf(NextResponse);
+    expect((result as any).tenantId).toBe("tenant_1");
+  });
 });

@@ -16,6 +16,7 @@ export type ResolvedApiKey = {
   workspaceId: string;
   plan: string;
   allowedDomains: string[];
+  apiKeyId?: string;
 };
 
 const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
@@ -23,6 +24,24 @@ const keyCache = new Map<string, ResolvedApiKey & { expiresAt: number }>();
 
 const RATE_LIMIT_DEFAULT = 300;
 const rateMap = new Map<string, { ts: number; count: number }>();
+const lastTouchMap = new Map<string, number>();
+
+export function touchApiKeyUsage(keyId: string) {
+  const now = Date.now();
+  const lastTouch = lastTouchMap.get(keyId) ?? 0;
+  // Throttle DB updates to once per 60 seconds per key
+  if (now - lastTouch > 60_000) {
+    lastTouchMap.set(keyId, now);
+    prisma.apiKey
+      .update({
+        where: { id: keyId },
+        data: { lastUsedAt: new Date(now) },
+      })
+      .catch(() => {
+        // Non-blocking background touch error
+      });
+  }
+}
 
 async function downgradeIfExpired(ws: {
   id: string;
@@ -64,6 +83,7 @@ async function lookupKey(rawKey: string, keyHash: string): Promise<ResolvedApiKe
   const ws = api.workspace;
   const plan = await downgradeIfExpired(ws);
   return {
+    apiKeyId: api.id,
     tenantId: ws.tenantId,
     workspaceId: ws.id,
     plan,
@@ -109,6 +129,11 @@ export async function resolveApiKey(
     );
   }
 
+  // Touch lastUsedAt asynchronously in the background for private server keys
+  if (resolved.apiKeyId) {
+    touchApiKeyUsage(resolved.apiKeyId);
+  }
+
   // ── Origin/Domain verification (only enforced when the workspace has configured it) ──
   if (resolved.allowedDomains.length > 0) {
     const originHeader = req.headers.get("origin") || req.headers.get("referer") || "";
@@ -148,5 +173,5 @@ export async function resolveApiKey(
     rateMap.set(keyHash, entry);
   }
 
-  return { tenantId: resolved.tenantId, workspaceId: resolved.workspaceId, plan: resolved.plan, allowedDomains: resolved.allowedDomains };
+  return { tenantId: resolved.tenantId, workspaceId: resolved.workspaceId, plan: resolved.plan, allowedDomains: resolved.allowedDomains, apiKeyId: resolved.apiKeyId };
 }

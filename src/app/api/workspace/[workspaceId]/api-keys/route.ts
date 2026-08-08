@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getAppSession } from "@/lib/session";
-import crypto from "node:crypto";
+import { generateStructuredApiKey } from "@/lib/api-keys";
 import type { ApiScope } from "@/lib/api-auth";
 
 const VALID_SCOPES: ApiScope[] = [
@@ -36,6 +36,9 @@ export async function GET(
     id: k.id,
     name: k.name,
     scopes: k.scopes,
+    keyHint: k.keyHint,
+    lastFour: k.lastFour,
+    lastUsedAt: k.lastUsedAt,
     createdAt: k.createdAt,
   }));
   return NextResponse.json({ apiKeys: keys });
@@ -62,20 +65,33 @@ export async function POST(
     return NextResponse.json({ error: "No valid scopes provided" }, { status: 400 });
   }
 
-  const rawKey = `analas_pk_${crypto.randomUUID()}`;
-  const keyHash = crypto.createHash("sha256").update(rawKey).digest("hex");
+  const rawName = typeof body?.name === "string" ? body.name.trim() : "";
+  const name = rawName.length > 0 ? rawName.slice(0, 100) : `Key ${new Date().toISOString().slice(0, 10)}`;
+
+  const { rawKey, keyHash, keyHint, lastFour } = generateStructuredApiKey({
+    tenantId: membership.workspace.tenantId,
+  });
 
   const created = await prisma.apiKey.create({
     data: {
       keyHash,
-      name: `Key ${new Date().toISOString().slice(0, 10)}`,
+      keyHint,
+      lastFour,
+      name,
       workspaceId,
       scopes,
     },
   });
 
   return NextResponse.json(
-    { id: created.id, name: created.name, scopes: created.scopes, rawKey },
+    {
+      id: created.id,
+      name: created.name,
+      scopes: created.scopes,
+      keyHint: created.keyHint,
+      lastFour: created.lastFour,
+      rawKey,
+    },
     { status: 201 }
   );
 }

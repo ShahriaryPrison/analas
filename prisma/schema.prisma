@@ -68,13 +68,16 @@ model WorkspaceMember {
 }
 
 model ApiKey {
-  id          String   @id @default(cuid())
-  keyHash     String   @unique
+  id          String    @id @default(cuid())
+  keyHash     String    @unique
+  keyHint     String?
+  lastFour    String?
   name        String
   workspaceId String
   workspace   Workspace @relation(fields: [workspaceId], references: [id])
-  scopes      String[] @default(["events:write"])
-  createdAt   DateTime @default(now())
+  scopes      String[]  @default(["events:write"])
+  lastUsedAt  DateTime?
+  createdAt   DateTime  @default(now())
 }
 
 model Dashboard {

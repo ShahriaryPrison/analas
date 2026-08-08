@@ -13,6 +13,9 @@ export default async function SettingsPage({
     id: k.id,
     name: k.name,
     scopes: k.scopes,
+    keyHint: k.keyHint ?? null,
+    lastFour: k.lastFour ?? null,
+    lastUsedAt: k.lastUsedAt?.toISOString() ?? null,
     createdAt: k.createdAt.toISOString(),
   }));
 

@@ -8,9 +8,31 @@ import {
   SparklesIcon,
 } from "@/components/icons";
 import { Plan, getEffectivePlan, isCloudHosted } from "@/lib/billing/plans";
+import { formatMaskedApiKey } from "@/lib/api-keys";
 
 // ─── types ────────────────────────────────────────────────────────────────────
-type ApiKey = { id: string; name: string; createdAt: string; scopes?: string[] };
+type ApiKey = {
+  id: string;
+  name: string;
+  createdAt: string;
+  scopes?: string[];
+  keyHint?: string | null;
+  lastFour?: string | null;
+  lastUsedAt?: string | null;
+};
+
+function formatRelativeTime(dateStr: string | null | undefined): string {
+  if (!dateStr) return "Never used";
+  const diffMs = Date.now() - new Date(dateStr).getTime();
+  const mins = Math.floor(diffMs / 60000);
+  if (mins < 1) return "Active just now";
+  if (mins < 60) return `Active ${mins}m ago`;
+  const hours = Math.floor(mins / 60);
+  if (hours < 24) return `Active ${hours}h ago`;
+  const days = Math.floor(hours / 24);
+  if (days < 30) return `Active ${days}d ago`;
+  return `Last active ${new Date(dateStr).toLocaleDateString()}`;
+}
 
 const SCOPE_OPTIONS: { value: string; label: string }[] = [
   { value: "events:write", label: "Write events" },
@@ -89,10 +111,12 @@ export default function SettingsClient({
 
   // ── API Keys state ──────────────────────────────────────────────────────────
   const [keys, setKeys] = useState<ApiKey[]>(initialKeys);
+  const [keyNameInput, setKeyNameInput] = useState("");
   const [newKey, setNewKey] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
   const [revoking, setRevoking] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  const [hintCopiedId, setHintCopiedId] = useState<string | null>(null);
   const [codeCopied, setCodeCopied] = useState(false);
   const [lang, setLang] = useState<"js" | "curl">("curl");
   const [selectedScopes, setSelectedScopes] = useState<string[]>(["events:write"]);
@@ -238,13 +262,25 @@ export default function SettingsClient({
       const res = await fetch(`/api/workspace/${workspaceId}/api-keys`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ scopes: selectedScopes }),
+        body: JSON.stringify({
+          name: keyNameInput.trim() || undefined,
+          scopes: selectedScopes,
+        }),
       });
       const data = await res.json();
       if (res.ok) {
         setNewKey(data.rawKey);
+        setKeyNameInput("");
         setKeys((prev) => [
-          { id: data.id, name: data.name, scopes: data.scopes, createdAt: new Date().toISOString() },
+          {
+            id: data.id,
+            name: data.name,
+            scopes: data.scopes,
+            keyHint: data.keyHint,
+            lastFour: data.lastFour,
+            lastUsedAt: null,
+            createdAt: new Date().toISOString(),
+          },
           ...prev,
         ]);
       }
@@ -799,51 +835,73 @@ export default function SettingsClient({
       {/* ═══════════════════════════════════════════════════════════════════════
           API KEYS
       ═══════════════════════════════════════════════════════════════════════ */}
-      <div className="rounded-2xl border border-white/10 bg-white/5 p-6 space-y-5">
+      <div className="rounded-2xl border border-white/10 bg-white/5 p-6 space-y-6">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h2 className="text-lg font-semibold text-white">API Keys</h2>
             <p className="mt-0.5 text-sm text-white/50">
-              Keys authenticate event capture and, per scope, agent/API access to your data.
+              Structured workspace keys authenticate event capture and scoped agent/API access.
             </p>
           </div>
         </div>
 
-        {/* Scope picker for the next key */}
-        <div className="space-y-2">
-          <span className="text-[10px] font-bold uppercase tracking-wider text-white/40">Scopes for new key</span>
-          <div className="flex flex-wrap gap-2">
-            {SCOPE_OPTIONS.map((opt) => (
-              <button
-                key={opt.value}
-                type="button"
-                onClick={() => toggleScope(opt.value)}
-                className={`rounded-full border px-3 py-1.5 text-xs font-medium transition ${
-                  selectedScopes.includes(opt.value)
-                    ? "border-emerald-500/40 bg-emerald-500/15 text-emerald-300"
-                    : "border-white/10 bg-white/5 text-white/50 hover:text-white/80"
-                }`}
-              >
-                {opt.label}
-              </button>
-            ))}
+        {/* Create new key section */}
+        <div className="rounded-xl border border-white/8 bg-white/3 p-4 space-y-4">
+          <div className="space-y-1.5">
+            <label htmlFor="key-name-input" className="text-[10px] font-bold uppercase tracking-wider text-white/40">
+              Key Name / Purpose
+            </label>
+            <input
+              id="key-name-input"
+              type="text"
+              placeholder="e.g. Production Backend, Ingest Worker, Staging Web App"
+              value={keyNameInput}
+              onChange={(e) => setKeyNameInput(e.target.value)}
+              className="w-full rounded-xl border border-white/10 bg-slate-900/60 px-4 py-2 text-sm text-white placeholder-white/30 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 transition"
+            />
           </div>
+
+          <div className="space-y-2">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-white/40">Scopes for new key</span>
+            <div className="flex flex-wrap gap-2">
+              {SCOPE_OPTIONS.map((opt) => (
+                <button
+                  key={opt.value}
+                  type="button"
+                  onClick={() => toggleScope(opt.value)}
+                  className={`rounded-full border px-3 py-1.5 text-xs font-medium transition ${
+                    selectedScopes.includes(opt.value)
+                      ? "border-emerald-500/40 bg-emerald-500/15 text-emerald-300"
+                      : "border-white/10 bg-white/5 text-white/50 hover:text-white/80"
+                  }`}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
           <button
             onClick={createKey}
             disabled={creating || selectedScopes.length === 0}
             className="flex items-center justify-center gap-1.5 rounded-lg bg-emerald-400 px-4 py-2.5 text-sm font-semibold text-slate-900 transition hover:bg-emerald-300 disabled:opacity-60"
           >
             <PlusIcon className="w-3.5 h-3.5" />
-            {creating ? "Creating…" : "New key"}
+            {creating ? "Generating key…" : "Generate API Key"}
           </button>
         </div>
 
         {/* New key reveal banner */}
         {newKey && (
           <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-4 space-y-3">
-            <p className="text-sm font-medium text-emerald-300">
-              New key created — copy it now, you won&apos;t see it again.
-            </p>
+            <div className="flex items-center justify-between">
+              <p className="text-sm font-medium text-emerald-300">
+                New key generated — copy it now. For security, you won&apos;t be able to see the full secret again.
+              </p>
+              <span className="rounded bg-emerald-500/20 px-2 py-0.5 text-[10px] font-mono text-emerald-300">
+                Workspace Scoped
+              </span>
+            </div>
             <div className="flex items-center gap-2">
               <code className="flex-1 truncate rounded-lg bg-slate-800/60 px-3 py-2 text-xs font-mono text-white">
                 {newKey}
@@ -853,7 +911,7 @@ export default function SettingsClient({
                 className="shrink-0 flex items-center gap-1.5 rounded-lg bg-emerald-400 px-3 py-2 text-xs font-semibold text-slate-900 hover:bg-emerald-300 transition"
               >
                 {copied ? <CheckIcon className="w-3.5 h-3.5" /> : <CopyIcon className="w-3.5 h-3.5" />}
-                {copied ? "Copied!" : "Copy"}
+                {copied ? "Copied!" : "Copy Full Key"}
               </button>
             </div>
             <div className="space-y-1.5">
@@ -887,41 +945,73 @@ export default function SettingsClient({
         )}
 
         {/* Key list */}
-        <div className="space-y-2">
+        <div className="space-y-2.5">
+          <span className="text-[10px] font-bold uppercase tracking-wider text-white/40">
+            Active Keys ({keys.length})
+          </span>
           {keys.length ? (
-            keys.map((k) => (
-              <div
-                key={k.id}
-                className="flex flex-col gap-3 rounded-xl border border-white/8 bg-white/3 px-4 py-3 sm:flex-row sm:items-center sm:justify-between"
-              >
-                <div className="flex items-center gap-3">
-                  <div className="inline-flex items-center justify-center w-7 h-7 rounded-lg bg-white/5 shrink-0">
-                    <KeyIcon className="w-3.5 h-3.5 text-white/40" />
-                  </div>
-                  <div className="min-w-0">
-                    <div className="text-sm font-medium text-white truncate">{k.name}</div>
-                    <div className="text-xs text-white/40">Created {new Date(k.createdAt).toLocaleDateString()}</div>
-                    {k.scopes && k.scopes.length > 0 && (
-                      <div className="mt-1 flex flex-wrap gap-1">
-                        {k.scopes.map((s) => (
-                          <span key={s} className="rounded bg-white/5 px-1.5 py-0.5 text-[10px] text-white/40">
-                            {s}
-                          </span>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                </div>
-                <button
-                  onClick={() => revokeKey(k.id)}
-                  disabled={revoking === k.id}
-                  className="flex items-center justify-center gap-1.5 rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs font-medium text-red-300 transition hover:bg-red-500/20 disabled:opacity-50 sm:py-1.5 sm:shrink-0"
+            keys.map((k) => {
+              const masked = formatMaskedApiKey(k);
+              return (
+                <div
+                  key={k.id}
+                  className="flex flex-col gap-3 rounded-xl border border-white/8 bg-white/3 p-4 sm:flex-row sm:items-center sm:justify-between"
                 >
-                  <TrashIcon className="w-3.5 h-3.5" />
-                  {revoking === k.id ? "Revoking…" : "Revoke"}
-                </button>
-              </div>
-            ))
+                  <div className="flex items-start gap-3 min-w-0">
+                    <div className="inline-flex items-center justify-center w-8 h-8 rounded-lg bg-white/5 border border-white/8 shrink-0 mt-0.5">
+                      <KeyIcon className="w-4 h-4 text-white/50" />
+                    </div>
+                    <div className="min-w-0 space-y-1">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="text-sm font-semibold text-white truncate">{k.name}</span>
+                        <span className="inline-flex items-center gap-1 font-mono text-[11px] bg-slate-950/70 border border-white/10 text-white/70 px-2 py-0.5 rounded-md">
+                          {masked}
+                          <button
+                            type="button"
+                            onClick={() => copyText(masked, (v) => setHintCopiedId(v ? k.id : null))}
+                            title="Copy key hint for matching in .env"
+                            className="text-white/40 hover:text-white transition ml-0.5"
+                          >
+                            {hintCopiedId === k.id ? (
+                              <CheckIcon className="w-3 h-3 text-emerald-400" />
+                            ) : (
+                              <CopyIcon className="w-3 h-3" />
+                            )}
+                          </button>
+                        </span>
+                      </div>
+
+                      <div className="flex flex-wrap items-center gap-3 text-xs text-white/40">
+                        <span>Created {new Date(k.createdAt).toLocaleDateString()}</span>
+                        <span>•</span>
+                        <span className={k.lastUsedAt ? "text-emerald-400/80" : "text-white/30"}>
+                          {formatRelativeTime(k.lastUsedAt)}
+                        </span>
+                      </div>
+
+                      {k.scopes && k.scopes.length > 0 && (
+                        <div className="pt-0.5 flex flex-wrap gap-1">
+                          {k.scopes.map((s) => (
+                            <span key={s} className="rounded bg-white/5 border border-white/5 px-1.5 py-0.5 text-[10px] text-white/50">
+                              {s}
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  <button
+                    onClick={() => revokeKey(k.id)}
+                    disabled={revoking === k.id}
+                    className="flex items-center justify-center gap-1.5 rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs font-medium text-red-300 transition hover:bg-red-500/20 disabled:opacity-50 sm:py-1.5 sm:shrink-0"
+                  >
+                    <TrashIcon className="w-3.5 h-3.5" />
+                    {revoking === k.id ? "Revoking…" : "Revoke"}
+                  </button>
+                </div>
+              );
+            })
           ) : (
             <div className="rounded-xl border border-dashed border-white/10 bg-white/5 p-4 text-sm text-white/50">
               No API keys yet. Create one to start sending events.

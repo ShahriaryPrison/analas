@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getAppSession } from "@/lib/session";
-import crypto from "node:crypto";
+import { generateStructuredApiKey } from "@/lib/api-keys";
 
 export async function GET() {
   const session = await getAppSession();
@@ -15,11 +15,19 @@ export async function GET() {
   if (!workspace) return NextResponse.json({ apiKeys: [] });
 
   return NextResponse.json({
-    apiKeys: workspace.apiKeys.map((k) => ({ id: k.id, name: k.name, createdAt: k.createdAt })),
+    apiKeys: workspace.apiKeys.map((k) => ({
+      id: k.id,
+      name: k.name,
+      scopes: k.scopes,
+      keyHint: k.keyHint,
+      lastFour: k.lastFour,
+      lastUsedAt: k.lastUsedAt,
+      createdAt: k.createdAt,
+    })),
   });
 }
 
-export async function POST() {
+export async function POST(req: Request) {
   const session = await getAppSession();
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
@@ -30,11 +38,32 @@ export async function POST() {
   const workspace = user?.workspaces?.[0]?.workspace;
   if (!workspace) return NextResponse.json({ error: "No workspace" }, { status: 400 });
 
-  const rawKey = `analas_pk_${crypto.randomUUID()}`;
-  const keyHash = crypto.createHash("sha256").update(rawKey).digest("hex");
-  const created = await prisma.apiKey.create({
-    data: { keyHash, name: `Key ${new Date().toISOString().slice(0, 10)}`, workspaceId: workspace.id },
+  const body = await req.json().catch(() => null);
+  const rawName = typeof body?.name === "string" ? body.name.trim() : "";
+  const name = rawName.length > 0 ? rawName.slice(0, 100) : `Key ${new Date().toISOString().slice(0, 10)}`;
+
+  const { rawKey, keyHash, keyHint, lastFour } = generateStructuredApiKey({
+    tenantId: workspace.tenantId,
   });
 
-  return NextResponse.json({ id: created.id, name: created.name, rawKey }, { status: 201 });
+  const created = await prisma.apiKey.create({
+    data: {
+      keyHash,
+      keyHint,
+      lastFour,
+      name,
+      workspaceId: workspace.id,
+    },
+  });
+
+  return NextResponse.json(
+    {
+      id: created.id,
+      name: created.name,
+      keyHint: created.keyHint,
+      lastFour: created.lastFour,
+      rawKey,
+    },
+    { status: 201 }
+  );
 }

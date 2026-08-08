@@ -9,7 +9,7 @@ process.env.NEXT_PUBLIC_IS_CLOUD_HOSTED = "true";
 // connection. Individual tests configure return values via `vi.mocked(prisma.x.y).mockResolvedValue(...)`.
 vi.mock("@/lib/prisma", () => ({
   prisma: {
-    apiKey: { findUnique: vi.fn(), create: vi.fn() },
+    apiKey: { findUnique: vi.fn(), findFirst: vi.fn(), findMany: vi.fn(), create: vi.fn(), update: vi.fn(), delete: vi.fn() },
     workspace: { findUnique: vi.fn(), findFirst: vi.fn(), update: vi.fn() },
     workspaceMember: { findFirst: vi.fn() },
     insight: { findFirst: vi.fn(), findMany: vi.fn(), create: vi.fn() },
