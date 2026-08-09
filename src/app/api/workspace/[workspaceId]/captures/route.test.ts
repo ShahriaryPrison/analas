@@ -46,9 +46,9 @@ describe("GET /api/workspace/:workspaceId/captures", () => {
     // Verify limit and offset defaults
     expect(queryJson).toHaveBeenNthCalledWith(1, expect.stringContaining("LIMIT 50 OFFSET 0"), expect.objectContaining({ tenantId: "tenant_abc123" }));
     
-    // Verify no date bounds are artificially injected (e.g., ts <= now()) when dateTo is empty
+    // Verify it adds a generous upper bound to prevent extreme junk data (year 2046) but doesn't drop timezone-shifted recent events
     const firstCallQuery = vi.mocked(queryJson).mock.calls[0][0];
-    expect(firstCallQuery).not.toContain("ts <= now()");
+    expect(firstCallQuery).toContain("ts <= now() + INTERVAL 2 DAY");
   });
 
   it("applies limit and offset from query parameters", async () => {
