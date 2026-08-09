@@ -42,14 +42,14 @@ export async function GET(
       qParams.userId = userId;
     }
     if (dateFrom) {
-      conditions.push("ts >= {dateFrom:String}");
+      conditions.push("events.ts >= {dateFrom:String}");
       qParams.dateFrom = dateFrom;
     }
     if (dateTo) {
-      conditions.push("ts <= {dateTo:String}");
+      conditions.push("events.ts <= {dateTo:String}");
       qParams.dateTo = dateTo;
     } else {
-      conditions.push("ts <= now() + INTERVAL 2 DAY");
+      conditions.push("events.ts <= now() + INTERVAL 2 DAY");
     }
 
     const whereClause = conditions.join(" AND ");

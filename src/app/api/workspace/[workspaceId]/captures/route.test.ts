@@ -48,7 +48,7 @@ describe("GET /api/workspace/:workspaceId/captures", () => {
     
     // Verify it adds a generous upper bound to prevent extreme junk data (year 2046) but doesn't drop timezone-shifted recent events
     const firstCallQuery = vi.mocked(queryJson).mock.calls[0][0];
-    expect(firstCallQuery).toContain("ts <= now() + INTERVAL 2 DAY");
+    expect(firstCallQuery).toContain("events.ts <= now() + INTERVAL 2 DAY");
   });
 
   it("applies limit and offset from query parameters", async () => {
@@ -80,8 +80,8 @@ describe("GET /api/workspace/:workspaceId/captures", () => {
 
     expect(query).toContain("event ILIKE {eventPattern:String}");
     expect(query).toContain("user_id = {userId:String}");
-    expect(query).toContain("ts >= {dateFrom:String}");
-    expect(query).toContain("ts <= {dateTo:String}");
+    expect(query).toContain("events.ts >= {dateFrom:String}");
+    expect(query).toContain("events.ts <= {dateTo:String}");
 
     expect(params.eventPattern).toBe("%test_event%");
     expect(params.userId).toBe("user_123");
