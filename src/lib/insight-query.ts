@@ -289,7 +289,11 @@ export async function fetchInsightData(
     const aggregation = String(config.aggregation || "uniq");
     // Sanitize property name — only allow word chars (a-z, 0-9, _) to safely inline it in SQL.
     // This avoids ClickHouse parameterized-token failures inside JSONExtract* function arguments.
-    const property = String(config.property || "").replace(/[^\w]/g, "");
+    const rawProperty = String(config.property || "").replace(/[^\w]/g, "");
+    
+    // If property is empty, default to user_id for uniq, and value for others.
+    // This prevents ClickHouse from throwing "Empty JSON path" when it tries to extract ''.
+    const property = rawProperty || (aggregation === "uniq" ? "user_id" : "value");
 
     const isNative = property === "user_id" || property === "session_id";
 
