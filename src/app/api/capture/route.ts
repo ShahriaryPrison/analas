@@ -194,7 +194,11 @@ export async function POST(req: Request) {
     let validCount = 0;
 
     for (const item of items) {
-      if (!item || typeof item !== "object" || typeof item.event !== "string" || item.event.length === 0) {
+      if (!item || typeof item !== "object" || typeof item.event !== "string") {
+        continue;
+      }
+      const eventName = item.event.trim();
+      if (eventName.length === 0) {
         continue;
       }
 
@@ -220,7 +224,7 @@ export async function POST(req: Request) {
 
       queueEvent({
         tenant_id: tenantId,
-        event: item.event,
+        event: eventName,
         user_id: userId,
         session_id: sessionId,
         properties: JSON.stringify(properties),

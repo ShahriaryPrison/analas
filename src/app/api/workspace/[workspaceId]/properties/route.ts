@@ -12,7 +12,7 @@ export async function GET(
 
   const { workspaceId } = await context.params;
   const { searchParams } = new URL(req.url);
-  const eventName = searchParams.get("event");
+  const eventName = searchParams.get("event")?.trim() ?? "";
 
   if (!eventName) return NextResponse.json([]);
 

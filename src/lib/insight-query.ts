@@ -85,7 +85,7 @@ export async function fetchInsightData(
   const timeFrame = Math.min(rawTimeFrame, retentionDays);
 
   if (type === "count") {
-    const eventName = String(config.eventName || "");
+    const eventName = String(config.eventName || "").trim();
     const rows = await queryJson<{ total: string | number }>(
       `SELECT count() AS total FROM events
        WHERE tenant_id = {tenantId:String}
@@ -98,7 +98,7 @@ export async function fetchInsightData(
   }
 
   if (type === "trend") {
-    const eventName = String(config.eventName || "");
+    const eventName = String(config.eventName || "").trim();
     const raw = await queryJson<{ day: string; count: string | number }>(
       `SELECT formatDateTime(ts, '%Y-%m-%d', '${APP_TIMEZONE}') AS day, count() AS count
        FROM events
@@ -115,7 +115,7 @@ export async function fetchInsightData(
   }
 
   if (type === "breakdown") {
-    const eventName = String(config.eventName || "");
+    const eventName = String(config.eventName || "").trim();
     // Sanitize: only allow word chars so we can safely inline in SQL
     const property = String(config.property || "").replace(/[^\w]/g, "");
     const breakdownDays = Math.min(30, retentionDays);
@@ -285,14 +285,10 @@ export async function fetchInsightData(
   }
 
   if (type === "metric") {
-    const eventName = String(config.eventName || "");
+    const eventName = String(config.eventName || "").trim();
     const aggregation = String(config.aggregation || "uniq");
-    // Sanitize property name — only allow word chars (a-z, 0-9, _) to safely inline it in SQL.
-    // This avoids ClickHouse parameterized-token failures inside JSONExtract* function arguments.
     const rawProperty = String(config.property || "").replace(/[^\w]/g, "");
     
-    // If property is empty, default to user_id for uniq, and value for others.
-    // This prevents ClickHouse from throwing "Empty JSON path" when it tries to extract ''.
     const property = rawProperty || (aggregation === "uniq" ? "user_id" : "value");
 
     const isNative = property === "user_id" || property === "session_id";
@@ -358,13 +354,13 @@ export async function fetchInsightData(
   }
 
   if (type === "retention") {
-    const startEvent = String(config.startEvent || "");
-    const returnEvent = String(config.returnEvent || "");
+    const startEvent = String(config.startEvent || "").trim();
+    const returnEvent = String(config.returnEvent || "").trim();
     const distinctIdRaw = String(config.distinctId || "session_id");
     const startEventProperty = String(config.startEventProperty || "").replace(/[^\w]/g, "");
-    const startEventValue = String(config.startEventValue || "");
+    const startEventValue = String(config.startEventValue || "").trim();
     const returnEventProperty = String(config.returnEventProperty || "").replace(/[^\w]/g, "");
-    const returnEventValue = String(config.returnEventValue || "");
+    const returnEventValue = String(config.returnEventValue || "").trim();
     const rawTimeFrame = Number(config.timeFrame || "7");
     const timeFrame = Math.min(rawTimeFrame, retentionDays);
     

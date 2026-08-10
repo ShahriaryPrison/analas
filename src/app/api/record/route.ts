@@ -274,16 +274,18 @@ async function handlePost(req: Request) {
 
     // ── Upsert metadata (atomic; tolerates the flush/pagehide write race) ──────
     const newDuration = existing ? Math.max(existing.duration, duration) : duration;
+    const distinctId = body.distinctId?.trim() ?? "";
+    const pagePath = body.pagePath?.trim();
 
     await prisma.sessionRecording.upsert({
       where: { id: sessionId },
       create: {
         id: sessionId,
         workspaceId,
-        distinctId: body.distinctId ?? "",
+        distinctId,
         browser: body.browser,
         os: body.os,
-        pagePath: body.pagePath,
+        pagePath,
         duration: newDuration,
         storageKey,
         chunkCount: 1,
@@ -292,7 +294,7 @@ async function handlePost(req: Request) {
         duration: newDuration,
         chunkCount: { increment: 1 },
         // Enrich metadata if a later chunk carries it.
-        ...(body.distinctId ? { distinctId: body.distinctId } : {}),
+        ...(distinctId ? { distinctId } : {}),
         ...(body.browser ? { browser: body.browser } : {}),
         ...(body.os ? { os: body.os } : {}),
       },

@@ -44,11 +44,11 @@ export async function insertEvents(table: string, values: Record<string, unknown
 }
 
 export async function getTopEvents(tenantId: string, limit: number = 10) {
-  const rows = await queryJson<{ event: string }>(
-    `SELECT event FROM events 
-     WHERE tenant_id = {tenantId:String} 
-     GROUP BY event ORDER BY count() DESC LIMIT {limit:Int32}`,
-    { tenantId, limit }
-  ).catch(() => []);
+    const resultSet = await clickhouse.query({
+      query: `SELECT event, count() as c FROM events WHERE tenant_id = {tenantId:String} GROUP BY event ORDER BY c DESC LIMIT ${Number(limit)}`,
+      query_params: { tenantId },
+      format: "JSONEachRow",
+    });
+    const rows = await resultSet.json<{ event: string }>();
   return rows.map(r => r.event);
 }
