@@ -121,6 +121,49 @@ describe("fetchInsightData — count respects the requested time window", () => 
   });
 });
 
+// Regression coverage for the same bug in "breakdown": it hardcoded a fixed 30-day
+// (clamped to plan retention) window and ignored the requested timeFrame entirely,
+// so a 1-day breakdown and a 30-day breakdown on the same event/property returned
+// identical rows. Caught live on azno's own dashboard: every city/flow/customer-type
+// section (all breakdown-based) stayed frozen regardless of the day selector, while
+// the plain totals (built on count/trend, already fixed) changed correctly.
+describe("fetchInsightData — breakdown respects the requested time window", () => {
+  it("uses the requested timeFrame, not a fixed 30-day window", async () => {
+    await fetchInsightData("tenant_1", "breakdown", { eventName: "reservation", property: "city", timeFrame: "1" });
+
+    const [query, params] = vi.mocked(queryJson).mock.calls[0];
+    expect(query).toContain("INTERVAL {breakdownDays:Int32} DAY");
+    expect((params as Record<string, unknown>).breakdownDays).toBe(1);
+  });
+
+  it("clamps timeFrame to the plan's retention window when the request asks for more", async () => {
+    await fetchInsightData("tenant_1", "breakdown", { eventName: "reservation", property: "city", timeFrame: "9999" });
+
+    const [, params] = vi.mocked(queryJson).mock.calls[0];
+    expect((params as Record<string, unknown>).breakdownDays).toBe(30);
+  });
+
+  it("returns different breakdownDays for different timeFrames on the same event/property", async () => {
+    await fetchInsightData("tenant_1", "breakdown", { eventName: "reservation", property: "city", timeFrame: "1" });
+    const shortWindow = (vi.mocked(queryJson).mock.calls[0][1] as Record<string, unknown>).breakdownDays;
+
+    vi.mocked(queryJson).mockClear();
+    await fetchInsightData("tenant_1", "breakdown", { eventName: "reservation", property: "city", timeFrame: "7" });
+    const longWindow = (vi.mocked(queryJson).mock.calls[0][1] as Record<string, unknown>).breakdownDays;
+
+    expect(shortWindow).toBe(1);
+    expect(longWindow).toBe(7);
+    expect(shortWindow).not.toBe(longWindow);
+  });
+
+  it("still defaults to 7 days when no timeFrame is given, same as count/trend", async () => {
+    await fetchInsightData("tenant_1", "breakdown", { eventName: "reservation", property: "city" });
+
+    const [, params] = vi.mocked(queryJson).mock.calls[0];
+    expect((params as Record<string, unknown>).breakdownDays).toBe(7);
+  });
+});
+
 function mockPlan(tenantId: string, plan: "FREE" | "PRO") {
   vi.mocked(prisma.workspace.findUnique).mockImplementation(((args: any) => {
     if (args?.where?.tenantId === tenantId) return Promise.resolve({ plan });

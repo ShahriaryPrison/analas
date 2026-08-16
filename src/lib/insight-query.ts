@@ -157,7 +157,7 @@ export async function fetchInsightData(
     const eventName = String(config.eventName || "").trim();
     // Sanitize: only allow word chars so we can safely inline in SQL
     const property = String(config.property || "").replace(/[^\w]/g, "");
-    const breakdownDays = Math.min(30, retentionDays);
+    const breakdownDays = Math.min(rawTimeFrame, retentionDays);
     const { clause: filterClause, params: filterParams } = filtersAllowed
       ? buildPropertyFilters(config.filters)
       : { clause: "", params: {} };
