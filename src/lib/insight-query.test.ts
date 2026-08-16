@@ -120,3 +120,106 @@ describe("fetchInsightData — count respects the requested time window", () => 
     expect(shortWindow).not.toBe(longWindow);
   });
 });
+
+function mockPlan(tenantId: string, plan: "FREE" | "PRO") {
+  vi.mocked(prisma.workspace.findUnique).mockImplementation(((args: any) => {
+    if (args?.where?.tenantId === tenantId) return Promise.resolve({ plan });
+    return Promise.resolve(null);
+  }) as any);
+}
+
+// Coverage for the property-filters feature added to "breakdown": each filter's property
+// name is whitelist-sanitized and inlined (ClickHouse needs it as a SQL literal), while the
+// value is always passed as a parameterized bind param — never string-concatenated into the
+// query — so a malicious value can't inject SQL. Filters also require the advanced_filters
+// plan feature and are capped in count, independent of insight type.
+describe("fetchInsightData — breakdown property filters", () => {
+  it("appends a parameterized filter clause for a PRO-plan workspace", async () => {
+    mockPlan("tenant_filters_pro", "PRO");
+
+    await fetchInsightData("tenant_filters_pro", "breakdown", {
+      eventName: "purchase",
+      property: "plan",
+      filters: [{ property: "city", value: "Tehran" }],
+    });
+
+    const [query, params] = vi.mocked(queryJson).mock.calls[0];
+    expect(query).toContain("JSONExtractString(properties, 'city') = {filterValue0:String}");
+    // The value must never be inlined into the query text itself.
+    expect(query).not.toContain("Tehran");
+    expect((params as Record<string, unknown>).filterValue0).toBe("Tehran");
+  });
+
+  it("strips SQL metacharacters from a malicious filter property name", async () => {
+    mockPlan("tenant_filters_inject_prop", "PRO");
+
+    await fetchInsightData("tenant_filters_inject_prop", "breakdown", {
+      eventName: "purchase",
+      property: "plan",
+      filters: [{ property: "city'; DROP TABLE events;--", value: "x" }],
+    });
+
+    const [query] = vi.mocked(queryJson).mock.calls[0];
+    expect(query).not.toMatch(/DROP\s+TABLE/i);
+    expect(query).not.toContain("'; ");
+    expect(query).toContain("JSONExtractString(properties, 'cityDROPTABLEevents')");
+  });
+
+  it("never inlines a malicious filter value into the query text", async () => {
+    mockPlan("tenant_filters_inject_val", "PRO");
+
+    const evilValue = "x'; DROP TABLE events;--";
+    await fetchInsightData("tenant_filters_inject_val", "breakdown", {
+      eventName: "purchase",
+      property: "plan",
+      filters: [{ property: "city", value: evilValue }],
+    });
+
+    const [query, params] = vi.mocked(queryJson).mock.calls[0];
+    expect(query).not.toContain(evilValue);
+    expect(query).not.toMatch(/DROP\s+TABLE/i);
+    expect((params as Record<string, unknown>).filterValue0).toBe(evilValue);
+  });
+
+  it("caps the number of applied filters", async () => {
+    mockPlan("tenant_filters_cap", "PRO");
+
+    const filters = Array.from({ length: 8 }, (_, i) => ({ property: `prop${i}`, value: `val${i}` }));
+    await fetchInsightData("tenant_filters_cap", "breakdown", {
+      eventName: "purchase",
+      property: "plan",
+      filters,
+    });
+
+    const [, params] = vi.mocked(queryJson).mock.calls[0];
+    const filterKeys = Object.keys(params as Record<string, unknown>).filter((k) => k.startsWith("filterValue"));
+    expect(filterKeys).toHaveLength(5);
+  });
+
+  it("ignores filters entirely for a plan without advanced_filters", async () => {
+    mockPlan("tenant_filters_free", "FREE");
+
+    await fetchInsightData("tenant_filters_free", "breakdown", {
+      eventName: "purchase",
+      property: "plan",
+      filters: [{ property: "city", value: "Tehran" }],
+    });
+
+    const [query, params] = vi.mocked(queryJson).mock.calls[0];
+    expect(query).not.toContain("filterValue0");
+    expect((params as Record<string, unknown>).filterValue0).toBeUndefined();
+  });
+
+  it("still scopes to the caller's own tenantId when filters are applied", async () => {
+    mockPlan("tenant_filters_scope", "PRO");
+
+    await fetchInsightData("tenant_filters_scope", "breakdown", {
+      eventName: "purchase",
+      property: "plan",
+      filters: [{ property: "city", value: "Tehran" }],
+    });
+
+    const [, params] = vi.mocked(queryJson).mock.calls[0];
+    expect((params as Record<string, unknown>).tenantId).toBe("tenant_filters_scope");
+  });
+});

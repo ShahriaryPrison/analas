@@ -1,6 +1,6 @@
 import { queryJson } from "./clickhouse";
 import { prisma } from "./prisma";
-import { getEffectivePlan, type Plan } from "./billing/plans";
+import { getEffectivePlan, hasFeature, type Plan } from "./billing/plans";
 
 export type DailyRow = { day: string; count: number };
 export type BreakdownRow = { val: string; count: number };
@@ -60,6 +60,39 @@ export function fillDays(rows: { day: string; count: string | number }[], length
 const planCache = new Map<string, { plan: Plan; expiresAt: number }>();
 const CACHE_TTL = 30 * 1000;
 
+const MAX_PROPERTY_FILTERS = 5;
+
+// Builds additional `AND JSONExtractString(properties, 'x') = {filterValueN:String}` clauses
+// from a config.filters array. Property names are whitelist-sanitized and inlined (ClickHouse
+// needs them as SQL literals, not bind params — same reason `property`/`distinctId` are inlined
+// elsewhere in this file); values are always passed as parameterized bind params, never inlined.
+// This mirrors the startEventProperty/startEventValue split already used by the retention branch.
+// Capped at MAX_PROPERTY_FILTERS so a client can't inflate an arbitrarily large query.
+function buildPropertyFilters(rawFilters: unknown): { clause: string; params: Record<string, unknown> } {
+  if (!Array.isArray(rawFilters)) return { clause: "", params: {} };
+
+  let clause = "";
+  const params: Record<string, unknown> = {};
+  let count = 0;
+
+  for (const raw of rawFilters) {
+    if (count >= MAX_PROPERTY_FILTERS) break;
+    if (!raw || typeof raw !== "object") continue;
+
+    const entry = raw as Record<string, unknown>;
+    const property = String(entry.property || "").replace(/[^\w]/g, "");
+    const value = String(entry.value ?? "").trim();
+    if (!property || !value) continue;
+
+    const paramName = `filterValue${count}`;
+    clause += ` AND JSONExtractString(properties, '${property}') = {${paramName}:String}`;
+    params[paramName] = value;
+    count++;
+  }
+
+  return { clause, params };
+}
+
 export async function fetchInsightData(
   tenantId: string,
   type: string,
@@ -80,6 +113,11 @@ export async function fetchInsightData(
 
   const planConfig = getEffectivePlan(plan);
   const retentionDays = planConfig.dataRetentionDays || 30;
+  // Property filters (config.filters) require the advanced_filters plan feature, independent
+  // of insight type. Below plan: filters are silently ignored rather than erroring, so the
+  // insight still renders (unfiltered) — same fail-open shape as the other plan-derived clamps
+  // in this function (e.g. breakdownDays/funnelDays clamping to retentionDays).
+  const filtersAllowed = hasFeature(plan, "advanced_filters");
 
   const rawTimeFrame = Number(config.timeFrame || "7");
   const timeFrame = Math.min(rawTimeFrame, retentionDays);
@@ -120,8 +158,11 @@ export async function fetchInsightData(
     // Sanitize: only allow word chars so we can safely inline in SQL
     const property = String(config.property || "").replace(/[^\w]/g, "");
     const breakdownDays = Math.min(30, retentionDays);
+    const { clause: filterClause, params: filterParams } = filtersAllowed
+      ? buildPropertyFilters(config.filters)
+      : { clause: "", params: {} };
     const rows = await queryJson<BreakdownRow>(
-      `SELECT 
+      `SELECT
           JSONExtractString(properties, '${property}') AS val,
           count() AS count
        FROM events
@@ -129,10 +170,11 @@ export async function fetchInsightData(
          AND event = {event:String}
          AND ts >= now() - INTERVAL {breakdownDays:Int32} DAY
          AND JSONExtractString(properties, '${property}') != ''
+         ${filterClause}
        GROUP BY val
        ORDER BY count DESC
        LIMIT 10`,
-      { tenantId, event: eventName, breakdownDays }
+      { tenantId, event: eventName, breakdownDays, ...filterParams }
     ).catch((e) => {
       console.error("Breakdown query error:", e?.message ?? e);
       return [] as BreakdownRow[];
