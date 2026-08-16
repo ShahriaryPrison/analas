@@ -38,6 +38,12 @@ Insight `type` values: `count`, `trend`, `breakdown`, `multi_trend`, `funnel`, `
 `retention`, `session_recording`. Types beyond `count`/`trend` require a plan that includes
 that feature; a `403` means an upgrade is needed, not a bug.
 
+`breakdown` also accepts an optional `filters` array to narrow the split by other properties
+(up to 5, each an exact-match equality check):
+`{"type":"breakdown","queryConfig":{"eventName":"reservation_completed","property":"city","filters":[{"property":"flow","value":"customer"}]}}`
+Requires a plan with the `advanced_filters` feature — on plans without it, filters are
+silently ignored and the breakdown runs unfiltered rather than erroring.
+
 ## Example: verify a metric changed after a deploy
 
 ```

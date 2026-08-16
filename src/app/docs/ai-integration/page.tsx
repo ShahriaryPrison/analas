@@ -182,6 +182,9 @@ recordings:read     # list and stream session recordings`}</pre>
           <p className="text-xs text-white/40">
             Insight <code className="text-emerald-300 font-mono">type</code> values: <code className="text-emerald-300 font-mono">count</code>, <code className="text-emerald-300 font-mono">trend</code>, <code className="text-emerald-300 font-mono">breakdown</code>, <code className="text-emerald-300 font-mono">multi_trend</code>, <code className="text-emerald-300 font-mono">funnel</code>, <code className="text-emerald-300 font-mono">metric</code>, <code className="text-emerald-300 font-mono">retention</code>, <code className="text-emerald-300 font-mono">session_recording</code> — see <Link href="/docs/insight-types" className="text-emerald-300 hover:underline">insight types docs</Link> for each type&apos;s <code className="text-emerald-300 font-mono">queryConfig</code> fields. Insight types beyond <code className="text-emerald-300 font-mono">count</code> and <code className="text-emerald-300 font-mono">trend</code> require a plan that includes that feature — a 403 response means an upgrade is needed, not a bug.
           </p>
+          <p className="text-xs text-white/40">
+            <code className="text-emerald-300 font-mono">breakdown</code> also accepts an optional <code className="text-emerald-300 font-mono">filters</code> array in <code className="text-emerald-300 font-mono">queryConfig</code> to narrow the split by other properties: <code className="text-emerald-300 font-mono">{`"filters": [{ "property": "city", "value": "Tehran" }]`}</code> (up to 5, each an exact-match equality check). Requires a plan with the <code className="text-emerald-300 font-mono">advanced_filters</code> feature — on plans without it, filters are silently ignored and the breakdown runs unfiltered rather than erroring.
+          </p>
         </section>
 
         {/* Worked examples */}
@@ -201,6 +204,14 @@ recordings:read     # list and stream session recordings`}</pre>
             <pre className="rounded-xl bg-slate-950 border border-white/10 p-5 text-xs font-mono text-white/80 overflow-x-auto whitespace-pre">{`# Compare a saved insight's data before/after a deploy
 curl https://your-domain.com/api/v1/insights/ins_abc123/data \\
   -H "Authorization: Bearer $ANALAS_KEY"`}</pre>
+          </div>
+
+          <div className="space-y-3">
+            <h3 className="text-sm font-semibold text-white/80">Breakdown — narrow a property split with filters</h3>
+            <pre className="rounded-xl bg-slate-950 border border-white/10 p-5 text-xs font-mono text-white/80 overflow-x-auto whitespace-pre">{`curl https://your-domain.com/api/v1/insights/query \\
+  -H "Authorization: Bearer $ANALAS_KEY" \\
+  -H "Content-Type: application/json" \\
+  -d '{"type":"breakdown","queryConfig":{"eventName":"reservation_completed","property":"city","filters":[{"property":"flow","value":"customer"}]}}'`}</pre>
           </div>
 
           <div className="space-y-3">

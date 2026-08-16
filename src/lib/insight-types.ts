@@ -119,11 +119,12 @@ export const INSIGHT_TYPES: InsightTypeDef[] = [
     ],
     docs: {
       en: {
-        description: "Splits a specific action by its details. For example, if the action is 'Page Visit', you can break it down by 'Browser' or 'Country' to see the top values.",
+        description: "Splits a specific action by its details. For example, if the action is 'Page Visit', you can break it down by 'Browser' or 'Country' to see the top values. Via the API, you can also narrow the split with an optional `filters` array in queryConfig (e.g. only 'Page Visit' where flow=customer) — plan required, and not yet exposed in this creation form.",
         useCases: [
           "Finding out which browser your visitors use most",
           "Seeing which pages on your site get the most clicks",
-          "Identifying where your users are coming from (by Country)"
+          "Identifying where your users are coming from (by Country)",
+          "Via the API: breakdown by city, filtered to a single flow or customer type"
         ],
         fields: {
           eventName: "The action you want to split and analyze",
@@ -131,11 +132,12 @@ export const INSIGHT_TYPES: InsightTypeDef[] = [
         }
       },
       fa: {
-        description: "یک فعالیت یا رویداد خاص را بر اساس جزئیات آن تقسیم‌بندی می‌کند. مثلاً اگر رویداد 'بازدید صفحه' باشد، می‌توانید آن را بر اساس 'مرورگر' یا 'کشور' تفکیک کنید تا ببینید کدام‌یک بیشتر استفاده شده است.",
+        description: "یک فعالیت یا رویداد خاص را بر اساس جزئیات آن تقسیم‌بندی می‌کند. مثلاً اگر رویداد 'بازدید صفحه' باشد، می‌توانید آن را بر اساس 'مرورگر' یا 'کشور' تفکیک کنید تا ببینید کدام‌یک بیشتر استفاده شده است. از طریق API می‌توانید با آرایه اختیاری «filters» در queryConfig این تفکیک را محدودتر هم بکنید (نیازمند پلن مناسب، و هنوز در این فرم ساخت نیست).",
         useCases: [
           "یافتن اینکه کاربران بیشتر از کدام مرورگر استفاده می‌کنند",
           "دیدن اینکه کدام صفحات سایت بیشترین کلیک را داشته‌اند",
-          "شناسایی کشور یا شهر مبدا کاربران"
+          "شناسایی کشور یا شهر مبدا کاربران",
+          "از طریق API: تفکیک بر اساس شهر، محدود به یک جریان یا نوع مشتری خاص"
         ],
         fields: {
           eventName: "رویدادی که می‌خواهید آن را تفکیک کنید",
