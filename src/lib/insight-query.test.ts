@@ -86,3 +86,37 @@ describe("fetchInsightData — whitespace trimming on exact-match filters", () =
     }
   });
 });
+
+// Regression coverage for the bug where a "count" insight ignored the requested
+// timeFrame entirely and always queried the plan's full retention window, so a
+// 7-day count and a 30-day count on the same event returned identical numbers.
+// An unmatched tenantId falls back to FREE (30-day retention) per the beforeEach above.
+describe("fetchInsightData — count respects the requested time window", () => {
+  it("uses the requested timeFrame, not the plan's full retention window", async () => {
+    await fetchInsightData("tenant_1", "count", { eventName: "signup", timeFrame: "7" });
+
+    const [query, params] = vi.mocked(queryJson).mock.calls[0];
+    expect(query).toContain("INTERVAL {countDays:Int32} DAY");
+    expect((params as Record<string, unknown>).countDays).toBe(7);
+  });
+
+  it("clamps timeFrame to the plan's retention window when the request asks for more", async () => {
+    await fetchInsightData("tenant_1", "count", { eventName: "signup", timeFrame: "9999" });
+
+    const [, params] = vi.mocked(queryJson).mock.calls[0];
+    expect((params as Record<string, unknown>).countDays).toBe(30);
+  });
+
+  it("returns different countDays for different timeFrames on the same event", async () => {
+    await fetchInsightData("tenant_1", "count", { eventName: "signup", timeFrame: "7" });
+    const shortWindow = (vi.mocked(queryJson).mock.calls[0][1] as Record<string, unknown>).countDays;
+
+    vi.mocked(queryJson).mockClear();
+    await fetchInsightData("tenant_1", "count", { eventName: "signup", timeFrame: "30" });
+    const longWindow = (vi.mocked(queryJson).mock.calls[0][1] as Record<string, unknown>).countDays;
+
+    expect(shortWindow).toBe(7);
+    expect(longWindow).toBe(30);
+    expect(shortWindow).not.toBe(longWindow);
+  });
+});

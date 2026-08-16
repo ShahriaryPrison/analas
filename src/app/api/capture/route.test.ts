@@ -75,3 +75,90 @@ describe("POST /api/capture", () => {
     expect((values[0] as { event: string }).event).toBe("signup");
   });
 });
+
+// Regression coverage for the bug where custom fields sent inside a `properties` wrapper
+// (the shape Segment/Mixpanel/Amplitude clients all send: { event, properties: {...} })
+// were silently dropped: only userId/anonymousId/sessionId were pulled out of the wrapper,
+// and the literal `properties` key was then re-nested inside the stored properties JSON,
+// making every field inside it unreachable by breakdown/filter queries.
+describe("POST /api/capture — flattens a nested `properties` wrapper", () => {
+  it("lifts custom fields out of a properties wrapper to the top level", async () => {
+    mockApiKey({ tenantId: "tenant_wrapped" });
+
+    const res = await POST(
+      reqWithBody(
+        { event: "purchase", properties: { city: "Tehran", plan: "pro" } },
+        "analas_pk_wrapped_test"
+      )
+    );
+    expect(res.status).toBe(202);
+
+    await vi.advanceTimersByTimeAsync(5000);
+
+    const [, values] = vi.mocked(insertEvents).mock.calls[0];
+    const stored = JSON.parse((values[0] as { properties: string }).properties);
+    expect(stored.city).toBe("Tehran");
+    expect(stored.plan).toBe("pro");
+  });
+
+  it("does not leave a literal `properties` key nested inside the stored JSON", async () => {
+    mockApiKey({ tenantId: "tenant_wrapped_2" });
+
+    const res = await POST(
+      reqWithBody(
+        { event: "purchase", properties: { city: "Tehran" } },
+        "analas_pk_wrapped_test_2"
+      )
+    );
+    expect(res.status).toBe(202);
+
+    await vi.advanceTimersByTimeAsync(5000);
+
+    const [, values] = vi.mocked(insertEvents).mock.calls[0];
+    const stored = JSON.parse((values[0] as { properties: string }).properties);
+    expect(stored.properties).toBeUndefined();
+  });
+
+  it("still extracts userId/anonymousId/sessionId out of a properties wrapper", async () => {
+    mockApiKey({ tenantId: "tenant_wrapped_3" });
+
+    const res = await POST(
+      reqWithBody(
+        {
+          event: "purchase",
+          properties: { userId: "usr_wrapped", sessionId: "sess_wrapped", city: "Tehran" },
+        },
+        "analas_pk_wrapped_test_3"
+      )
+    );
+    expect(res.status).toBe(202);
+
+    await vi.advanceTimersByTimeAsync(5000);
+
+    const [, values] = vi.mocked(insertEvents).mock.calls[0];
+    const row = values[0] as { user_id: string; session_id: string; properties: string };
+    expect(row.user_id).toBe("usr_wrapped");
+    expect(row.session_id).toBe("sess_wrapped");
+
+    const stored = JSON.parse(row.properties);
+    expect(stored.userId).toBeUndefined();
+    expect(stored.sessionId).toBeUndefined();
+    expect(stored.city).toBe("Tehran");
+  });
+
+  it("still works for a flat (non-wrapped) payload", async () => {
+    mockApiKey({ tenantId: "tenant_flat" });
+
+    const res = await POST(
+      reqWithBody({ event: "purchase", city: "Tehran", plan: "pro" }, "analas_pk_flat_test")
+    );
+    expect(res.status).toBe(202);
+
+    await vi.advanceTimersByTimeAsync(5000);
+
+    const [, values] = vi.mocked(insertEvents).mock.calls[0];
+    const stored = JSON.parse((values[0] as { properties: string }).properties);
+    expect(stored.city).toBe("Tehran");
+    expect(stored.plan).toBe("pro");
+  });
+});

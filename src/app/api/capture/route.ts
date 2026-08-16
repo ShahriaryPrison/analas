@@ -211,12 +211,14 @@ export async function POST(req: Request) {
       const userId = String(item.userId || item.anonymousId || item.properties?.userId || item.properties?.anonymousId || "");
       const sessionId = String(item.sessionId || item.properties?.sessionId || "");
 
-      const properties = { ...item };
+      const rawProps = (item.properties && typeof item.properties === "object") ? item.properties : {};
+      const properties = { ...rawProps, ...item };
       delete properties.event;
       delete properties.timestamp;
       delete properties.userId;
       delete properties.anonymousId;
       delete properties.sessionId;
+      delete properties.properties;
 
       const retentionDays = planConfig.dataRetentionDays || 30;
       const expiresAtDate = new Date(timestamp.getTime() + retentionDays * 24 * 60 * 60 * 1000);

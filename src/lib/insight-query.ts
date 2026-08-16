@@ -86,12 +86,13 @@ export async function fetchInsightData(
 
   if (type === "count") {
     const eventName = String(config.eventName || "").trim();
+    const countDays = Math.min(rawTimeFrame, retentionDays);
     const rows = await queryJson<{ total: string | number }>(
       `SELECT count() AS total FROM events
        WHERE tenant_id = {tenantId:String}
          AND event = {event:String}
-         AND ts >= now() - INTERVAL {retentionDays:Int32} DAY`,
-      { tenantId, event: eventName, retentionDays }
+         AND ts >= now() - INTERVAL {countDays:Int32} DAY`,
+      { tenantId, event: eventName, countDays }
     ).catch(() => []);
     const total = Number(rows[0]?.total ?? 0);
     return { total, rows: [] };
