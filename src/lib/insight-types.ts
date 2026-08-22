@@ -81,11 +81,12 @@ export const INSIGHT_TYPES: InsightTypeDef[] = [
     ],
     docs: {
       en: {
-        description: "Displays how often an action happens over time (daily, weekly, or monthly) as a line or bar chart. Helps you see if usage is growing or shrinking.",
+        description: "Displays how often an action happens over time (daily, weekly, or monthly) as a line or bar chart. Helps you see if usage is growing or shrinking. Via the API, you can also narrow it to a single segment with an optional `filters` array in queryConfig (e.g. only 'page_view' where entry_flow=map_search) — same mechanism as breakdown's filters, plan required, and not yet exposed in this creation form.",
         useCases: [
           "Checking daily active signups",
           "Monitoring checkout failures day-by-day",
-          "Analyzing website visits per week"
+          "Analyzing website visits per week",
+          "Via the API: two trend queries filtered to different segments (e.g. map vs. home traffic), rendered as separate lines on the same chart"
         ],
         fields: {
           eventName: "The action to display over time",
@@ -94,11 +95,12 @@ export const INSIGHT_TYPES: InsightTypeDef[] = [
         }
       },
       fa: {
-        description: "نشان می‌دهد که یک رویداد در طول زمان (روزانه، هفتگی یا ماهانه) چگونه تغییر کرده است. به شما کمک می‌کند متوجه شوید میزان استفاده در حال رشد است یا کاهش.",
+        description: "نشان می‌دهد که یک رویداد در طول زمان (روزانه، هفتگی یا ماهانه) چگونه تغییر کرده است. به شما کمک می‌کند متوجه شوید میزان استفاده در حال رشد است یا کاهش. از طریق API می‌توانید با آرایه اختیاری «filters» در queryConfig این روند را به یک بخش خاص محدود کنید (مثلاً فقط 'page_view' با entry_flow=map_search) — همان مکانیزم فیلترهای breakdown، نیازمند پلن مناسب، و هنوز در این فرم ساخت نیست.",
         useCases: [
           "بررسی تعداد ثبت‌نام‌های روزانه",
           "نظارت روزانه روی خطاهای پرداخت",
-          "تحلیل بازدیدهای وب‌سایت در هفته گذشته"
+          "تحلیل بازدیدهای وب‌سایت در هفته گذشته",
+          "از طریق API: دو روند جداگانه با فیلترهای متفاوت (مثلاً ترافیک نقشه در برابر صفحه اصلی)، هر کدام به عنوان یک خط روی یک نمودار"
         ],
         fields: {
           eventName: "رویدادی که می‌خواهید روند آن را در طول زمان ببینید",

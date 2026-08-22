@@ -138,14 +138,18 @@ export async function fetchInsightData(
 
   if (type === "trend") {
     const eventName = String(config.eventName || "").trim();
+    const { clause: filterClause, params: filterParams } = filtersAllowed
+      ? buildPropertyFilters(config.filters)
+      : { clause: "", params: {} };
     const raw = await queryJson<{ day: string; count: string | number }>(
       `SELECT formatDateTime(ts, '%Y-%m-%d', '${APP_TIMEZONE}') AS day, count() AS count
        FROM events
        WHERE tenant_id = {tenantId:String}
          AND event = {event:String}
          AND ts >= now() - INTERVAL {timeFrame:Int32} DAY
+         ${filterClause}
        GROUP BY day ORDER BY day ASC`,
-      { tenantId, event: eventName, timeFrame, timezone: APP_TIMEZONE }
+      { tenantId, event: eventName, timeFrame, timezone: APP_TIMEZONE, ...filterParams }
     ).catch(() => []);
 
     const filledRows = fillDays(raw, timeFrame);

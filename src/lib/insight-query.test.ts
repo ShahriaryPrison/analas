@@ -266,3 +266,77 @@ describe("fetchInsightData — breakdown property filters", () => {
     expect((params as Record<string, unknown>).tenantId).toBe("tenant_filters_scope");
   });
 });
+
+// Same property-filters feature, applied to "trend" — this is what lets a caller plot two
+// segments (e.g. map vs. home traffic) as separate lines on one chart: run the trend query
+// twice with different filter values and combine the two results client-side.
+describe("fetchInsightData — trend property filters", () => {
+  it("appends a parameterized filter clause for a PRO-plan workspace", async () => {
+    mockPlan("tenant_trend_filters_pro", "PRO");
+
+    await fetchInsightData("tenant_trend_filters_pro", "trend", {
+      eventName: "page_view",
+      timeFrame: 14,
+      filters: [{ property: "entry_flow", value: "map_search" }],
+    });
+
+    const [query, params] = vi.mocked(queryJson).mock.calls[0];
+    expect(query).toContain("JSONExtractString(properties, 'entry_flow') = {filterValue0:String}");
+    // The value must never be inlined into the query text itself.
+    expect(query).not.toContain("map_search");
+    expect((params as Record<string, unknown>).filterValue0).toBe("map_search");
+  });
+
+  it("never inlines a malicious filter value into the query text", async () => {
+    mockPlan("tenant_trend_filters_inject", "PRO");
+
+    const evilValue = "x'; DROP TABLE events;--";
+    await fetchInsightData("tenant_trend_filters_inject", "trend", {
+      eventName: "page_view",
+      filters: [{ property: "entry_flow", value: evilValue }],
+    });
+
+    const [query, params] = vi.mocked(queryJson).mock.calls[0];
+    expect(query).not.toContain(evilValue);
+    expect(query).not.toMatch(/DROP\s+TABLE/i);
+    expect((params as Record<string, unknown>).filterValue0).toBe(evilValue);
+  });
+
+  it("caps the number of applied filters", async () => {
+    mockPlan("tenant_trend_filters_cap", "PRO");
+
+    const filters = Array.from({ length: 8 }, (_, i) => ({ property: `prop${i}`, value: `val${i}` }));
+    await fetchInsightData("tenant_trend_filters_cap", "trend", { eventName: "page_view", filters });
+
+    const [, params] = vi.mocked(queryJson).mock.calls[0];
+    const filterKeys = Object.keys(params as Record<string, unknown>).filter((k) => k.startsWith("filterValue"));
+    expect(filterKeys).toHaveLength(5);
+  });
+
+  it("ignores filters entirely for a plan without advanced_filters", async () => {
+    mockPlan("tenant_trend_filters_free", "FREE");
+
+    await fetchInsightData("tenant_trend_filters_free", "trend", {
+      eventName: "page_view",
+      filters: [{ property: "entry_flow", value: "map_search" }],
+    });
+
+    const [query, params] = vi.mocked(queryJson).mock.calls[0];
+    expect(query).not.toContain("filterValue0");
+    expect((params as Record<string, unknown>).filterValue0).toBeUndefined();
+  });
+
+  it("still returns all days filled in when a filter matches nothing", async () => {
+    mockPlan("tenant_trend_filters_empty", "PRO");
+    vi.mocked(queryJson).mockResolvedValue([]);
+
+    const data = await fetchInsightData("tenant_trend_filters_empty", "trend", {
+      eventName: "page_view",
+      timeFrame: 3,
+      filters: [{ property: "entry_flow", value: "nonexistent" }],
+    });
+
+    expect(data.rows).toHaveLength(3);
+    expect(data.total).toBe(0);
+  });
+});

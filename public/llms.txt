@@ -38,11 +38,14 @@ Insight `type` values: `count`, `trend`, `breakdown`, `multi_trend`, `funnel`, `
 `retention`, `session_recording`. Types beyond `count`/`trend` require a plan that includes
 that feature; a `403` means an upgrade is needed, not a bug.
 
-`breakdown` also accepts an optional `filters` array to narrow the split by other properties
+`breakdown` and `trend` also accept an optional `filters` array to narrow by other properties
 (up to 5, each an exact-match equality check):
 `{"type":"breakdown","queryConfig":{"eventName":"reservation_completed","property":"city","filters":[{"property":"flow","value":"customer"}]}}`
+`{"type":"trend","queryConfig":{"eventName":"page_view","timeFrame":14,"filters":[{"property":"entry_flow","value":"map_search"}]}}`
+The `trend` form is how you plot two segments as separate lines on one chart — run it twice
+with different filter values and combine the two `rows` arrays client-side.
 Requires a plan with the `advanced_filters` feature — on plans without it, filters are
-silently ignored and the breakdown runs unfiltered rather than erroring.
+silently ignored and the query runs unfiltered rather than erroring.
 
 ## Example: verify a metric changed after a deploy
 
